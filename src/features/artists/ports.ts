@@ -1,0 +1,96 @@
+import type { RequestDeduperPort } from '../../common/request/requestDeduper.js';
+import type {
+    Artist,
+    ArtistSearchResult,
+} from '../../modules/models/models.js';
+import type { FollowedArtistSummary } from '../../utils/types/followedArtistTypes.js';
+
+type FollowedArtistsById = { [artistId: string]: FollowedArtistSummary };
+
+type ArtistDetailsOptions = {
+    cacheTtlOverride?: number;
+    skipTtlLookup?: boolean;
+};
+
+interface ArtistDetailsGateway {
+    getArtistDetails(
+        userId: string,
+        artistId: string,
+        options?: ArtistDetailsOptions,
+    ): Promise<Artist | null>;
+    getFollowedArtistSummary(
+        userId: string,
+        artistId: string,
+        options?: ArtistDetailsOptions,
+    ): Promise<FollowedArtistSummary | null>;
+}
+
+interface ArtistFollowingRepository {
+    getFollowingArtistIds(userId: string): Promise<string[]>;
+    getFollowingState(userId: string): Promise<{
+        artistIds: string[];
+        artistSummaries: FollowedArtistsById;
+    }>;
+    saveFollowedArtist(
+        userId: string,
+        artistId: string,
+        releaseIds: string[],
+        artistSummary?: FollowedArtistSummary,
+    ): Promise<void>;
+    saveFollowingArtistSummaries(userId: string, artistSummaries: FollowedArtistSummary[]): Promise<void>;
+    deleteFollowedArtist(userId: string, artistId: string): Promise<void>;
+}
+
+interface ArtistReleaseCatalogGateway {
+    getArtistReleaseIds(artistId: string, ttl: number | undefined): Promise<string[]>;
+}
+
+interface ArtistCacheTtlGateway {
+    getArtistTtl(userId: string, artistId: string): Promise<number | undefined>;
+}
+
+interface ArtistProfileImageQueue {
+    queueArtistProfileImages(
+        userId: string,
+        scope: string,
+        artistIds: string[],
+        ttl: number | undefined,
+    ): string;
+    queueArtistProfileImagesWithLookups(
+        userId: string,
+        scope: string,
+        artistLookups: { artistId: string; artistName?: string; discogsUrls?: string[] }[],
+        ttl: number | undefined,
+    ): string;
+}
+
+interface ArtistSearchGateway {
+    searchArtists(
+        userId: string,
+        query: string,
+        offset: number,
+        limit: number,
+    ): Promise<ArtistSearchResult>;
+}
+
+interface FollowingNotifier {
+    notifyFollowingChanged(userId: string, sourcePushToken?: string): Promise<void>;
+}
+
+type ArtistSharedUseCaseDependencies = {
+    artistDetailsGateway: ArtistDetailsGateway;
+    artistFollowingRepository: ArtistFollowingRepository;
+    artistReleaseCatalogGateway: ArtistReleaseCatalogGateway;
+    artistProfileImageQueue: ArtistProfileImageQueue;
+    artistSearchGateway: ArtistSearchGateway;
+    cacheTtlGateway: ArtistCacheTtlGateway;
+    followingNotifier: FollowingNotifier;
+};
+
+export type ArtistReadUseCaseDependencies = ArtistSharedUseCaseDependencies & {
+    requestDeduper: RequestDeduperPort;
+};
+
+export type ArtistWriteUseCaseDependencies = ArtistSharedUseCaseDependencies;
+
+export type ArtistUseCaseDependencies = ArtistReadUseCaseDependencies;

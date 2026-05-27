@@ -1,0 +1,31 @@
+{
+  "name": "functions",
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "test": "tsc -p tsconfig.test.json && node --test \"lib-test/**/*.test.js\"",
+    "start": "node --enable-source-maps lib/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "@sentry/node": "^10.53.1",
+    "dotenv": "^17.4.2",
+    "expo-server-sdk": "^3.14.0",
+    "express": "^4.21.2",
+    "firebase-admin": "^12.6.0",
+    "ioredis": "^5.5.0",
+    "nodemailer": "^7.0.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.8",
+    "@types/nodemailer": "^6.4.17",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
+  },
+  "private": true
+}

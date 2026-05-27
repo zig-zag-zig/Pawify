@@ -1,0 +1,68 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+
+import { BadRequestError } from '../src/common/http/errors.js';
+import {
+    optionalIntegerInRange,
+    optionalPositiveInteger,
+    optionalString,
+    requireBoolean,
+    requireNullablePositiveInteger,
+    requireString,
+    requireStringArray,
+} from '../src/common/http/validation.js';
+
+const assertBadRequest = (action: () => unknown, message: string): void => {
+    assert.throws(action, (error) => {
+        assert.ok(error instanceof BadRequestError);
+        assert.equal(error.statusCode, 400);
+        assert.equal(error.message, message);
+        return true;
+    });
+};
+
+describe('request validation helpers', () => {
+    it('trims required and optional string fields', () => {
+        assert.equal(requireString({ artistId: '  artist-123  ' }, 'artistId'), 'artist-123');
+        assert.equal(optionalString({ sourcePushToken: ' token ' }, 'sourcePushToken'), 'token');
+        assert.equal(optionalString({ sourcePushToken: '   ' }, 'sourcePushToken'), undefined);
+        assert.equal(optionalString({ sourcePushToken: null }, 'sourcePushToken'), undefined);
+    });
+
+    it('throws clear 400 errors for malformed object and string inputs', () => {
+        assertBadRequest(
+            () => requireString(null, 'artistId'),
+            'Request body must be an object',
+        );
+        assertBadRequest(
+            () => requireString({ artistId: '   ' }, 'artistId'),
+            'The artistId property in the body is required',
+        );
+        assertBadRequest(
+            () => optionalString({ sourcePushToken: 12 }, 'sourcePushToken'),
+            'The sourcePushToken property in the body must be a string',
+        );
+    });
+
+    it('validates booleans, string arrays, and integer ranges without coercing invalid values', () => {
+        assert.equal(requireBoolean({ enabled: false }, 'enabled'), false);
+        assert.deepEqual(requireStringArray({ artistIds: [' a ', 'b', 'a'] }, 'artistIds'), ['a', 'b']);
+        assert.equal(requireNullablePositiveInteger({ months: null }, 'months', 24), null);
+        assert.equal(requireNullablePositiveInteger({ months: '12' }, 'months', 24), 12);
+        assert.equal(optionalPositiveInteger({ page: '' }, 'page', 0), 0);
+        assert.equal(optionalIntegerInRange({ limit: '25' }, 'limit', 10, 1, 50), 25);
+
+        assertBadRequest(
+            () => requireStringArray({ artistIds: ['ok', ' '] }, 'artistIds'),
+            'Every item in artistIds must be a non-empty string',
+        );
+        assertBadRequest(
+            () => requireNullablePositiveInteger({ months: 25 }, 'months', 24),
+            'The months property in the body must be a positive integer or null',
+        );
+        assertBadRequest(
+            () => optionalIntegerInRange({ limit: '51' }, 'limit', 10, 1, 50),
+            'The limit property in the body must be an integer between 1 and 50',
+        );
+    });
+});

@@ -1,0 +1,115 @@
+import { isArtistMetadataStale } from '../artistMetadataRefresh.js';
+import { createLogger } from '../../../common/logging/logger.js';
+import type { ArtistMinimal } from '../../../modules/models/models.js';
+import { mapWithConcurrency } from '../../../utils/helpers/promisePool.js';
+import { artistCacheTtlHours } from '../../../utils/helpers/followingHelper.js';
+import type { ArtistReadUseCaseDependencies } from '../ports.js';
+
+const logger = createLogger('features.artists').child('getFollowing');
+
+type GetFollowingResult = {
+    artists: ArtistMinimal[];
+    profileImageTaskId: string;
+};
+
+const getSummaryDiscogsUrls = (
+    summary: { id: string; name: string },
+): string[] | undefined => {
+    const candidate = summary as typeof summary & {
+        discogsUrls?: unknown;
+    };
+
+    if (!Array.isArray(candidate.discogsUrls)) {
+        return undefined;
+    }
+
+    const urls = candidate.discogsUrls
+        .filter((url): url is string => typeof url === 'string' && url.trim().length > 0);
+
+    return urls.length > 0 ? urls : undefined;
+};
+
+export const createGetFollowingUseCase = ({
+    artistDetailsGateway,
+    artistFollowingRepository,
+    artistProfileImageQueue,
+    requestDeduper,
+}: Pick<
+    ArtistReadUseCaseDependencies,
+    | 'artistDetailsGateway'
+    | 'artistFollowingRepository'
+    | 'artistProfileImageQueue'
+    | 'requestDeduper'
+>) => async (
+    userId: string,
+): Promise<GetFollowingResult> => {
+    const payload = await requestDeduper.run(`getFollowing:${userId}`, async () => {
+        const followingState = await artistFollowingRepository.getFollowingState(userId);
+        const artistIds = followingState.artistIds;
+        const storedArtistSummaries = { ...followingState.artistSummaries };
+
+        const staleOrMissingArtistIds = artistIds.filter((artistId) => {
+            const summary = storedArtistSummaries[artistId];
+            return !summary || isArtistMetadataStale(summary.refreshedAt);
+        });
+
+        if (staleOrMissingArtistIds.length > 0) {
+            const fetchedSummaries = (await mapWithConcurrency(
+                staleOrMissingArtistIds,
+                4,
+                async (artistId) => await artistDetailsGateway.getFollowedArtistSummary(userId, artistId, {
+                    skipTtlLookup: true,
+                }),
+            )).filter((artistSummary): artistSummary is NonNullable<typeof artistSummary> => artistSummary !== null);
+
+            if (fetchedSummaries.length > 0) {
+                for (const artist of fetchedSummaries) {
+                    storedArtistSummaries[artist.id] = artist;
+                }
+
+                try {
+                    await artistFollowingRepository.saveFollowingArtistSummaries(userId, fetchedSummaries);
+                } catch (error) {
+                    logger.warn('failed to persist following artist summaries', { userId, error });
+                }
+            }
+        }
+
+        const artists: ArtistMinimal[] = [];
+        const artistLookups: { artistId: string; artistName: string; discogsUrls?: string[] }[] = [];
+
+        for (const artistId of artistIds) {
+            const summary = storedArtistSummaries[artistId];
+
+            if (!summary) {
+                continue;
+            }
+
+            artists.push({
+                id: summary.id,
+                name: summary.name,
+            });
+
+            artistLookups.push({
+                artistId: summary.id,
+                artistName: summary.name,
+                discogsUrls: getSummaryDiscogsUrls(summary),
+            });
+        }
+
+        return {
+            artists,
+            artistLookups,
+        };
+    });
+
+    return {
+        artists: payload.artists,
+        profileImageTaskId: artistProfileImageQueue.queueArtistProfileImagesWithLookups(
+            userId,
+            'following',
+            payload.artistLookups,
+            artistCacheTtlHours,
+        ),
+    };
+};
