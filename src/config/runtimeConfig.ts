@@ -33,15 +33,6 @@ const optionalEnv = (name: string): string | undefined => {
 
 const runtimeEnvironment = optionalEnv('APP_ENV') ?? optionalEnv('NODE_ENV') ?? 'development';
 
-const requiredEnv = (name: string): string => {
-    const value = optionalEnv(name);
-    if (!value) {
-        throw new Error(`Missing required environment variable: ${name}`);
-    }
-
-    return value;
-};
-
 const parseOptionalUrlEnv = (name: string): string | undefined => {
     const value = optionalEnv(name);
     if (!value) {
@@ -84,7 +75,6 @@ export const backgroundTaskWorkerConfig = {
 };
 
 export const cacheConfig = {
-    redisUrl: requiredEnv('REDIS'),
     defaultTtlHours: parsePositiveIntEnv(process.env.CACHE_DEFAULT_TTL_HOURS, 24 * 14),
     artistTtlHours: parsePositiveIntEnv(process.env.ARTIST_CACHE_TTL_HOURS, 24 * 61),
     transientArtistTtlHours: parsePositiveIntEnv(process.env.TRANSIENT_ARTIST_CACHE_TTL_HOURS, 24),
@@ -101,8 +91,6 @@ export const cacheConfig = {
 
 export const musicApiConfig = {
     musicBrainzUserAgent: optionalEnv('MUSICBRAINZ_USER_AGENT') ?? 'MusicReleaseNotifier/1.0',
-    geniusAccessToken: optionalEnv('GENIUS_ACCESS_TOKEN'),
-    discogsToken: optionalEnv('DISCOGS_TOKEN'),
     musicBrainzDelayMs: parsePositiveIntEnv(process.env.MUSICBRAINZ_DELAY_MS, 650),
     musicBrainzBackgroundDelayMs: parsePositiveIntEnv(process.env.MUSICBRAINZ_BACKGROUND_DELAY_MS, 1250),
     musicBrainzMinRateLimitWaitMs: parsePositiveIntEnv(process.env.MUSICBRAINZ_MIN_RATE_LIMIT_WAIT_MS, 1500),
@@ -140,11 +128,6 @@ export const monitoringConfig = {
     sentryRelease: optionalEnv('SENTRY_RELEASE'),
     sentryTracesSampleRate: parseFloatEnv(process.env.SENTRY_TRACES_SAMPLE_RATE, 0, 0, 1),
 };
-
-export const getEmailConfig = () => ({
-    gmailEmail: requiredEnv('GMAIL_EMAIL'),
-    gmailPassword: requiredEnv('GMAIL_PASSWORD'),
-});
 
 export const firebaseAdminConfig = {
     serviceAccountJson: optionalEnv('FIREBASE_SERVICE_ACCOUNT_JSON'),
