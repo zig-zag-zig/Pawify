@@ -322,7 +322,7 @@ set_environment_defaults() {
       SECRETS_SUBDIR="prod"
       HOST_PORT="3001"
       APP_PORT="10000"
-      COMPOSE_PROJECT="pawify-prod"
+      COMPOSE_PROJECT="pawify"
       IMAGE_NAME="pawify:prod"
       PUBLIC_HOSTNAME="pawify-api.chi-chi.vip"
       SENTRY_ENVIRONMENT="production"
@@ -604,7 +604,12 @@ validate_before_start() {
 }
 
 compose_cmd() {
-  sudo -u "$APP_USER" bash -lc "cd '$APP_DIR' && docker compose --env-file '$ENV_FILE' $*"
+  sudo -u "$APP_USER" bash -lc "cd '$APP_DIR' && docker compose -p '$COMPOSE_PROJECT' --env-file '$ENV_FILE' $*"
+}
+
+stop_existing_stack() {
+  log "Stopping existing $COMPOSE_PROJECT Compose stack if present"
+  compose_cmd "down --remove-orphans" || true
 }
 
 start_stack() {
@@ -617,10 +622,12 @@ start_stack() {
   if [[ -n "$PREBUILT_IMAGE" ]]; then
     log "Pulling prebuilt Pawify $ENVIRONMENT image: $PREBUILT_IMAGE"
     compose_cmd "pull pawify pawify-dapr redis"
+    stop_existing_stack
     compose_cmd "up -d --no-build"
   else
     log "Building and starting Pawify $ENVIRONMENT stack"
     compose_cmd "build pawify"
+    stop_existing_stack
     compose_cmd "up -d"
   fi
 
