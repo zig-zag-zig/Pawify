@@ -55,7 +55,8 @@ Options:
   --environment ENV             prod or test. Usually inferred from branch.
   --app-dir PATH                Default: /srv/pawify-prod or /srv/pawify-test.
   --app-user USER               Linux user that owns/runs the app. Default: pawify.
-  --install-docker              Install Docker Engine + Compose plugin.
+  --install-docker              Force Docker Engine + Compose plugin install.
+                                Docker is installed automatically if missing.
   --start                       Build and start the selected Compose stack.
   --prebuilt-image IMAGE        Use this already-built app image and pull it
                                 instead of building on the VPS.
@@ -85,7 +86,6 @@ Environment variables:
 Examples:
   sudo ./scripts/deploy_pawify_docker_dapr.sh \\
     --repo-branch main \\
-    --install-docker \\
     --start
 
   sudo ./scripts/deploy_pawify_docker_dapr.sh \\
@@ -657,11 +657,14 @@ main() {
   set_environment_defaults
   as_root_or_sudo
 
-  if [[ "$INSTALL_DOCKER" == "true" ]]; then
+  need_cmd git
+
+  if [[ "$INSTALL_DOCKER" == "true" ]] \
+    || ! command -v docker >/dev/null 2>&1 \
+    || ! docker compose version >/dev/null 2>&1; then
     install_docker
   fi
 
-  need_cmd git
   create_user_and_dirs
   login_to_image_registry
   clone_or_update_repo
