@@ -446,7 +446,7 @@ prepare_runtime_files() {
 
   mkdir -p "$secrets_dir" "$APP_DIR/backups/redis"
   chown -R "$owner" "$APP_DIR/secrets" "$APP_DIR/backups"
-  chmod 700 "$APP_DIR/secrets" "$secrets_dir" || true
+  chmod 755 "$APP_DIR/secrets" "$secrets_dir" || true
 
   if [[ -n "$SECRETS_SOURCE_DIR" ]]; then
     if [[ -z "$ENV_FILE_SOURCE" ]]; then
@@ -535,7 +535,7 @@ prepare_runtime_files() {
 
   if [[ -n "$DAPR_SECRETS_FILE_SOURCE" ]]; then
     if [[ "$FORCE_SECRET_OVERWRITE" == "true" || ! -f "$secret_path" ]]; then
-      copy_source_file "$DAPR_SECRETS_FILE_SOURCE" "$secret_path" "0600" "$owner"
+      copy_source_file "$DAPR_SECRETS_FILE_SOURCE" "$secret_path" "0644" "$owner"
     else
       log "preserved existing Dapr secret file: $secret_path"
     fi
@@ -550,13 +550,13 @@ prepare_runtime_files() {
 EOF_SECRETS
   else
     log "preserved existing Dapr secret file: $secret_path"
-    chmod 600 "$secret_path" || true
+    chmod 644 "$secret_path" || true
     chown "$owner" "$secret_path" || true
   fi
 
   if [[ -n "$FIREBASE_SERVICE_ACCOUNT_FILE_SOURCE" ]]; then
     if [[ "$FORCE_SECRET_OVERWRITE" == "true" || ! -f "$firebase_path" ]]; then
-      copy_source_file "$FIREBASE_SERVICE_ACCOUNT_FILE_SOURCE" "$firebase_path" "0600" "$owner"
+      copy_source_file "$FIREBASE_SERVICE_ACCOUNT_FILE_SOURCE" "$firebase_path" "0644" "$owner"
     else
       log "preserved existing Firebase service account file: $firebase_path"
     fi
@@ -564,7 +564,8 @@ EOF_SECRETS
     warn "Firebase service account file is not present yet: $firebase_path"
   fi
 
-  chmod 600 "$env_path" "$secret_path" 2>/dev/null || true
+  chmod 600 "$env_path" 2>/dev/null || true
+  chmod 644 "$secret_path" "$firebase_path" 2>/dev/null || true
   chown -R "$owner" "$APP_DIR/secrets" "$env_path" || true
 }
 
