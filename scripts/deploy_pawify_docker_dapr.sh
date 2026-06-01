@@ -217,26 +217,56 @@ read_env_value() {
 
 install_docker() {
   log "Installing Docker Engine and Compose plugin from Docker apt repository"
+  export DEBIAN_FRONTEND=noninteractive
+  rm -f /etc/apt/sources.list.d/docker.list /etc/apt/sources.list.d/docker.sources
   apt-get remove -y docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc >/dev/null 2>&1 || true
   apt-get update
   apt-get install -y ca-certificates curl gnupg git openssl rsync
   install -m 0755 -d /etc/apt/keyrings
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-  chmod a+r /etc/apt/keyrings/docker.asc
 
-  local codename arch
+  local codename arch docker_os
   # shellcheck disable=SC1091
   . /etc/os-release
-  codename="${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}"
+
+  case "${ID:-}" in
+    ubuntu)
+      docker_os="ubuntu"
+      codename="${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}"
+      ;;
+    debian)
+      docker_os="debian"
+      codename="${VERSION_CODENAME:-}"
+      ;;
+    *)
+      case " ${ID_LIKE:-} " in
+        *" ubuntu "*)
+          docker_os="ubuntu"
+          codename="${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}"
+          ;;
+        *" debian "*)
+          docker_os="debian"
+          codename="${VERSION_CODENAME:-}"
+          ;;
+        *)
+          err "Unsupported OS for Docker apt repo: ${PRETTY_NAME:-unknown}. Install Docker manually or update this script."
+          exit 1
+          ;;
+      esac
+      ;;
+  esac
+
   if [[ -z "$codename" ]]; then
-    err "Could not detect Ubuntu/Debian codename for Docker apt repo."
+    err "Could not detect ${docker_os} codename for Docker apt repo."
     exit 1
   fi
+
+  curl -fsSL "https://download.docker.com/linux/${docker_os}/gpg" -o /etc/apt/keyrings/docker.asc
+  chmod a+r /etc/apt/keyrings/docker.asc
 
   arch="$(dpkg --print-architecture)"
   cat > /etc/apt/sources.list.d/docker.sources <<EOF_REPO
 Types: deb
-URIs: https://download.docker.com/linux/ubuntu
+URIs: https://download.docker.com/linux/${docker_os}
 Suites: ${codename}
 Components: stable
 Architectures: ${arch}
