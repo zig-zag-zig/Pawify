@@ -234,7 +234,5 @@ jobs:
             --repo-url "$PAWIFY_REPO_URL" \
             --repo-branch "$PAWIFY_DEPLOY_BRANCH" \
             --prebuilt-image "$PAWIFY_DEPLOY_IMAGE" \
-            --secrets-source-dir "$PAWIFY_PROD_SECRET_SOURCE_DIR" \
-            --force-secret-overwrite \
-            --start
+            --secrets-source-dir "$PAWIFY_PROD_SECRET_SOURCE_DIR"
           REMOTE

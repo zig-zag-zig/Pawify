@@ -144,33 +144,26 @@ The deploy script then copies those into the active checkout as `.env.prod` and 
 
 ## Manual VPS Deploy
 
-From a repo checkout on the VPS:
+The normal deploy path is GitHub Actions. A manual VPS run is only useful when
+you already have a GHCR image tag to deploy:
 
 ```bash
 sudo ./scripts/deploy_pawify_docker_dapr.sh \
   --repo-url https://github.com/zig-zag-zig/Pawify.git \
   --repo-branch main \
-  --secrets-source-dir /root/pawify-prod-secrets \
-  --start
-```
-
-Manual deploys build on the VPS by default. To use a prebuilt image manually, pass `--prebuilt-image`:
-
-```bash
-sudo ./scripts/deploy_pawify_docker_dapr.sh \
-  --repo-url https://github.com/zig-zag-zig/Pawify.git \
-  --repo-branch main \
-  --secrets-source-dir /root/pawify-prod-secrets \
   --prebuilt-image ghcr.io/zig-zag-zig/pawify:sha-<commit-sha> \
-  --start
+  --secrets-source-dir /root/pawify-prod-secrets
 ```
 
-Manual commands inside an already prepared checkout:
+The deploy script does not build the app on the VPS. It installs Docker if
+needed, pulls the prebuilt image, refreshes the runtime secret files from
+`/root/pawify-prod-secrets`, and starts the production Compose stack.
+
+Manual commands inside the active checkout:
 
 ```bash
 cd /srv/pawify-prod
-docker compose --env-file .env.prod build pawify
-docker compose --env-file .env.prod up -d
+docker compose --env-file .env.prod ps
 docker compose --env-file .env.prod logs -f --tail=100 pawify pawify-dapr redis
 ```
 
