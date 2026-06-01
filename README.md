@@ -96,7 +96,7 @@ docker compose --env-file .env.local up -d --build
 curl http://127.0.0.1:10000/v1/keep-alive
 ```
 
-The VPS keeps using `3001` for production and `3101` for test. Local Docker uses `PAWIFY_HOST_PORT=10000` from `.env.local`, so it does not change the VPS tunnel setup.
+The VPS production tunnel keeps using `3001`. Local Docker uses `PAWIFY_HOST_PORT=10000` from `.env.local`, so it does not change the VPS tunnel setup.
 
 Local Redis persistence is disabled by default through `PAWIFY_REDIS_PERSISTENCE=false`. That keeps local cache/lock behavior realistic without local AOF/RDB files mattering. To stop local Docker:
 
@@ -109,7 +109,6 @@ docker compose --env-file .env.local down
 Use the environment-specific examples as the source of truth:
 
 - `.env.local.example` for local Docker.
-- `.env.test.example` for the VPS test stack.
 - `.env.prod.example` for the VPS production stack.
 
 Production-like runs need values for:
@@ -131,38 +130,27 @@ Never commit Firebase service accounts, API keys, Gmail app passwords, Redis cre
 
 ## Branching And Releases
 
-Protected branches:
+Pawify uses trunk-based development:
 
-- `develop` is the integration branch. It runs CI automatically, but test deploys are manual while the VPS memory budget is tight.
-- `main` is the production branch and deploys to the production VPS stack.
+- `main` is the protected trunk and production branch.
+- Pull requests into `main` run CI.
+- Merging or pushing to `main` builds a GHCR image and deploys production.
 
-Working branches:
+Working branches should stay short-lived:
 
 - `feature/<short-name>` for new behavior.
 - `fix/<short-name>` for normal bug fixes.
-- `hotfix/<short-name>` for urgent production fixes based from `main`.
+- `hotfix/<short-name>` for urgent production fixes.
 
 Normal flow:
 
 ```bash
-git switch develop
-git pull --rebase origin develop
+git switch main
+git pull --ff-only origin main
 git switch -c feature/<short-name>
 ```
 
-Open pull requests from `feature/*` or `fix/*` into `develop`. When merged, GitHub Actions runs CI for `develop`; test deployment is triggered manually from GitHub Actions when needed.
-
-Production promotion is a pull request from `develop` into `main`. When merged, GitHub Actions runs CI and deploys production from `main`.
-
-Hotfix flow:
-
-```bash
-git switch main
-git pull --ff-only origin main
-git switch -c hotfix/<short-name>
-```
-
-Open the hotfix pull request into `main`. After it reaches production, bring that fix back to `develop` with a follow-up pull request or by cherry-picking the production commit onto a `fix/*` branch from `develop`.
+Open pull requests from `feature/*`, `fix/*`, or `hotfix/*` into `main`. Keep changes small enough that `main` stays production-ready after each merge.
 
 ## Testing
 
@@ -233,10 +221,9 @@ Common authenticated routes:
 
 ## Deployment
 
-- Pull requests run build, tests, and Docker image validation.
-- Pushes to `develop` run CI only. They do not deploy to the VPS while the test stack is paused.
+- Pull requests into `main` run build, tests, and Docker image validation.
 - Pushes to `main` build and push a GHCR image, then deploy the production stack at `http://127.0.0.1:3001`.
-- Manual GitHub Actions runs can deploy the test stack from `develop` to `http://127.0.0.1:3101`.
+- Manual GitHub Actions runs from `main` can redeploy production.
 - Use the Docker Compose stack in this repo for the single-VPS deployment.
 - Dapr components live in `dapr/components`; secret files are mounted from `secrets/<environment>`.
 - Redis is local to each Compose network, password-protected, and configured with AOF plus RDB snapshots.
