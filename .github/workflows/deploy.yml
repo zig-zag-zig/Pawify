@@ -151,9 +151,11 @@ jobs:
           VPS_SSH_KEY: ${{ secrets.PAWIFY_VPS_SSH_KEY }}
           PAWIFY_REPO_URL: ${{ vars.PAWIFY_REPO_URL || format('https://github.com/{0}.git', github.repository) }}
           PAWIFY_DEPLOY_BRANCH: ${{ github.ref_name }}
-          PAWIFY_INSTALL_DOCKER: ${{ vars.PAWIFY_INSTALL_DOCKER }}
           PAWIFY_PROD_SECRET_SOURCE_DIR: ${{ vars.PAWIFY_PROD_SECRET_SOURCE_DIR }}
           PAWIFY_TEST_SECRET_SOURCE_DIR: ${{ vars.PAWIFY_TEST_SECRET_SOURCE_DIR }}
+          PAWIFY_ENV_FILE_B64: ${{ secrets.PAWIFY_ENV_FILE_B64 }}
+          PAWIFY_DAPR_SECRETS_JSON_B64: ${{ secrets.PAWIFY_DAPR_SECRETS_JSON_B64 }}
+          PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64 }}
           PAWIFY_DEPLOY_IMAGE: ${{ needs.build-test.outputs.image-ref }}
           PAWIFY_IMAGE_REGISTRY: ghcr.io
           PAWIFY_IMAGE_REGISTRY_USER: ${{ github.actor }}
@@ -167,9 +169,11 @@ jobs:
           : "${PAWIFY_REPO_URL:?Missing PAWIFY_REPO_URL}"
           : "${PAWIFY_DEPLOY_BRANCH:?Missing PAWIFY_DEPLOY_BRANCH}"
           : "${PAWIFY_DEPLOY_IMAGE:?Missing built Docker image ref}"
+          : "${PAWIFY_ENV_FILE_B64:?Missing GitHub environment secret PAWIFY_ENV_FILE_B64}"
+          : "${PAWIFY_DAPR_SECRETS_JSON_B64:?Missing GitHub environment secret PAWIFY_DAPR_SECRETS_JSON_B64}"
+          : "${PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64:?Missing GitHub environment secret PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64}"
 
           VPS_PORT="${VPS_PORT:-22}"
-          PAWIFY_INSTALL_DOCKER="${PAWIFY_INSTALL_DOCKER:-false}"
           PAWIFY_PROD_SECRET_SOURCE_DIR="${PAWIFY_PROD_SECRET_SOURCE_DIR:-/root/pawify-prod-secrets}"
           PAWIFY_TEST_SECRET_SOURCE_DIR="${PAWIFY_TEST_SECRET_SOURCE_DIR:-/root/pawify-test-secrets}"
 
@@ -180,16 +184,18 @@ jobs:
 
           remote_repo_url="$(printf '%q' "$PAWIFY_REPO_URL")"
           remote_branch="$(printf '%q' "$PAWIFY_DEPLOY_BRANCH")"
-          remote_install_docker="$(printf '%q' "$PAWIFY_INSTALL_DOCKER")"
           remote_prod_secret_source_dir="$(printf '%q' "$PAWIFY_PROD_SECRET_SOURCE_DIR")"
           remote_test_secret_source_dir="$(printf '%q' "$PAWIFY_TEST_SECRET_SOURCE_DIR")"
+          remote_env_file_b64="$(printf '%q' "$PAWIFY_ENV_FILE_B64")"
+          remote_dapr_secrets_json_b64="$(printf '%q' "$PAWIFY_DAPR_SECRETS_JSON_B64")"
+          remote_firebase_service_account_json_b64="$(printf '%q' "$PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64")"
           remote_deploy_image="$(printf '%q' "$PAWIFY_DEPLOY_IMAGE")"
           remote_image_registry="$(printf '%q' "$PAWIFY_IMAGE_REGISTRY")"
           remote_image_registry_user="$(printf '%q' "$PAWIFY_IMAGE_REGISTRY_USER")"
           remote_image_registry_token="$(printf '%q' "$PAWIFY_IMAGE_REGISTRY_TOKEN")"
 
           ssh -p "$VPS_PORT" -i ~/.ssh/pawify_deploy_key "$VPS_USER@$VPS_HOST" \
-            "PAWIFY_REPO_URL=$remote_repo_url PAWIFY_DEPLOY_BRANCH=$remote_branch PAWIFY_INSTALL_DOCKER=$remote_install_docker PAWIFY_PROD_SECRET_SOURCE_DIR=$remote_prod_secret_source_dir PAWIFY_TEST_SECRET_SOURCE_DIR=$remote_test_secret_source_dir PAWIFY_DEPLOY_IMAGE=$remote_deploy_image PAWIFY_IMAGE_REGISTRY=$remote_image_registry PAWIFY_IMAGE_REGISTRY_USER=$remote_image_registry_user PAWIFY_IMAGE_REGISTRY_TOKEN=$remote_image_registry_token bash -se" <<'REMOTE'
+            "PAWIFY_REPO_URL=$remote_repo_url PAWIFY_DEPLOY_BRANCH=$remote_branch PAWIFY_PROD_SECRET_SOURCE_DIR=$remote_prod_secret_source_dir PAWIFY_TEST_SECRET_SOURCE_DIR=$remote_test_secret_source_dir PAWIFY_ENV_FILE_B64=$remote_env_file_b64 PAWIFY_DAPR_SECRETS_JSON_B64=$remote_dapr_secrets_json_b64 PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64=$remote_firebase_service_account_json_b64 PAWIFY_DEPLOY_IMAGE=$remote_deploy_image PAWIFY_IMAGE_REGISTRY=$remote_image_registry PAWIFY_IMAGE_REGISTRY_USER=$remote_image_registry_user PAWIFY_IMAGE_REGISTRY_TOKEN=$remote_image_registry_token bash -se" <<'REMOTE'
           set -Eeuo pipefail
 
           require_apt_get() {
@@ -234,6 +240,33 @@ jobs:
               ;;
           esac
 
+          write_b64_file() {
+            local encoded="$1"
+            local path="$2"
+            local label="$3"
+            local tmp
+
+            if [[ -z "$encoded" ]]; then
+              echo "Missing GitHub environment secret: $label" >&2
+              exit 1
+            fi
+
+            tmp="$(mktemp)"
+            if ! printf '%s' "$encoded" | base64 -d > "$tmp"; then
+              rm -f "$tmp"
+              echo "Could not base64-decode GitHub environment secret: $label" >&2
+              exit 1
+            fi
+
+            sudo install -d -m 0700 "$(dirname "$path")"
+            sudo install -m 0600 "$tmp" "$path"
+            rm -f "$tmp"
+          }
+
+          write_b64_file "$PAWIFY_ENV_FILE_B64" "$secret_source_dir/.env" PAWIFY_ENV_FILE_B64
+          write_b64_file "$PAWIFY_DAPR_SECRETS_JSON_B64" "$secret_source_dir/dapr-secrets.json" PAWIFY_DAPR_SECRETS_JSON_B64
+          write_b64_file "$PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64" "$secret_source_dir/firebase-service-account.json" PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64
+
           tmp_dir="$(mktemp -d)"
           cleanup() {
             rm -rf "$tmp_dir"
@@ -242,17 +275,11 @@ jobs:
 
           git clone --depth 1 --recurse-submodules --shallow-submodules --branch "$PAWIFY_DEPLOY_BRANCH" "$PAWIFY_REPO_URL" "$tmp_dir"
 
-          install_flag=()
-          if [[ "$PAWIFY_INSTALL_DOCKER" == "true" ]]; then
-            install_flag=(--install-docker)
-          fi
-
           sudo bash "$tmp_dir/scripts/deploy_pawify_docker_dapr.sh" \
             --repo-url "$PAWIFY_REPO_URL" \
             --repo-branch "$PAWIFY_DEPLOY_BRANCH" \
             --prebuilt-image "$PAWIFY_DEPLOY_IMAGE" \
             --secrets-source-dir "$secret_source_dir" \
             --force-secret-overwrite \
-            "${install_flag[@]}" \
             --start
           REMOTE

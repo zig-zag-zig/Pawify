@@ -118,10 +118,23 @@ The workflow is [deploy.yml](/home/princesslighty/Code/Pawify/.github/workflows/
 - `PAWIFY_VPS_SSH_KEY`: private SSH key for that user.
 - `PAWIFY_VPS_PORT`: optional SSH port. Defaults to `22` when empty.
 
+Configure these GitHub environment secrets in both `production` and `test`, using different values per environment:
+
+- `PAWIFY_ENV_FILE_B64`: base64 of `.env.prod` or `.env.test`.
+- `PAWIFY_DAPR_SECRETS_JSON_B64`: base64 of `dapr-secrets.json`.
+- `PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64`: base64 of `firebase-service-account.json`.
+
+Create the base64 values locally:
+
+```bash
+base64 -w 0 .env.prod
+base64 -w 0 secrets/prod/dapr-secrets.json
+base64 -w 0 secrets/prod/firebase-service-account.json
+```
+
 Configure these GitHub repository variables if needed:
 
 - `PAWIFY_REPO_URL`: optional. Defaults to `https://github.com/<owner>/<repo>.git`.
-- `PAWIFY_INSTALL_DOCKER`: optional. Set to `true` only if you want the workflow to install Docker.
 - `PAWIFY_PROD_SECRET_SOURCE_DIR`: optional. Defaults to `/root/pawify-prod-secrets`.
 - `PAWIFY_TEST_SECRET_SOURCE_DIR`: optional. Defaults to `/root/pawify-test-secrets`.
 
@@ -133,7 +146,7 @@ The SSH user must be able to run the deploy script with `sudo`. The cleanest set
 
 In GitHub, create environments named `test` and `production`. Add required reviewers to `production` if you want `main` deploys to wait for manual approval after CI passes.
 
-Create the VPS source secret directories once:
+The workflow writes the decoded secret files to the VPS on each deploy:
 
 ```text
 /root/pawify-prod-secrets/.env
@@ -145,8 +158,7 @@ Create the VPS source secret directories once:
 /root/pawify-test-secrets/firebase-service-account.json
 ```
 
-The deploy script copies those into the active checkout as `.env.prod`/`.env.test` and `secrets/prod`/`secrets/test`.
-The GitHub workflow treats those source directories as canonical and overwrites the checkout copies on each deploy, keeping backups before replacing files.
+The deploy script then copies those into the active checkout as `.env.prod`/`.env.test` and `secrets/prod`/`secrets/test`, keeping backups before replacing files. Docker is installed automatically by the deploy script if the VPS is missing Docker or the Compose plugin.
 
 ## Manual Deploys
 
@@ -164,7 +176,6 @@ sudo ./scripts/deploy_pawify_docker_dapr.sh \
   --repo-url https://github.com/zig-zag-zig/Pawify.git \
   --repo-branch main \
   --secrets-source-dir /root/pawify-prod-secrets \
-  --install-docker \
   --start
 ```
 
