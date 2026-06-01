@@ -1,7 +1,7 @@
 import { musicApiConfig } from '../../config/runtimeConfig.js';
 import type { MusicBrainzPriority } from './types.js';
 
-export type ExternalService = 'musicbrainz' | 'coverartarchive' | 'discogs' | 'genius' | 'other';
+export type ExternalService = 'musicbrainz' | 'coverartarchive' | 'discogs' | 'genius' | 'expo' | 'other';
 
 const RATE_LIMIT_CONFIG = {
     musicbrainzForeground: { maxConcurrent: 1, delayMs: musicApiConfig.musicBrainzDelayMs },
@@ -102,24 +102,19 @@ const rateLimiters = {
     coverartarchive: new RateLimiter(RATE_LIMIT_CONFIG.coverartarchive.maxConcurrent, RATE_LIMIT_CONFIG.coverartarchive.delayMs),
 };
 
-export const getRateLimiter = (url: string, priority: MusicBrainzPriority = 'foreground') => {
-    if (url.includes('musicbrainz.org')) {
+export const getRateLimiter = (
+    service: ExternalService,
+    priority: MusicBrainzPriority = 'foreground',
+) => {
+    if (service === 'musicbrainz') {
         return priority === 'background'
             ? rateLimiters.musicbrainzBackground
             : rateLimiters.musicbrainzForeground;
     }
-    if (url.includes('discogs.com')) return rateLimiters.discogs;
-    if (url.includes('genius.com')) return rateLimiters.genius;
-    if (url.includes('coverartarchive.org')) return rateLimiters.coverartarchive;
+    if (service === 'discogs') return rateLimiters.discogs;
+    if (service === 'genius') return rateLimiters.genius;
+    if (service === 'coverartarchive') return rateLimiters.coverartarchive;
     return rateLimiters.musicbrainzForeground;
-};
-
-export const classifyServiceFromUrl = (url: string): ExternalService => {
-    if (url.includes('musicbrainz.org')) return 'musicbrainz';
-    if (url.includes('coverartarchive.org')) return 'coverartarchive';
-    if (url.includes('discogs.com')) return 'discogs';
-    if (url.includes('genius.com')) return 'genius';
-    return 'other';
 };
 
 const isMusicBrainzRateLimitedStatus = (status: number): boolean => status === 429 || status === 503;

@@ -1,43 +1,58 @@
-import { fetchWithRetry, isAbortError } from './httpClient.js';
+import { fetchDaprProvider, isAbortError } from './httpClient.js';
 import { isConfirmedMissingFetchFailure } from './types.js';
 import type { HttpOptions } from './types.js';
 
 const coverArtInFlight = new Map<string, Promise<string | null | undefined>>();
 type CoverProbeResult = 'found' | 'missing' | 'transient';
 
+const getPublicCoverArtUrl = (path: string): string => (
+    `https://${['coverartarchive', 'org'].join('.')}${path}`
+);
+
+const normalizeCoverArtPath = (value: string): string => {
+    try {
+        const parsed = new URL(value);
+        return parsed.pathname + parsed.search;
+    } catch {
+        return value.startsWith('/') ? value : `/${value}`;
+    }
+};
+
 export const getCoverArtArchiveUrl = async (
-    baseUrl: string,
+    basePath: string,
     signal?: AbortSignal,
 ): Promise<string | null | undefined> => {
+    const normalizedBasePath = normalizeCoverArtPath(basePath);
+
     if (signal) {
-        return await fetchCoverArt(baseUrl, signal);
+        return await fetchCoverArt(normalizedBasePath, signal);
     }
 
-    const existing = coverArtInFlight.get(baseUrl);
+    const existing = coverArtInFlight.get(normalizedBasePath);
     if (existing) {
         return await existing;
     }
 
-    const promise = fetchCoverArt(baseUrl);
-    coverArtInFlight.set(baseUrl, promise);
-    promise.finally(() => coverArtInFlight.delete(baseUrl));
+    const promise = fetchCoverArt(normalizedBasePath);
+    coverArtInFlight.set(normalizedBasePath, promise);
+    promise.finally(() => coverArtInFlight.delete(normalizedBasePath));
 
     return await promise;
 };
 
 const fetchCoverArt = async (
-    url: string,
+    path: string,
     signal?: AbortSignal,
 ): Promise<string | null | undefined> => {
-    const urlThumbnail = `${url}-500`;
-    const thumbnailResult = await probeCoverUrl(urlThumbnail, signal);
+    const thumbnailPath = `${path}-500`;
+    const thumbnailResult = await probeCoverUrl(thumbnailPath, signal);
     if (thumbnailResult === 'found') {
-        return urlThumbnail;
+        return getPublicCoverArtUrl(thumbnailPath);
     }
 
-    const originalResult = await probeCoverUrl(url, signal);
+    const originalResult = await probeCoverUrl(path, signal);
     if (originalResult === 'found') {
-        return url;
+        return getPublicCoverArtUrl(path);
     }
 
     if (thumbnailResult === 'transient' || originalResult === 'transient') {
@@ -48,7 +63,7 @@ const fetchCoverArt = async (
 };
 
 const probeCoverUrl = async (
-    url: string,
+    path: string,
     signal?: AbortSignal,
 ): Promise<CoverProbeResult> => {
     const options: HttpOptions = {
@@ -57,7 +72,7 @@ const probeCoverUrl = async (
     };
 
     try {
-        const result = await fetchWithRetry(url, options, true, true, 'status', signal);
+        const result = await fetchDaprProvider('coverartarchive', path, options, true, true, 'status', signal);
         if (result === true) {
             return 'found';
         }

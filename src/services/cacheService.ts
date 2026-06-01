@@ -1,19 +1,19 @@
-import Redis from "ioredis";
 import { createLogger } from '../common/logging/logger.js';
 import { cacheConfig } from '../config/runtimeConfig.js';
+import {
+    deleteStateValues,
+    getStateValue,
+    saveStateValues,
+    type DaprStateSaveItem,
+} from '../infrastructure/dapr/daprStateStore.js';
 
 const logger = createLogger('services.cache');
-
-const redisClient = new Redis(cacheConfig.redisUrl, {
-    maxRetriesPerRequest: 3,
-    enableOfflineQueue: false,
-});
 
 const MAX_REQUEST_SIZE = 1024 * 1024;
 const METADATA_OVERHEAD = 100;
 const DEFAULT_CACHE_TTL_HOURS = cacheConfig.defaultTtlHours;
 
-const UNDEFINED_MARKER = "__redis__undefined__";
+const UNDEFINED_MARKER = '__redis__undefined__';
 
 const getEffectiveTtlInHours = (ttlInHours?: number): number => (
     ttlInHours && Number.isFinite(ttlInHours) && ttlInHours > 0
@@ -55,42 +55,19 @@ const splitUtf8StringByByteSize = (value: string, maxBytes: number): string[] =>
     return chunks;
 };
 
-const executePipelineWithRetry = async (
-    pipeline: ReturnType<typeof redisClient.multi>,
-    retries = 3,
-): Promise<[Error | null, unknown][]> => {
-    for (let attempt = 1; attempt <= retries; attempt++) {
-        try {
-            const results = await pipeline.exec();
-            if (!results) throw new Error('Pipeline execution failed');
-
-            results.forEach(([err], index) => {
-                if (err) {
-                    logger.error('redis pipeline command failed', { commandIndex: index, error: err });
-                    throw err;
-                }
-            });
-            return results;
-        } catch (error) {
-            if (attempt === retries) throw error;
-            logger.warn('redis pipeline failed, retrying', { attempt, error });
-        }
-    }
-
-    throw new Error('Pipeline execution failed');
-};
-
 const serializeData = (data: unknown): string => {
     return JSON.stringify(data, (_, value) =>
-        value === undefined ? UNDEFINED_MARKER : value
+        value === undefined ? UNDEFINED_MARKER : value,
     );
 };
 
 const deserializeData = <T = unknown>(dataString: string): T => {
     return JSON.parse(dataString, (_, value) =>
-        value === UNDEFINED_MARKER ? undefined : value
+        value === UNDEFINED_MARKER ? undefined : value,
     ) as T;
 };
+
+const getMetadataKey = (key: string): string => `${key}:metadata`;
 
 const getChunkKeys = (key: string, totalChunks: number): string[] => (
     Array.from({ length: totalChunks }, (_, index) => `${key}:chunk${index.toString().padStart(4, '0')}`)
@@ -102,7 +79,7 @@ const parseChunkMetadata = (metadata: string | null): number | null => {
     }
 
     try {
-        const parsed = JSON.parse(metadata);
+        const parsed = JSON.parse(metadata) as Record<string, unknown>;
         const totalChunks = Number.parseInt(String(parsed.totalChunks ?? ''), 10);
         return Number.isFinite(totalChunks) && totalChunks > 0 ? totalChunks : null;
     } catch {
@@ -112,25 +89,32 @@ const parseChunkMetadata = (metadata: string | null): number | null => {
 
 export const deleteCachedData = async (key: string): Promise<void> => {
     try {
-        const metadata = await redisClient.get(`${key}:metadata`);
-        const totalChunks = parseChunkMetadata(metadata);
-        const pipeline = redisClient.multi();
+        const metadataKey = getMetadataKey(key);
+        const totalChunks = parseChunkMetadata(await getStateValue(metadataKey));
+        const keysToDelete = [
+            key,
+            metadataKey,
+            ...(totalChunks ? getChunkKeys(key, totalChunks) : []),
+        ];
 
-        pipeline.del(key);
-        pipeline.del(`${key}:metadata`);
-
-        if (totalChunks) {
-            for (const chunkKey of getChunkKeys(key, totalChunks)) {
-                pipeline.del(chunkKey);
-            }
-        }
-
-        await executePipelineWithRetry(pipeline);
+        await deleteStateValues(keysToDelete);
     } catch (error) {
         logger.error('delete cache failed', { key, error });
         throw error;
     }
 };
+
+const createStateSaveItem = (
+    key: string,
+    value: string,
+    ttlInSeconds: number,
+): DaprStateSaveItem => ({
+    key,
+    value,
+    metadata: {
+        ttlInSeconds: String(ttlInSeconds),
+    },
+});
 
 const setCachedData = async (
     key: string,
@@ -146,23 +130,30 @@ const setCachedData = async (
         const safeChunkSize = getSafeChunkSize(key);
 
         if (Buffer.byteLength(dataString, 'utf-8') <= safeChunkSize) {
-            await redisClient.set(key, dataString, 'EX', ttlInSeconds);
+            await saveStateValues([
+                createStateSaveItem(key, dataString, ttlInSeconds),
+            ]);
             return;
         }
 
         const chunks = splitUtf8StringByByteSize(dataString, safeChunkSize);
-
         logger.debug('saving chunked cache value', { key, chunkCount: chunks.length });
 
-        const pipeline = redisClient.multi();
-        pipeline.set(`${key}:metadata`, JSON.stringify({ totalChunks: chunks.length }), 'EX', ttlInSeconds);
+        await saveStateValues([
+            createStateSaveItem(
+                getMetadataKey(key),
+                JSON.stringify({ totalChunks: chunks.length }),
+                ttlInSeconds,
+            ),
+            ...chunks.map((chunk, index) => (
+                createStateSaveItem(
+                    `${key}:chunk${index.toString().padStart(4, '0')}`,
+                    chunk,
+                    ttlInSeconds,
+                )
+            )),
+        ]);
 
-        for (let i = 0; i < chunks.length; i++) {
-            const chunkKey = `${key}:chunk${i.toString().padStart(4, '0')}`;
-            pipeline.set(chunkKey, chunks[i], 'EX', ttlInSeconds);
-        }
-
-        await executePipelineWithRetry(pipeline);
         logger.debug('chunked cache value saved', { key, chunkCount: chunks.length });
     } catch (error) {
         logger.error('set cache failed', { key, error });
@@ -172,36 +163,30 @@ const setCachedData = async (
 
 export const getCachedData = async <T>(key: string): Promise<T | null> => {
     try {
-        const metadata = await redisClient.get(`${key}:metadata`);
+        const metadata = await getStateValue(getMetadataKey(key));
         const totalChunks = parseChunkMetadata(metadata);
 
         if (!totalChunks) {
-            const data = await redisClient.get(key);
+            const data = await getStateValue(key);
             return data ? deserializeData<T>(data) : null;
         }
 
-        const pipeline = redisClient.multi();
-        for (const chunkKey of getChunkKeys(key, totalChunks)) {
-            pipeline.get(chunkKey);
-        }
-
-        const results = await pipeline.exec();
-        if (!results) throw new Error('Pipeline execution failed');
-
+        const chunkKeys = getChunkKeys(key, totalChunks);
+        const chunkResults = await Promise.all(chunkKeys.map((chunkKey) => getStateValue(chunkKey)));
         const chunks: string[] = [];
         let missingChunkCount = 0;
-        results.forEach(([err, result]) => {
-            if (err) throw err;
+
+        for (const result of chunkResults) {
             if (typeof result !== 'string') {
                 missingChunkCount += 1;
-                return;
+                continue;
             }
 
             chunks.push(result);
-        });
+        }
 
         if (missingChunkCount > 0) {
-            logger.warn('chunked cache value missing redis chunks', { key, missingChunkCount });
+            logger.warn('chunked cache value missing chunks', { key, missingChunkCount });
             await deleteCachedData(key);
             return null;
         }

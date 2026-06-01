@@ -2,21 +2,19 @@ import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
 import { describe, it } from 'node:test';
 
-process.env.REDIS = process.env.REDIS ?? 'redis://localhost:6379';
 process.env.MUSICBRAINZ_RETRY_AFTER_BUFFER_MS = '1000';
 process.env.MUSICBRAINZ_MIN_RATE_LIMIT_WAIT_MS = '1500';
 
 const importRateLimiter = async () => import('../src/services/musicApi/rateLimiter.js');
 
 describe('music API rate limiting', () => {
-    it('classifies upstream URLs without making requests', async () => {
-        const { classifyServiceFromUrl } = await importRateLimiter();
+    it('selects provider limiters without upstream URLs', async () => {
+        const { getRateLimiter } = await importRateLimiter();
 
-        assert.equal(classifyServiceFromUrl('https://musicbrainz.org/ws/2/artist'), 'musicbrainz');
-        assert.equal(classifyServiceFromUrl('https://coverartarchive.org/release/release-id'), 'coverartarchive');
-        assert.equal(classifyServiceFromUrl('https://api.discogs.com/artists/1'), 'discogs');
-        assert.equal(classifyServiceFromUrl('https://api.genius.com/search'), 'genius');
-        assert.equal(classifyServiceFromUrl('https://example.com/search'), 'other');
+        assert.notEqual(getRateLimiter('musicbrainz', 'foreground'), getRateLimiter('musicbrainz', 'background'));
+        assert.equal(getRateLimiter('discogs'), getRateLimiter('discogs'));
+        assert.equal(getRateLimiter('genius'), getRateLimiter('genius'));
+        assert.equal(getRateLimiter('coverartarchive'), getRateLimiter('coverartarchive'));
     });
 
     it('applies retry headers and MusicBrainz status backoff to the limiter', async () => {

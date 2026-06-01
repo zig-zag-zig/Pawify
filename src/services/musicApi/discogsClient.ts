@@ -2,7 +2,7 @@ import {
     getDiscogsToken,
     logMissingOptionalCredentialOnce,
 } from './credentials.js';
-import { fetchWithRetry, isAbortError } from './httpClient.js';
+import { fetchDaprProvider, isAbortError } from './httpClient.js';
 import {
     isConfirmedMissingFetchFailure,
     isFetchFailureResult,
@@ -12,8 +12,6 @@ import type {
     FetchFailureResult,
     HttpOptions,
 } from './types.js';
-
-const DISCOGS_BASE_URL = "https://api.discogs.com";
 
 type DiscogsFetchResult = FetchFailureResult | Record<string, any> | null | undefined;
 
@@ -26,37 +24,45 @@ const fetchDiscogs = async (
     endpoint: string,
     signal?: AbortSignal,
 ): Promise<DiscogsFetchResult> => {
-    if (!getDiscogsToken()) {
-        logMissingOptionalCredentialOnce('DISCOGS_TOKEN');
+    const token = await getDiscogsToken();
+    if (!token) {
+        logMissingOptionalCredentialOnce('discogs-token');
         return undefined;
     }
 
-    const url = `${DISCOGS_BASE_URL}${endpoint}`;
     const options: HttpOptions = {
         method: 'GET',
         headers: {
-            'Authorization': `Discogs token=${getDiscogsToken()}`,
+            'Authorization': `Discogs token=${token}`,
         },
     };
 
     try {
-        return await fetchWithRetry(url.replace("/artist/", "/artists/"), options, true, false, 'status', signal);
+        return await fetchDaprProvider(
+            'discogs',
+            endpoint.replace('/artist/', '/artists/'),
+            options,
+            true,
+            false,
+            'status',
+            signal,
+        );
     } catch (error) {
         if (isAbortError(error)) {
             throw error;
         }
 
-        if (error instanceof Error && error.message.includes('Max retries')) {
-            return undefined;
-        }
-        throw error;
+        return undefined;
     }
 };
 
 const normalizeDiscogsEndpoint = (discogsUrl: string): string => {
-    return discogsUrl
-        .replace(/^https?:\/\/(?:www\.)?discogs\.com/i, '')
-        .replace(/^https?:\/\/api\.discogs\.com/i, '');
+    try {
+        const parsed = new URL(discogsUrl);
+        return parsed.pathname + parsed.search;
+    } catch {
+        return discogsUrl.startsWith('/') ? discogsUrl : `/${discogsUrl}`;
+    }
 };
 
 const getDiscogsLookupResult = async (

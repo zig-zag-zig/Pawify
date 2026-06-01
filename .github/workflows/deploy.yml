@@ -1,0 +1,248 @@
+name: CI and Deploy Pawify
+
+permissions:
+  contents: read
+  packages: write
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      deploy_environment:
+        description: Deploy target. Use production from main, or test from develop.
+        required: true
+        type: choice
+        options:
+          - test
+          - production
+
+concurrency:
+  group: pawify-${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build-test:
+    name: npm ci / build / test / docker image
+    runs-on: ubuntu-latest
+    outputs:
+      image-ref: ${{ steps.image.outputs.image_ref }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build app
+        run: npm run build
+
+      - name: Run tests
+        run: npm test --if-present
+
+      - name: Prepare Docker image tags
+        id: image
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref_name == 'main')
+        env:
+          DEPLOY_ENVIRONMENT: ${{ inputs.deploy_environment }}
+        run: |
+          set -Eeuo pipefail
+
+          image_repo="ghcr.io/${GITHUB_REPOSITORY,,}"
+          image_ref="${image_repo}:sha-${GITHUB_SHA}"
+          deploy_environment="${DEPLOY_ENVIRONMENT:-}"
+
+          if [[ -z "$deploy_environment" ]]; then
+            case "$GITHUB_REF_NAME" in
+              main) deploy_environment="production" ;;
+              develop) deploy_environment="test" ;;
+              *)
+                echo "Unsupported deploy branch: $GITHUB_REF_NAME" >&2
+                exit 2
+                ;;
+            esac
+          fi
+
+          case "$deploy_environment" in
+            production)
+              expected_branch="main"
+              environment_tag="prod"
+              ;;
+            test)
+              expected_branch="develop"
+              environment_tag="test"
+              ;;
+            *)
+              echo "Unsupported deploy environment: $deploy_environment" >&2
+              exit 2
+              ;;
+          esac
+
+          if [[ "$GITHUB_REF_NAME" != "$expected_branch" ]]; then
+            echo "Ref $GITHUB_REF_NAME cannot deploy to $deploy_environment. Use $expected_branch." >&2
+            exit 2
+          fi
+
+          echo "image_repo=$image_repo" >> "$GITHUB_OUTPUT"
+          echo "image_ref=$image_ref" >> "$GITHUB_OUTPUT"
+          echo "environment_ref=${image_repo}:${environment_tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR
+        if: steps.image.outputs.image_ref != ''
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s\n' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Build Docker image
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.image_ref }}
+          ENVIRONMENT_REF: ${{ steps.image.outputs.environment_ref }}
+        run: |
+          set -Eeuo pipefail
+
+          if [[ -n "$IMAGE_REF" ]]; then
+            docker build -t "$IMAGE_REF" -t "$ENVIRONMENT_REF" .
+            docker push "$IMAGE_REF"
+            docker push "$ENVIRONMENT_REF"
+          else
+            docker build -t pawify-ci .
+          fi
+
+  deploy:
+    name: Deploy ${{ github.ref_name }}
+    needs: build-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref_name == 'main')
+    environment:
+      name: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_environment || 'production' }}
+
+    steps:
+      - name: Deploy on VPS
+        env:
+          VPS_HOST: ${{ secrets.PAWIFY_VPS_HOST }}
+          VPS_USER: ${{ secrets.PAWIFY_VPS_USER }}
+          VPS_PORT: ${{ secrets.PAWIFY_VPS_PORT }}
+          VPS_SSH_KEY: ${{ secrets.PAWIFY_VPS_SSH_KEY }}
+          PAWIFY_REPO_URL: ${{ vars.PAWIFY_REPO_URL || format('https://github.com/{0}.git', github.repository) }}
+          PAWIFY_DEPLOY_BRANCH: ${{ github.ref_name }}
+          PAWIFY_INSTALL_DOCKER: ${{ vars.PAWIFY_INSTALL_DOCKER }}
+          PAWIFY_PROD_SECRET_SOURCE_DIR: ${{ vars.PAWIFY_PROD_SECRET_SOURCE_DIR }}
+          PAWIFY_TEST_SECRET_SOURCE_DIR: ${{ vars.PAWIFY_TEST_SECRET_SOURCE_DIR }}
+          PAWIFY_DEPLOY_IMAGE: ${{ needs.build-test.outputs.image-ref }}
+          PAWIFY_IMAGE_REGISTRY: ghcr.io
+          PAWIFY_IMAGE_REGISTRY_USER: ${{ github.actor }}
+          PAWIFY_IMAGE_REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+
+          : "${VPS_HOST:?Missing GitHub secret PAWIFY_VPS_HOST}"
+          : "${VPS_USER:?Missing GitHub secret PAWIFY_VPS_USER}"
+          : "${VPS_SSH_KEY:?Missing GitHub secret PAWIFY_VPS_SSH_KEY}"
+          : "${PAWIFY_REPO_URL:?Missing PAWIFY_REPO_URL}"
+          : "${PAWIFY_DEPLOY_BRANCH:?Missing PAWIFY_DEPLOY_BRANCH}"
+          : "${PAWIFY_DEPLOY_IMAGE:?Missing built Docker image ref}"
+
+          VPS_PORT="${VPS_PORT:-22}"
+          PAWIFY_INSTALL_DOCKER="${PAWIFY_INSTALL_DOCKER:-false}"
+          PAWIFY_PROD_SECRET_SOURCE_DIR="${PAWIFY_PROD_SECRET_SOURCE_DIR:-/root/pawify-prod-secrets}"
+          PAWIFY_TEST_SECRET_SOURCE_DIR="${PAWIFY_TEST_SECRET_SOURCE_DIR:-/root/pawify-test-secrets}"
+
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/pawify_deploy_key
+          chmod 600 ~/.ssh/pawify_deploy_key
+          ssh-keyscan -p "$VPS_PORT" "$VPS_HOST" >> ~/.ssh/known_hosts
+
+          remote_repo_url="$(printf '%q' "$PAWIFY_REPO_URL")"
+          remote_branch="$(printf '%q' "$PAWIFY_DEPLOY_BRANCH")"
+          remote_install_docker="$(printf '%q' "$PAWIFY_INSTALL_DOCKER")"
+          remote_prod_secret_source_dir="$(printf '%q' "$PAWIFY_PROD_SECRET_SOURCE_DIR")"
+          remote_test_secret_source_dir="$(printf '%q' "$PAWIFY_TEST_SECRET_SOURCE_DIR")"
+          remote_deploy_image="$(printf '%q' "$PAWIFY_DEPLOY_IMAGE")"
+          remote_image_registry="$(printf '%q' "$PAWIFY_IMAGE_REGISTRY")"
+          remote_image_registry_user="$(printf '%q' "$PAWIFY_IMAGE_REGISTRY_USER")"
+          remote_image_registry_token="$(printf '%q' "$PAWIFY_IMAGE_REGISTRY_TOKEN")"
+
+          ssh -p "$VPS_PORT" -i ~/.ssh/pawify_deploy_key "$VPS_USER@$VPS_HOST" \
+            "PAWIFY_REPO_URL=$remote_repo_url PAWIFY_DEPLOY_BRANCH=$remote_branch PAWIFY_INSTALL_DOCKER=$remote_install_docker PAWIFY_PROD_SECRET_SOURCE_DIR=$remote_prod_secret_source_dir PAWIFY_TEST_SECRET_SOURCE_DIR=$remote_test_secret_source_dir PAWIFY_DEPLOY_IMAGE=$remote_deploy_image PAWIFY_IMAGE_REGISTRY=$remote_image_registry PAWIFY_IMAGE_REGISTRY_USER=$remote_image_registry_user PAWIFY_IMAGE_REGISTRY_TOKEN=$remote_image_registry_token bash -se" <<'REMOTE'
+          set -Eeuo pipefail
+
+          require_apt_get() {
+            if ! command -v apt-get >/dev/null 2>&1; then
+              echo "apt-get is unavailable. Install missing deploy prerequisites on the VPS before deploying." >&2
+              exit 1
+            fi
+          }
+
+          if ! command -v sudo >/dev/null 2>&1; then
+            if [[ "$(id -u)" == "0" ]]; then
+              require_apt_get
+              apt-get update
+              apt-get install -y sudo
+            else
+              echo "sudo is missing on the VPS. Install sudo or deploy as root." >&2
+              exit 1
+            fi
+          fi
+
+          if ! sudo -n true; then
+            echo "The deploy SSH user must have passwordless sudo, or PAWIFY_VPS_USER must be root." >&2
+            exit 1
+          fi
+
+          if ! command -v git >/dev/null 2>&1; then
+            require_apt_get
+            sudo apt-get update
+            sudo apt-get install -y git ca-certificates
+          fi
+
+          case "$PAWIFY_DEPLOY_BRANCH" in
+            main)
+              secret_source_dir="$PAWIFY_PROD_SECRET_SOURCE_DIR"
+              ;;
+            develop)
+              secret_source_dir="$PAWIFY_TEST_SECRET_SOURCE_DIR"
+              ;;
+            *)
+              echo "Unsupported deploy branch: $PAWIFY_DEPLOY_BRANCH" >&2
+              exit 2
+              ;;
+          esac
+
+          tmp_dir="$(mktemp -d)"
+          cleanup() {
+            rm -rf "$tmp_dir"
+          }
+          trap cleanup EXIT
+
+          git clone --depth 1 --recurse-submodules --shallow-submodules --branch "$PAWIFY_DEPLOY_BRANCH" "$PAWIFY_REPO_URL" "$tmp_dir"
+
+          install_flag=()
+          if [[ "$PAWIFY_INSTALL_DOCKER" == "true" ]]; then
+            install_flag=(--install-docker)
+          fi
+
+          sudo bash "$tmp_dir/scripts/deploy_pawify_docker_dapr.sh" \
+            --repo-url "$PAWIFY_REPO_URL" \
+            --repo-branch "$PAWIFY_DEPLOY_BRANCH" \
+            --prebuilt-image "$PAWIFY_DEPLOY_IMAGE" \
+            --secrets-source-dir "$secret_source_dir" \
+            --force-secret-overwrite \
+            "${install_flag[@]}" \
+            --start
+          REMOTE

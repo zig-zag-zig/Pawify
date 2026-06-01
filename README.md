@@ -10,9 +10,9 @@ For non-technical readers: this service does the heavy lifting behind the app. I
 - Artist search, artist details, following, and unfollowing.
 - Release, release-group, and new-release lookup.
 - Background task results for heavier artwork/profile/lyrics work.
-- Redis-backed caching and request de-duplication.
+- Redis-backed caching and notification locking through Dapr.
 - Expo push notification delivery.
-- Email OTP support through Nodemailer.
+- Email OTP support through a Dapr SMTP binding.
 - GitHub/scheduler-friendly new-release notification endpoint.
 - Structured logging, request IDs, and centralized HTTP errors.
 
@@ -22,9 +22,9 @@ For non-technical readers: this service does the heavy lifting behind the app. I
 - TypeScript
 - Express
 - Firebase Admin SDK
-- Redis via ioredis
-- Expo Server SDK
-- Nodemailer
+- Dapr self-hosted sidecar
+- Redis through Dapr state and lock components
+- Expo push API through Dapr HTTPEndpoint
 - Sentry support
 
 ## Related Repositories
@@ -40,15 +40,18 @@ Install dependencies:
 npm install
 ```
 
-Create a local environment file:
+For a bare Node run, create a local environment file from the Docker local example and point credentials at host paths instead of container paths:
 
 ```bash
-cp .env.example .env
+cp .env.local.example .env.local
 ```
 
-Start the API:
+Start the API after Dapr and Redis are available:
 
 ```bash
+set -a
+. ./.env.local
+set +a
 npm run dev
 ```
 
@@ -60,26 +63,106 @@ Health check:
 curl http://localhost:10000/v1/keep-alive
 ```
 
+## Local Docker
+
+Local Docker uses the same Compose, Redis, and Dapr wiring as the VPS, but with a separate Compose project and a local host port:
+
+```bash
+cp .env.local.example .env.local
+mkdir -p secrets/local
+```
+
+Create `secrets/local/dapr-secrets.json`:
+
+```json
+{
+  "gmail-email": "your-gmail@gmail.com",
+  "gmail-password": "your-gmail-app-password",
+  "discogs-token": "",
+  "genius-access-token": ""
+}
+```
+
+Put a Firebase service account at:
+
+```text
+secrets/local/firebase-service-account.json
+```
+
+Then run:
+
+```bash
+docker compose --env-file .env.local up -d --build
+curl http://127.0.0.1:10000/v1/keep-alive
+```
+
+The VPS keeps using `3001` for production and `3101` for test. Local Docker uses `PAWIFY_HOST_PORT=10000` from `.env.local`, so it does not change the VPS tunnel setup.
+
+Local Redis persistence is disabled by default through `PAWIFY_REDIS_PERSISTENCE=false`. That keeps local cache/lock behavior realistic without local AOF/RDB files mattering. To stop local Docker:
+
+```bash
+docker compose --env-file .env.local down
+```
+
 ## Environment
 
-Use `.env.example` as the source of truth. Production-like runs need values for:
+Use the environment-specific examples as the source of truth:
 
-- `REDIS`
+- `.env.local.example` for local Docker.
+- `.env.test.example` for the VPS test stack.
+- `.env.prod.example` for the VPS production stack.
+
+Production-like runs need values for:
+
+- `DAPR_HTTP_PORT` or `DAPR_HTTP_ENDPOINT`
 - `FIREBASE_DATABASE_URL`
 - `GOOGLE_APPLICATION_CREDENTIALS` or `FIREBASE_SERVICE_ACCOUNT_JSON`
 - `NOTIFY_API_KEY`
-- `GMAIL_EMAIL`
-- `GMAIL_PASSWORD`
+- `REDIS_PASSWORD` in the environment file
+- a Dapr file secret store containing `gmail-email`, `gmail-password`, `discogs-token`, and `genius-access-token`
 
 Common optional values:
 
 - `MUSICBRAINZ_USER_AGENT`
-- `GENIUS_ACCESS_TOKEN`
-- `DISCOGS_TOKEN`
 - `KEEP_ALIVE_URL`
-- Cache TTL and task tuning values from `.env.example`
+- Cache TTL and task tuning values from the matching `.env.*.example` file.
 
-Never commit Firebase service accounts, API keys, Gmail app passwords, Redis credentials, or `.env` files.
+Never commit Firebase service accounts, API keys, Gmail app passwords, Redis credentials, Dapr secret files, or `.env` files.
+
+## Branching And Releases
+
+Protected branches:
+
+- `develop` is the integration branch. It runs CI automatically, but test deploys are manual while the VPS memory budget is tight.
+- `main` is the production branch and deploys to the production VPS stack.
+
+Working branches:
+
+- `feature/<short-name>` for new behavior.
+- `fix/<short-name>` for normal bug fixes.
+- `hotfix/<short-name>` for urgent production fixes based from `main`.
+
+Normal flow:
+
+```bash
+git switch develop
+git pull --rebase origin develop
+git switch -c feature/<short-name>
+```
+
+Open pull requests from `feature/*` or `fix/*` into `develop`. When merged, GitHub Actions runs CI for `develop`; test deployment is triggered manually from GitHub Actions when needed.
+
+Production promotion is a pull request from `develop` into `main`. When merged, GitHub Actions runs CI and deploys production from `main`.
+
+Hotfix flow:
+
+```bash
+git switch main
+git pull --ff-only origin main
+git switch -c hotfix/<short-name>
+```
+
+Open the hotfix pull request into `main`. After it reaches production, bring that fix back to `develop` with a follow-up pull request or by cherry-picking the production commit onto a `fix/*` branch from `develop`.
 
 ## Testing
 
@@ -95,7 +178,7 @@ Compile TypeScript:
 npm run build
 ```
 
-Tests should focus on local Pawify logic: request validation, release filtering/grouping, notification decisions, task serialization, cache helper behavior, and upstream-error handling. Firebase, Redis, email, Expo push delivery, and external music providers should be mocked unless an explicit emulator/integration command is added.
+Tests should focus on local Pawify logic: request validation, release filtering/grouping, notification decisions, task serialization, cache helper behavior, and upstream-error handling. Firebase, Dapr, Redis, email, Expo push delivery, and external music providers should be mocked unless an explicit emulator/integration command is added.
 
 ## Firebase Emulators
 
@@ -107,7 +190,7 @@ Example direction:
 firebase emulators:exec --only auth,database,firestore "npm test"
 ```
 
-The default test suite should remain safe to run without live Firebase or Redis writes.
+The default test suite should remain safe to run without live Firebase, Dapr, or Redis writes.
 
 ## Upstream Rate Limits
 
@@ -120,7 +203,7 @@ Pawify depends on third-party music data. If artist search, release details, cov
 | Discogs | Optional artist image fallback | Watch provider rate-limit headers when enabled. |
 | Genius | Optional lyrics lookup | Treat `429` and transient failures as provider throttling. |
 
-Keep application-level backoff/caching even if Cloudflare rate limits protect your public API edge.
+Pawify keeps provider concurrency and provider-specific rate-limit backoff in app code. Dapr resiliency owns provider retry, timeout, and circuit-breaker execution.
 
 ## API Overview
 
@@ -150,11 +233,14 @@ Common authenticated routes:
 
 ## Deployment
 
-- Run `npm run build` before deploying.
-- Start compiled output with `npm start`.
-- Set `NODE_ENV=production`.
-- Run Redis separately and point `REDIS` at it.
-- Provide secrets through the host, process manager, or private environment files.
+- Pull requests run build, tests, and Docker image validation.
+- Pushes to `develop` run CI only. They do not deploy to the VPS while the test stack is paused.
+- Pushes to `main` build and push a GHCR image, then deploy the production stack at `http://127.0.0.1:3001`.
+- Manual GitHub Actions runs can deploy the test stack from `develop` to `http://127.0.0.1:3101`.
+- Use the Docker Compose stack in this repo for the single-VPS deployment.
+- Dapr components live in `dapr/components`; secret files are mounted from `secrets/<environment>`.
+- Redis is local to each Compose network, password-protected, and configured with AOF plus RDB snapshots.
+- Use `scripts/backup-redis-docker.sh` for Redis backups.
 - Trigger `GET /v1/notifyNewReleases` from a trusted scheduler with `x-api-key: <NOTIFY_API_KEY>`.
 - Keep origin-only secrets out of mobile apps and public repositories.
 

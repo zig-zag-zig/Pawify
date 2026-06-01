@@ -1,19 +1,11 @@
-import {
-    Expo,
-    type ExpoPushMessage,
-    type ExpoPushReceipt,
-    type ExpoPushReceiptId,
-    type ExpoPushTicket,
-} from 'expo-server-sdk';
+import { chunkArray } from '../../common/utils/array.js';
 import { createLogger } from '../../common/logging/logger.js';
-import {
-    deletePushTokensFromDb,
-    getPushTokensFromDb,
-} from '../firebaseService.js';
+import { invokeHttpEndpoint } from '../../infrastructure/dapr/daprHttp.js';
 
-const expo = new Expo();
 const logger = createLogger('services.notifications.pushDelivery');
 const pushReceiptCheckDelayMs = 15_000;
+const pushSendChunkSize = 100;
+const pushReceiptChunkSize = 300;
 
 export type PushNotificationOptions = {
     title?: string;
@@ -28,10 +20,96 @@ export type PushDeliveryOptions = {
 
 type NotificationMode = 'visible' | 'data';
 
+type ExpoPushErrorDetails = {
+    error?: string;
+    expoPushToken?: string;
+};
+
+type ExpoPushMessage = {
+    to: string;
+    title?: string;
+    body?: string;
+    data?: Record<string, unknown>;
+    sound?: 'default';
+    priority?: 'default' | 'normal' | 'high';
+    _contentAvailable?: boolean;
+};
+
+type ExpoPushTicket =
+    | { status: 'ok'; id: string }
+    | { status: 'error'; message: string; details?: ExpoPushErrorDetails };
+
+type ExpoPushReceipt =
+    | { status: 'ok' }
+    | { status: 'error'; message?: string; details?: ExpoPushErrorDetails };
+
+type ExpoPushReceiptId = string;
+
 const wait = async (ms: number): Promise<void> => {
     await new Promise<void>((resolve) => {
-        setTimeout(resolve, ms);
+        const timeout = setTimeout(resolve, ms);
+        timeout.unref?.();
     });
+};
+
+const getPushTokensFromStore = async (userId: string): Promise<string[]> => {
+    const { getPushTokensFromDb } = await import('../firebaseService.js');
+    return await getPushTokensFromDb(userId);
+};
+
+const deletePushTokensFromStore = async (userId: string, pushTokens: string[]): Promise<void> => {
+    const { deletePushTokensFromDb } = await import('../firebaseService.js');
+    await deletePushTokensFromDb(userId, pushTokens);
+};
+
+const isExpoPushToken = (token: string): boolean => (
+    /^(ExpoPushToken|ExponentPushToken)\[[A-Za-z0-9_-]+\]$/.test(token)
+);
+
+const readExpoData = async <T>(response: Response, context: string): Promise<T> => {
+    const bodyText = await response.text();
+    if (!response.ok) {
+        throw new Error(`${context}: HTTP ${response.status} ${bodyText}`);
+    }
+
+    const body = bodyText ? JSON.parse(bodyText) as unknown : undefined;
+    if (
+        body
+        && typeof body === 'object'
+        && 'data' in body
+    ) {
+        return (body as { data: T }).data;
+    }
+
+    return body as T;
+};
+
+const sendExpoPushNotifications = async (
+    messages: ExpoPushMessage[],
+): Promise<ExpoPushTicket[]> => {
+    const response = await invokeHttpEndpoint('expo', '/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(messages),
+    });
+
+    return await readExpoData<ExpoPushTicket[]>(response, 'send Expo push notifications');
+};
+
+const getExpoPushReceipts = async (
+    ids: ExpoPushReceiptId[],
+): Promise<Record<ExpoPushReceiptId, ExpoPushReceipt>> => {
+    const response = await invokeHttpEndpoint('expo', '/--/api/v2/push/getReceipts', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ids }),
+    });
+
+    return await readExpoData<Record<ExpoPushReceiptId, ExpoPushReceipt>>(response, 'get Expo push receipts');
 };
 
 const validateNotificationOptions = (options: PushNotificationOptions): NotificationMode => {
@@ -66,7 +144,7 @@ export const getValidPushTokens = async (
     deliveryOptions: PushDeliveryOptions = {},
 ): Promise<string[]> => {
     const startedAt = Date.now();
-    const storedPushTokens = await getPushTokensFromDb(userId);
+    const storedPushTokens = await getPushTokensFromStore(userId);
     const pushTokens = Array.from(new Set(storedPushTokens));
     const totalTokenCount = pushTokens.length;
     const excludedPushToken = deliveryOptions.excludePushToken?.trim();
@@ -83,8 +161,8 @@ export const getValidPushTokens = async (
         return [];
     }
 
-    const validPushTokens = pushTokens.filter((token) => Expo.isExpoPushToken(token));
-    const invalidPushTokens = storedPushTokens.filter((token) => !Expo.isExpoPushToken(token));
+    const validPushTokens = pushTokens.filter((token) => isExpoPushToken(token));
+    const invalidPushTokens = storedPushTokens.filter((token) => !isExpoPushToken(token));
     const recipientPushTokens = excludedPushToken
         ? validPushTokens.filter((token) => token !== excludedPushToken)
         : validPushTokens;
@@ -92,7 +170,7 @@ export const getValidPushTokens = async (
 
     if (invalidPushTokens.length > 0) {
         logger.warn('removing invalid expo push tokens', { userId, invalidPushRecipientCount: invalidPushTokens.length });
-        await deletePushTokensFromDb(userId, invalidPushTokens);
+        await deletePushTokensFromStore(userId, invalidPushTokens);
     }
 
     if (recipientPushTokens.length === 0) {
@@ -161,7 +239,7 @@ export const sendPushNotificationToTokens = async (
         _contentAvailable: isDataOnly ? true : undefined,
     }));
 
-    const chunks = expo.chunkPushNotifications(messagePayloads);
+    const chunks = chunkArray(messagePayloads, pushSendChunkSize);
     logger.debug('push notification send started', {
         userId,
         mode: notificationMode,
@@ -170,7 +248,7 @@ export const sendPushNotificationToTokens = async (
     });
     const chunkTicketGroups = await Promise.all(chunks.map(async (chunk, chunkIndex) => {
         const chunkStartedAt = Date.now();
-        const tickets = await expo.sendPushNotificationsAsync(chunk);
+        const tickets = await sendExpoPushNotifications(chunk);
 
         logger.debug('push notification chunk completed', {
             userId,
@@ -215,7 +293,7 @@ export const sendPushNotificationToTokens = async (
 
     if (invalidTokens.length > 0) {
         logger.warn('removing rejected expo push tokens', { userId, rejectedPushRecipientCount: invalidTokens.length });
-        await deletePushTokensFromDb(userId, invalidTokens);
+        await deletePushTokensFromStore(userId, invalidTokens);
     }
 
     logger.debug('push notification send completed', {
@@ -259,11 +337,11 @@ const checkPushReceipts = async (
         await wait(pushReceiptCheckDelayMs);
 
         const receiptIds = Array.from(receiptTokens.keys());
-        const chunks = expo.chunkPushNotificationReceiptIds(receiptIds);
+        const chunks = chunkArray(receiptIds, pushReceiptChunkSize);
         const invalidTokens: string[] = [];
 
         await Promise.all(chunks.map(async (chunk) => {
-            const receipts = await expo.getPushNotificationReceiptsAsync(chunk);
+            const receipts = await getExpoPushReceipts(chunk);
 
             Object.entries(receipts).forEach(([receiptId, receipt]) => {
                 if (receipt.status !== 'error') {
@@ -296,7 +374,7 @@ const checkPushReceipts = async (
                 userId,
                 rejectedPushRecipientCount: invalidTokens.length,
             });
-            await deletePushTokensFromDb(userId, invalidTokens);
+            await deletePushTokensFromStore(userId, invalidTokens);
         }
 
     } catch (error) {

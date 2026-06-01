@@ -2,33 +2,31 @@ import {
     getGeniusAccessToken,
     logMissingOptionalCredentialOnce,
 } from './credentials.js';
-import { fetchWithRetry } from './httpClient.js';
+import { fetchDaprProvider, isAbortError } from './httpClient.js';
 import { isFetchFailureResult } from './types.js';
 import type { HttpOptions } from './types.js';
-
-const GENIUS_BASE_URL = "https://api.genius.com";
 
 export const fetchGeniusLyrics = async (
     artistName: string,
     trackName: string,
     signal?: AbortSignal,
 ): Promise<string | null | undefined> => {
-    if (!getGeniusAccessToken()) {
-        logMissingOptionalCredentialOnce('GENIUS_ACCESS_TOKEN');
+    const token = await getGeniusAccessToken();
+    if (!token) {
+        logMissingOptionalCredentialOnce('genius-access-token');
         return undefined;
     }
 
     const queryEncoded = encodeURIComponent(`${trackName} ${artistName}`);
-    const url = `${GENIUS_BASE_URL}/search?q=${queryEncoded}`;
     const options: HttpOptions = {
         method: 'GET',
         headers: {
-            'Authorization': `Bearer ${getGeniusAccessToken()}`,
+            'Authorization': `Bearer ${token}`,
         },
     };
 
     try {
-        const response = await fetchWithRetry(url, options, false, false, 'status', signal);
+        const response = await fetchDaprProvider('genius', `/search?q=${queryEncoded}`, options, false, false, 'status', signal);
         if (!response || isFetchFailureResult(response)) {
             return undefined;
         }
@@ -46,9 +44,10 @@ export const fetchGeniusLyrics = async (
 
         return null;
     } catch (error) {
-        if (error instanceof Error && error.message.includes('Max retries')) {
-            return undefined;
+        if (isAbortError(error)) {
+            throw error;
         }
-        throw error;
+
+        return undefined;
     }
 };

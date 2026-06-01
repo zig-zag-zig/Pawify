@@ -52,14 +52,14 @@ export const fetchReleaseCoverFromCaa = async (
     releaseId: string,
     signal?: AbortSignal,
 ): Promise<RemoteValueState> => {
-    return await getCoverArtArchiveUrl(`https://coverartarchive.org/release/${releaseId}/front`, signal);
+    return await getCoverArtArchiveUrl(`/release/${releaseId}/front`, signal);
 };
 
 export const fetchReleaseGroupCoverFromCaa = async (
     releaseGroupId: string,
     signal?: AbortSignal,
 ): Promise<RemoteValueState> => {
-    return await getCoverArtArchiveUrl(`https://coverartarchive.org/release-group/${releaseGroupId}/front`, signal);
+    return await getCoverArtArchiveUrl(`/release-group/${releaseGroupId}/front`, signal);
 };
 
 export const pickCachedPeerReleaseCover = (
