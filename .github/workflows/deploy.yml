@@ -8,20 +8,10 @@ on:
   push:
     branches:
       - main
-      - develop
   pull_request:
     branches:
       - main
-      - develop
   workflow_dispatch:
-    inputs:
-      deploy_environment:
-        description: Deploy target. Use production from main, or test from develop.
-        required: true
-        type: choice
-        options:
-          - test
-          - production
 
 concurrency:
   group: pawify-${{ github.workflow }}-${{ github.ref_name }}
@@ -60,50 +50,21 @@ jobs:
 
       - name: Prepare Docker image tags
         id: image
-        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref_name == 'main')
-        env:
-          DEPLOY_ENVIRONMENT: ${{ inputs.deploy_environment }}
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         run: |
           set -Eeuo pipefail
 
-          image_repo="ghcr.io/${GITHUB_REPOSITORY,,}"
-          image_ref="${image_repo}:sha-${GITHUB_SHA}"
-          deploy_environment="${DEPLOY_ENVIRONMENT:-}"
-
-          if [[ -z "$deploy_environment" ]]; then
-            case "$GITHUB_REF_NAME" in
-              main) deploy_environment="production" ;;
-              develop) deploy_environment="test" ;;
-              *)
-                echo "Unsupported deploy branch: $GITHUB_REF_NAME" >&2
-                exit 2
-                ;;
-            esac
-          fi
-
-          case "$deploy_environment" in
-            production)
-              expected_branch="main"
-              environment_tag="prod"
-              ;;
-            test)
-              expected_branch="develop"
-              environment_tag="test"
-              ;;
-            *)
-              echo "Unsupported deploy environment: $deploy_environment" >&2
-              exit 2
-              ;;
-          esac
-
-          if [[ "$GITHUB_REF_NAME" != "$expected_branch" ]]; then
-            echo "Ref $GITHUB_REF_NAME cannot deploy to $deploy_environment. Use $expected_branch." >&2
+          if [[ "$GITHUB_REF_NAME" != "main" ]]; then
+            echo "Pawify production deploys must run from main, not $GITHUB_REF_NAME." >&2
             exit 2
           fi
 
+          image_repo="ghcr.io/${GITHUB_REPOSITORY,,}"
+          image_ref="${image_repo}:sha-${GITHUB_SHA}"
+
           echo "image_repo=$image_repo" >> "$GITHUB_OUTPUT"
           echo "image_ref=$image_ref" >> "$GITHUB_OUTPUT"
-          echo "environment_ref=${image_repo}:${environment_tag}" >> "$GITHUB_OUTPUT"
+          echo "environment_ref=${image_repo}:prod" >> "$GITHUB_OUTPUT"
 
       - name: Login to GHCR
         if: steps.image.outputs.image_ref != ''
@@ -138,9 +99,9 @@ jobs:
     name: Deploy ${{ github.ref_name }}
     needs: build-test
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref_name == 'main')
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     environment:
-      name: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_environment || 'production' }}
+      name: production
 
     steps:
       - name: Deploy on VPS
@@ -152,7 +113,6 @@ jobs:
           PAWIFY_REPO_URL: ${{ vars.PAWIFY_REPO_URL || format('https://github.com/{0}.git', github.repository) }}
           PAWIFY_DEPLOY_BRANCH: ${{ github.ref_name }}
           PAWIFY_PROD_SECRET_SOURCE_DIR: ${{ vars.PAWIFY_PROD_SECRET_SOURCE_DIR }}
-          PAWIFY_TEST_SECRET_SOURCE_DIR: ${{ vars.PAWIFY_TEST_SECRET_SOURCE_DIR }}
           PAWIFY_ENV_FILE_B64: ${{ secrets.PAWIFY_ENV_FILE_B64 }}
           PAWIFY_DAPR_SECRETS_JSON_B64: ${{ secrets.PAWIFY_DAPR_SECRETS_JSON_B64 }}
           PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64 }}
@@ -173,58 +133,32 @@ jobs:
           : "${PAWIFY_DAPR_SECRETS_JSON_B64:?Missing GitHub environment secret PAWIFY_DAPR_SECRETS_JSON_B64}"
           : "${PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64:?Missing GitHub environment secret PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64}"
 
+          if [[ "$PAWIFY_DEPLOY_BRANCH" != "main" ]]; then
+            echo "Pawify production deploys must run from main, not $PAWIFY_DEPLOY_BRANCH." >&2
+            exit 2
+          fi
+
           VPS_PORT="${VPS_PORT:-22}"
           PAWIFY_PROD_SECRET_SOURCE_DIR="${PAWIFY_PROD_SECRET_SOURCE_DIR:-/root/pawify-prod-secrets}"
-          PAWIFY_TEST_SECRET_SOURCE_DIR="${PAWIFY_TEST_SECRET_SOURCE_DIR:-/root/pawify-test-secrets}"
 
           install -m 700 -d ~/.ssh
           printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/pawify_deploy_key
           chmod 600 ~/.ssh/pawify_deploy_key
           ssh-keyscan -p "$VPS_PORT" "$VPS_HOST" >> ~/.ssh/known_hosts
 
-          secret_upload_dir="$(mktemp -d)"
-          cleanup_local() {
-            rm -rf "$secret_upload_dir"
-          }
-          trap cleanup_local EXIT
-
-          decode_b64_secret() {
-            local encoded="$1"
-            local path="$2"
-            local label="$3"
-
-            if ! printf '%s' "$encoded" | base64 -d > "$path"; then
-              rm -f "$path"
-              echo "Could not base64-decode GitHub environment secret: $label" >&2
-              exit 1
-            fi
-
-            chmod 600 "$path"
-          }
-
-          decode_b64_secret "$PAWIFY_ENV_FILE_B64" "$secret_upload_dir/.env" PAWIFY_ENV_FILE_B64
-          decode_b64_secret "$PAWIFY_DAPR_SECRETS_JSON_B64" "$secret_upload_dir/dapr-secrets.json" PAWIFY_DAPR_SECRETS_JSON_B64
-          decode_b64_secret "$PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64" "$secret_upload_dir/firebase-service-account.json" PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64
-
-          remote_secret_upload_dir="$(ssh -p "$VPS_PORT" -i ~/.ssh/pawify_deploy_key "$VPS_USER@$VPS_HOST" 'mktemp -d')"
-          scp -P "$VPS_PORT" -i ~/.ssh/pawify_deploy_key \
-            "$secret_upload_dir/.env" \
-            "$secret_upload_dir/dapr-secrets.json" \
-            "$secret_upload_dir/firebase-service-account.json" \
-            "$VPS_USER@$VPS_HOST:$remote_secret_upload_dir/"
-
           remote_repo_url="$(printf '%q' "$PAWIFY_REPO_URL")"
           remote_branch="$(printf '%q' "$PAWIFY_DEPLOY_BRANCH")"
           remote_prod_secret_source_dir="$(printf '%q' "$PAWIFY_PROD_SECRET_SOURCE_DIR")"
-          remote_test_secret_source_dir="$(printf '%q' "$PAWIFY_TEST_SECRET_SOURCE_DIR")"
-          remote_secret_upload_dir_quoted="$(printf '%q' "$remote_secret_upload_dir")"
+          remote_env_file_b64="$(printf '%q' "$PAWIFY_ENV_FILE_B64")"
+          remote_dapr_secrets_json_b64="$(printf '%q' "$PAWIFY_DAPR_SECRETS_JSON_B64")"
+          remote_firebase_service_account_json_b64="$(printf '%q' "$PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64")"
           remote_deploy_image="$(printf '%q' "$PAWIFY_DEPLOY_IMAGE")"
           remote_image_registry="$(printf '%q' "$PAWIFY_IMAGE_REGISTRY")"
           remote_image_registry_user="$(printf '%q' "$PAWIFY_IMAGE_REGISTRY_USER")"
           remote_image_registry_token="$(printf '%q' "$PAWIFY_IMAGE_REGISTRY_TOKEN")"
 
           ssh -p "$VPS_PORT" -i ~/.ssh/pawify_deploy_key "$VPS_USER@$VPS_HOST" \
-            "PAWIFY_REPO_URL=$remote_repo_url PAWIFY_DEPLOY_BRANCH=$remote_branch PAWIFY_PROD_SECRET_SOURCE_DIR=$remote_prod_secret_source_dir PAWIFY_TEST_SECRET_SOURCE_DIR=$remote_test_secret_source_dir PAWIFY_SECRET_UPLOAD_DIR=$remote_secret_upload_dir_quoted PAWIFY_DEPLOY_IMAGE=$remote_deploy_image PAWIFY_IMAGE_REGISTRY=$remote_image_registry PAWIFY_IMAGE_REGISTRY_USER=$remote_image_registry_user PAWIFY_IMAGE_REGISTRY_TOKEN=$remote_image_registry_token bash -se" <<'REMOTE'
+            "PAWIFY_REPO_URL=$remote_repo_url PAWIFY_DEPLOY_BRANCH=$remote_branch PAWIFY_PROD_SECRET_SOURCE_DIR=$remote_prod_secret_source_dir PAWIFY_ENV_FILE_B64=$remote_env_file_b64 PAWIFY_DAPR_SECRETS_JSON_B64=$remote_dapr_secrets_json_b64 PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64=$remote_firebase_service_account_json_b64 PAWIFY_DEPLOY_IMAGE=$remote_deploy_image PAWIFY_IMAGE_REGISTRY=$remote_image_registry PAWIFY_IMAGE_REGISTRY_USER=$remote_image_registry_user PAWIFY_IMAGE_REGISTRY_TOKEN=$remote_image_registry_token bash -se" <<'REMOTE'
           set -Eeuo pipefail
 
           require_apt_get() {
@@ -256,40 +190,41 @@ jobs:
             sudo apt-get install -y git ca-certificates
           fi
 
-          case "$PAWIFY_DEPLOY_BRANCH" in
-            main)
-              secret_source_dir="$PAWIFY_PROD_SECRET_SOURCE_DIR"
-              ;;
-            develop)
-              secret_source_dir="$PAWIFY_TEST_SECRET_SOURCE_DIR"
-              ;;
-            *)
-              echo "Unsupported deploy branch: $PAWIFY_DEPLOY_BRANCH" >&2
-              exit 2
-              ;;
-          esac
+          if [[ "$PAWIFY_DEPLOY_BRANCH" != "main" ]]; then
+            echo "Unsupported deploy branch: $PAWIFY_DEPLOY_BRANCH" >&2
+            exit 2
+          fi
 
-          install_secret_file() {
-            local source_path="$1"
-            local dest_path="$2"
+          write_b64_file() {
+            local encoded="$1"
+            local path="$2"
             local label="$3"
+            local tmp
 
-            if [[ ! -f "$source_path" ]]; then
-              echo "Missing uploaded secret file: $label" >&2
+            if [[ -z "$encoded" ]]; then
+              echo "Missing GitHub environment secret: $label" >&2
               exit 1
             fi
 
-            sudo install -d -m 0700 "$(dirname "$dest_path")"
-            sudo install -m 0600 "$source_path" "$dest_path"
+            tmp="$(mktemp)"
+            if ! printf '%s' "$encoded" | base64 -d > "$tmp"; then
+              rm -f "$tmp"
+              echo "Could not base64-decode GitHub environment secret: $label" >&2
+              exit 1
+            fi
+
+            sudo install -d -m 0700 "$(dirname "$path")"
+            sudo install -m 0600 "$tmp" "$path"
+            rm -f "$tmp"
           }
 
-          install_secret_file "$PAWIFY_SECRET_UPLOAD_DIR/.env" "$secret_source_dir/.env" PAWIFY_ENV_FILE_B64
-          install_secret_file "$PAWIFY_SECRET_UPLOAD_DIR/dapr-secrets.json" "$secret_source_dir/dapr-secrets.json" PAWIFY_DAPR_SECRETS_JSON_B64
-          install_secret_file "$PAWIFY_SECRET_UPLOAD_DIR/firebase-service-account.json" "$secret_source_dir/firebase-service-account.json" PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64
+          write_b64_file "$PAWIFY_ENV_FILE_B64" "$PAWIFY_PROD_SECRET_SOURCE_DIR/.env" PAWIFY_ENV_FILE_B64
+          write_b64_file "$PAWIFY_DAPR_SECRETS_JSON_B64" "$PAWIFY_PROD_SECRET_SOURCE_DIR/dapr-secrets.json" PAWIFY_DAPR_SECRETS_JSON_B64
+          write_b64_file "$PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64" "$PAWIFY_PROD_SECRET_SOURCE_DIR/firebase-service-account.json" PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64
 
           tmp_dir="$(mktemp -d)"
           cleanup() {
-            rm -rf "$tmp_dir" "$PAWIFY_SECRET_UPLOAD_DIR"
+            rm -rf "$tmp_dir"
           }
           trap cleanup EXIT
 
@@ -299,7 +234,7 @@ jobs:
             --repo-url "$PAWIFY_REPO_URL" \
             --repo-branch "$PAWIFY_DEPLOY_BRANCH" \
             --prebuilt-image "$PAWIFY_DEPLOY_IMAGE" \
-            --secrets-source-dir "$secret_source_dir" \
+            --secrets-source-dir "$PAWIFY_PROD_SECRET_SOURCE_DIR" \
             --force-secret-overwrite \
             --start
           REMOTE

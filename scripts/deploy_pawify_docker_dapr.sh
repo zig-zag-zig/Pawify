@@ -4,13 +4,8 @@ set -Eeuo pipefail
 # Pawify Docker + Dapr + Redis VPS deployment bootstrapper.
 #
 # Cloudflare Tunnel / reverse proxy is intentionally outside this Docker stack.
-# Existing host routes should point to:
-#   prod: http://127.0.0.1:3001
-#   test: http://127.0.0.1:3101
-#
-# Branch mapping:
-#   main    -> prod -> http://127.0.0.1:3001
-#   develop -> test -> http://127.0.0.1:3101
+# Existing host route should point to:
+#   production: http://127.0.0.1:3001
 #
 # Repo URL and branch can come from CLI flags or environment variables. This
 # keeps GitHub Actions calls short while still allowing overrides.
@@ -21,7 +16,6 @@ ENVIRONMENT=""
 REPO_URL="${PAWIFY_REPO_URL:-https://github.com/zig-zag-zig/Pawify.git}"
 REPO_BRANCH="${PAWIFY_DEPLOY_BRANCH:-${GITHUB_REF_NAME:-}}"
 PROD_BRANCH="${PAWIFY_PROD_BRANCH:-main}"
-TEST_BRANCH="${PAWIFY_TEST_BRANCH:-develop}"
 INSTALL_DOCKER="false"
 START_STACK="false"
 FORCE_SECRET_OVERWRITE="false"
@@ -43,17 +37,16 @@ usage() {
   cat <<USAGE
 Usage: $0 [options]
 
-Default branch mapping:
-  ${PROD_BRANCH} -> prod  -> http://127.0.0.1:3001
-  ${TEST_BRANCH} -> test  -> http://127.0.0.1:3101
+Production branch mapping:
+  ${PROD_BRANCH} -> prod -> http://127.0.0.1:3001
 
 Options:
   --repo-branch BRANCH          Git branch to checkout/pull. Defaults to
                                 PAWIFY_DEPLOY_BRANCH, then GITHUB_REF_NAME.
   --repo-url URL                Git repo URL. Defaults to PAWIFY_REPO_URL, then
                                 https://github.com/zig-zag-zig/Pawify.git.
-  --environment ENV             prod or test. Usually inferred from branch.
-  --app-dir PATH                Default: /srv/pawify-prod or /srv/pawify-test.
+  --environment ENV             prod only. Usually inferred from branch.
+  --app-dir PATH                Default: /srv/pawify-prod.
   --app-user USER               Linux user that owns/runs the app. Default: pawify.
   --install-docker              Force Docker Engine + Compose plugin install.
                                 Docker is installed automatically if missing.
@@ -61,12 +54,12 @@ Options:
   --prebuilt-image IMAGE        Use this already-built app image and pull it
                                 instead of building on the VPS.
   --force-secret-overwrite      Overwrite env/secret files from provided sources/templates.
-  --env-file PATH               Copy this file to .env.prod or .env.test.
-  --dapr-secrets-file PATH      Copy this file to secrets/prod|test/dapr-secrets.json.
+  --env-file PATH               Copy this file to .env.prod.
+  --dapr-secrets-file PATH      Copy this file to secrets/prod/dapr-secrets.json.
   --firebase-service-account-file PATH
-                                Copy this file to secrets/prod|test/firebase-service-account.json.
+                                Copy this file to secrets/prod/firebase-service-account.json.
   --secrets-source-dir DIR      Read source files from DIR:
-                                  DIR/.env or DIR/.env.prod|.env.test
+                                  DIR/.env or DIR/.env.prod
                                   DIR/dapr-secrets.json
                                   DIR/firebase-service-account.json
   --help                        Show this help.
@@ -76,7 +69,6 @@ Environment variables:
   PAWIFY_DEPLOY_BRANCH          Optional branch override.
   GITHUB_REF_NAME               Used as branch when running from GitHub Actions.
   PAWIFY_PROD_BRANCH            Optional prod branch name. Default: main.
-  PAWIFY_TEST_BRANCH            Optional test branch name. Default: develop.
   PAWIFY_DEPLOY_IMAGE           Optional prebuilt app image. Usually set by CI.
   PAWIFY_IMAGE_REGISTRY         Optional registry for docker login, e.g. ghcr.io.
   PAWIFY_IMAGE_REGISTRY_USER    Optional registry username.
@@ -86,10 +78,6 @@ Environment variables:
 Examples:
   sudo ./scripts/deploy_pawify_docker_dapr.sh \\
     --repo-branch main \\
-    --start
-
-  sudo ./scripts/deploy_pawify_docker_dapr.sh \\
-    --repo-branch develop \\
     --start
 USAGE
 }
@@ -293,35 +281,29 @@ validate_args() {
   if [[ -z "$ENVIRONMENT" ]]; then
     case "$REPO_BRANCH" in
       "$PROD_BRANCH") ENVIRONMENT="prod" ;;
-      "$TEST_BRANCH") ENVIRONMENT="test" ;;
       *)
         err "Cannot infer environment from branch '$REPO_BRANCH'."
-        err "Expected '$PROD_BRANCH' for prod or '$TEST_BRANCH' for test, or pass --environment explicitly."
+        err "Expected '$PROD_BRANCH' for prod, or pass --environment explicitly."
         exit 2
         ;;
     esac
   fi
 
   case "$ENVIRONMENT" in
-    prod|test) ;;
+    prod) ;;
     *)
-      err "--environment must be prod or test, got: $ENVIRONMENT"
+      err "--environment must be prod, got: $ENVIRONMENT"
       exit 2
       ;;
   esac
 
-  if [[ "$ENVIRONMENT" == "prod" && "$REPO_BRANCH" != "$PROD_BRANCH" ]]; then
+  if [[ "$REPO_BRANCH" != "$PROD_BRANCH" ]]; then
     err "Refusing prod deploy from branch '$REPO_BRANCH'. Expected '$PROD_BRANCH'."
     exit 2
   fi
 
-  if [[ "$ENVIRONMENT" == "test" && "$REPO_BRANCH" != "$TEST_BRANCH" ]]; then
-    err "Refusing test deploy from branch '$REPO_BRANCH'. Expected '$TEST_BRANCH'."
-    exit 2
-  fi
-
   if [[ -z "$APP_DIR" ]]; then
-    APP_DIR="/srv/pawify-${ENVIRONMENT}"
+    APP_DIR="/srv/pawify-prod"
   fi
 }
 
@@ -357,36 +339,6 @@ set_environment_defaults() {
       REDIS_MAXMEMORY_VALUE="160mb"
       REDIS_MAXMEMORY_POLICY_VALUE="allkeys-lru"
       ;;
-    test)
-      ENV_FILE=".env.test"
-      ENV_EXAMPLE=".env.test.example"
-      SECRETS_SUBDIR="test"
-      HOST_PORT="3101"
-      APP_PORT="10000"
-      COMPOSE_PROJECT="pawify-test"
-      IMAGE_NAME="pawify:test"
-      PUBLIC_HOSTNAME="test-pawify-api.chi-chi.vip"
-      SENTRY_ENVIRONMENT="test"
-      APP_ENV_VALUE="test"
-      APP_MEMORY_LIMIT="320m"
-      APP_MEMORY_SWAP_LIMIT="512m"
-      APP_MEMORY_RESERVATION="128m"
-      APP_CPUS="0.5"
-      APP_PIDS_LIMIT="192"
-      DAPR_MEMORY_LIMIT="128m"
-      DAPR_MEMORY_SWAP_LIMIT="192m"
-      DAPR_MEMORY_RESERVATION="64m"
-      DAPR_CPUS="0.25"
-      DAPR_PIDS_LIMIT="96"
-      REDIS_MEMORY_LIMIT="96m"
-      REDIS_MEMORY_SWAP_LIMIT="96m"
-      REDIS_MEMORY_RESERVATION="32m"
-      REDIS_CPUS="0.25"
-      REDIS_PIDS_LIMIT="96"
-      NODE_OPTIONS_VALUE="--max-old-space-size=192"
-      REDIS_MAXMEMORY_VALUE="48mb"
-      REDIS_MAXMEMORY_POLICY_VALUE="allkeys-lru"
-      ;;
   esac
 
   if [[ -n "$PREBUILT_IMAGE" ]]; then
@@ -394,7 +346,7 @@ set_environment_defaults() {
   fi
 }
 
-create_user_and_dirs() {
+create_user_and_app_dir() {
   as_root_or_sudo
 
   if ! id "$APP_USER" >/dev/null 2>&1; then
@@ -406,9 +358,34 @@ create_user_and_dirs() {
     usermod -aG docker "$APP_USER" || true
   fi
 
-  mkdir -p "$APP_DIR" "$APP_DIR/backups/redis"
+  mkdir -p "$APP_DIR"
   chown -R "$APP_USER:$APP_USER" "$APP_DIR"
+}
+
+create_runtime_dirs() {
+  mkdir -p "$APP_DIR/backups/redis"
+  chown -R "$APP_USER:$APP_USER" "$APP_DIR/backups"
   chmod 750 "$APP_DIR/backups" "$APP_DIR/backups/redis" || true
+}
+
+cleanup_bootstrap_only_app_dir() {
+  if [[ ! -d "$APP_DIR/backups/redis" ]]; then
+    return 1
+  fi
+
+  if [[ -n "$(find "$APP_DIR/backups/redis" -mindepth 1 -print -quit 2>/dev/null)" ]]; then
+    return 1
+  fi
+
+  if [[ -n "$(find "$APP_DIR" -mindepth 1 \
+    ! -path "$APP_DIR/backups" \
+    ! -path "$APP_DIR/backups/redis" \
+    -print -quit 2>/dev/null)" ]]; then
+    return 1
+  fi
+
+  warn "Removing empty bootstrap-only runtime directory before initial clone: $APP_DIR/backups"
+  rm -rf "$APP_DIR/backups"
 }
 
 login_to_image_registry() {
@@ -429,6 +406,8 @@ login_to_image_registry() {
 
 clone_or_update_repo() {
   if [[ ! -d "$APP_DIR/.git" ]]; then
+    cleanup_bootstrap_only_app_dir || true
+
     if [[ -n "$(find "$APP_DIR" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]]; then
       err "$APP_DIR is not empty and has no .git. Choose another --app-dir or clean it up."
       exit 1
@@ -665,9 +644,10 @@ main() {
     install_docker
   fi
 
-  create_user_and_dirs
+  create_user_and_app_dir
   login_to_image_registry
   clone_or_update_repo
+  create_runtime_dirs
   prepare_runtime_files
 
   if [[ "$START_STACK" == "true" ]]; then
