@@ -7,27 +7,48 @@ set -Eeuo pipefail
 # Existing host route should point to:
 #   production: http://127.0.0.1:3001
 #
-# Repo URL and branch can come from CLI flags or environment variables. This
-# keeps GitHub Actions calls short while still allowing overrides.
+# This script is intentionally CI-shaped: GitHub Actions builds the app image,
+# writes secrets to the VPS, then this script pulls that image and starts the
+# single production Compose stack.
 
-APP_DIR=""
+APP_DIR="/srv/pawify-prod"
 APP_USER="pawify"
-ENVIRONMENT=""
+ENVIRONMENT="prod"
 REPO_URL="${PAWIFY_REPO_URL:-https://github.com/zig-zag-zig/Pawify.git}"
 REPO_BRANCH="${PAWIFY_DEPLOY_BRANCH:-${GITHUB_REF_NAME:-}}"
-PROD_BRANCH="${PAWIFY_PROD_BRANCH:-main}"
-INSTALL_DOCKER="false"
-START_STACK="false"
-FORCE_SECRET_OVERWRITE="false"
-ENV_FILE_SOURCE=""
-DAPR_SECRETS_FILE_SOURCE=""
-FIREBASE_SERVICE_ACCOUNT_FILE_SOURCE=""
+PROD_BRANCH="main"
+ENV_FILE=".env.prod"
+SECRETS_SUBDIR="prod"
+HOST_PORT="3001"
+APP_PORT="10000"
+COMPOSE_PROJECT="pawify"
+IMAGE_NAME=""
+PUBLIC_HOSTNAME="pawify-api.chi-chi.vip"
+SENTRY_ENVIRONMENT="production"
+APP_ENV_VALUE="production"
+APP_MEMORY_LIMIT="640m"
+APP_MEMORY_SWAP_LIMIT="1g"
+APP_MEMORY_RESERVATION="256m"
+APP_CPUS="1.25"
+APP_PIDS_LIMIT="256"
+DAPR_MEMORY_LIMIT="192m"
+DAPR_MEMORY_SWAP_LIMIT="256m"
+DAPR_MEMORY_RESERVATION="96m"
+DAPR_CPUS="0.5"
+DAPR_PIDS_LIMIT="128"
+REDIS_MEMORY_LIMIT="256m"
+REDIS_MEMORY_SWAP_LIMIT="256m"
+REDIS_MEMORY_RESERVATION="64m"
+REDIS_CPUS="0.5"
+REDIS_PIDS_LIMIT="128"
+NODE_OPTIONS_VALUE="--max-old-space-size=384"
+REDIS_MAXMEMORY_VALUE="160mb"
+REDIS_MAXMEMORY_POLICY_VALUE="allkeys-lru"
 SECRETS_SOURCE_DIR=""
 PREBUILT_IMAGE="${PAWIFY_DEPLOY_IMAGE:-}"
 IMAGE_REGISTRY="${PAWIFY_IMAGE_REGISTRY:-}"
 IMAGE_REGISTRY_USER="${PAWIFY_IMAGE_REGISTRY_USER:-}"
 IMAGE_REGISTRY_TOKEN="${PAWIFY_IMAGE_REGISTRY_TOKEN:-}"
-REDIS_PASSWORD_INPUT="${REDIS_PASSWORD:-}"
 
 log() { printf '\033[1;34m[INFO]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[WARN]\033[0m %s\n' "$*"; }
@@ -38,28 +59,16 @@ usage() {
 Usage: $0 [options]
 
 Production branch mapping:
-  ${PROD_BRANCH} -> prod -> http://127.0.0.1:3001
+  main -> prod -> http://127.0.0.1:3001
 
 Options:
   --repo-branch BRANCH          Git branch to checkout/pull. Defaults to
                                 PAWIFY_DEPLOY_BRANCH, then GITHUB_REF_NAME.
   --repo-url URL                Git repo URL. Defaults to PAWIFY_REPO_URL, then
                                 https://github.com/zig-zag-zig/Pawify.git.
-  --environment ENV             prod only. Usually inferred from branch.
-  --app-dir PATH                Default: /srv/pawify-prod.
-  --app-user USER               Linux user that owns/runs the app. Default: pawify.
-  --install-docker              Force Docker Engine + Compose plugin install.
-                                Docker is installed automatically if missing.
-  --start                       Build and start the selected Compose stack.
-  --prebuilt-image IMAGE        Use this already-built app image and pull it
-                                instead of building on the VPS.
-  --force-secret-overwrite      Overwrite env/secret files from provided sources/templates.
-  --env-file PATH               Copy this file to .env.prod.
-  --dapr-secrets-file PATH      Copy this file to secrets/prod/dapr-secrets.json.
-  --firebase-service-account-file PATH
-                                Copy this file to secrets/prod/firebase-service-account.json.
+  --prebuilt-image IMAGE        Required app image built by CI.
   --secrets-source-dir DIR      Read source files from DIR:
-                                  DIR/.env or DIR/.env.prod
+                                  DIR/.env.prod or DIR/.env
                                   DIR/dapr-secrets.json
                                   DIR/firebase-service-account.json
   --help                        Show this help.
@@ -68,34 +77,24 @@ Environment variables:
   PAWIFY_REPO_URL               Optional repo URL override.
   PAWIFY_DEPLOY_BRANCH          Optional branch override.
   GITHUB_REF_NAME               Used as branch when running from GitHub Actions.
-  PAWIFY_PROD_BRANCH            Optional prod branch name. Default: main.
-  PAWIFY_DEPLOY_IMAGE           Optional prebuilt app image. Usually set by CI.
+  PAWIFY_DEPLOY_IMAGE           Required prebuilt app image. Usually set by CI.
   PAWIFY_IMAGE_REGISTRY         Optional registry for docker login, e.g. ghcr.io.
   PAWIFY_IMAGE_REGISTRY_USER    Optional registry username.
   PAWIFY_IMAGE_REGISTRY_TOKEN   Optional registry token. Avoid printing this.
-  REDIS_PASSWORD                If set, used when creating a missing env file.
 
 Examples:
   sudo ./scripts/deploy_pawify_docker_dapr.sh \\
     --repo-branch main \\
-    --start
+    --prebuilt-image ghcr.io/zig-zag-zig/pawify:sha-... \\
+    --secrets-source-dir /root/pawify-prod-secrets
 USAGE
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --app-dir) APP_DIR="$2"; shift 2 ;;
-    --app-user) APP_USER="$2"; shift 2 ;;
-    --environment|--env) ENVIRONMENT="$2"; shift 2 ;;
     --repo-url) REPO_URL="$2"; shift 2 ;;
     --repo-branch|--branch) REPO_BRANCH="$2"; shift 2 ;;
-    --install-docker) INSTALL_DOCKER="true"; shift ;;
-    --start) START_STACK="true"; shift ;;
     --prebuilt-image) PREBUILT_IMAGE="$2"; shift 2 ;;
-    --force-secret-overwrite) FORCE_SECRET_OVERWRITE="true"; shift ;;
-    --env-file) ENV_FILE_SOURCE="$2"; shift 2 ;;
-    --dapr-secrets-file) DAPR_SECRETS_FILE_SOURCE="$2"; shift 2 ;;
-    --firebase-service-account-file) FIREBASE_SERVICE_ACCOUNT_FILE_SOURCE="$2"; shift 2 ;;
     --secrets-source-dir) SECRETS_SOURCE_DIR="$2"; shift 2 ;;
     --help|-h) usage; exit 0 ;;
     *) err "Unknown option: $1"; usage; exit 2 ;;
@@ -115,14 +114,6 @@ as_root_or_sudo() {
 
 sha_file() {
   if [[ -f "$1" ]]; then sha256sum "$1" | awk '{print $1}'; else echo ""; fi
-}
-
-random_secret() {
-  if command -v openssl >/dev/null 2>&1; then
-    openssl rand -base64 48 | tr -d '\n'
-  else
-    tr -dc 'A-Za-z0-9' </dev/urandom | head -c 64
-  fi
 }
 
 copy_source_file() {
@@ -153,34 +144,6 @@ copy_source_file() {
   fi
 
   install -m "$mode" -o "${owner%%:*}" -g "${owner##*:}" "$src" "$dest"
-}
-
-write_file() {
-  local path="$1"
-  local mode="$2"
-  local owner="$3"
-  local tmp
-  tmp="$(mktemp)"
-  cat > "$tmp"
-
-  mkdir -p "$(dirname "$path")"
-
-  if [[ -f "$path" ]]; then
-    if [[ "$(sha_file "$path")" == "$(sha_file "$tmp")" ]]; then
-      log "unchanged: $path"
-      rm -f "$tmp"
-      chmod "$mode" "$path" || true
-      chown "$owner" "$path" || true
-      return 0
-    fi
-    cp -a "$path" "$path.bak.$(date -u +%Y%m%dT%H%M%SZ)"
-    log "updated with backup: $path"
-  else
-    log "created: $path"
-  fi
-
-  install -m "$mode" -o "${owner%%:*}" -g "${owner##*:}" "$tmp" "$path"
-  rm -f "$tmp"
 }
 
 replace_or_append_env() {
@@ -285,72 +248,24 @@ validate_args() {
     exit 2
   fi
 
-  if [[ -z "$ENVIRONMENT" ]]; then
-    case "$REPO_BRANCH" in
-      "$PROD_BRANCH") ENVIRONMENT="prod" ;;
-      *)
-        err "Cannot infer environment from branch '$REPO_BRANCH'."
-        err "Expected '$PROD_BRANCH' for prod, or pass --environment explicitly."
-        exit 2
-        ;;
-    esac
-  fi
-
-  case "$ENVIRONMENT" in
-    prod) ;;
-    *)
-      err "--environment must be prod, got: $ENVIRONMENT"
-      exit 2
-      ;;
-  esac
-
   if [[ "$REPO_BRANCH" != "$PROD_BRANCH" ]]; then
     err "Refusing prod deploy from branch '$REPO_BRANCH'. Expected '$PROD_BRANCH'."
     exit 2
   fi
 
-  if [[ -z "$APP_DIR" ]]; then
-    APP_DIR="/srv/pawify-prod"
+  if [[ -z "$PREBUILT_IMAGE" ]]; then
+    err "--prebuilt-image or PAWIFY_DEPLOY_IMAGE is required. Build the image in CI before deploying."
+    exit 2
+  fi
+
+  if [[ -z "$SECRETS_SOURCE_DIR" ]]; then
+    err "--secrets-source-dir is required."
+    exit 2
   fi
 }
 
 set_environment_defaults() {
-  case "$ENVIRONMENT" in
-    prod)
-      ENV_FILE=".env.prod"
-      ENV_EXAMPLE=".env.prod.example"
-      SECRETS_SUBDIR="prod"
-      HOST_PORT="3001"
-      APP_PORT="10000"
-      COMPOSE_PROJECT="pawify"
-      IMAGE_NAME="pawify:prod"
-      PUBLIC_HOSTNAME="pawify-api.chi-chi.vip"
-      SENTRY_ENVIRONMENT="production"
-      APP_ENV_VALUE="production"
-      APP_MEMORY_LIMIT="640m"
-      APP_MEMORY_SWAP_LIMIT="1g"
-      APP_MEMORY_RESERVATION="256m"
-      APP_CPUS="1.25"
-      APP_PIDS_LIMIT="256"
-      DAPR_MEMORY_LIMIT="192m"
-      DAPR_MEMORY_SWAP_LIMIT="256m"
-      DAPR_MEMORY_RESERVATION="96m"
-      DAPR_CPUS="0.5"
-      DAPR_PIDS_LIMIT="128"
-      REDIS_MEMORY_LIMIT="256m"
-      REDIS_MEMORY_SWAP_LIMIT="256m"
-      REDIS_MEMORY_RESERVATION="64m"
-      REDIS_CPUS="0.5"
-      REDIS_PIDS_LIMIT="128"
-      NODE_OPTIONS_VALUE="--max-old-space-size=384"
-      REDIS_MAXMEMORY_VALUE="160mb"
-      REDIS_MAXMEMORY_POLICY_VALUE="allkeys-lru"
-      ;;
-  esac
-
-  if [[ -n "$PREBUILT_IMAGE" ]]; then
-    IMAGE_NAME="$PREBUILT_IMAGE"
-  fi
+  IMAGE_NAME="$PREBUILT_IMAGE"
 }
 
 create_user_and_app_dir() {
@@ -443,49 +358,21 @@ prepare_runtime_files() {
   local env_path="$APP_DIR/$ENV_FILE"
   local secret_path="$secrets_dir/dapr-secrets.json"
   local firebase_path="$secrets_dir/firebase-service-account.json"
+  local env_source="$SECRETS_SOURCE_DIR/$ENV_FILE"
+  local dapr_source="$SECRETS_SOURCE_DIR/dapr-secrets.json"
+  local firebase_source="$SECRETS_SOURCE_DIR/firebase-service-account.json"
 
   mkdir -p "$secrets_dir" "$APP_DIR/backups/redis"
   chown -R "$owner" "$APP_DIR/secrets" "$APP_DIR/backups"
   chmod 755 "$APP_DIR/secrets" "$secrets_dir" || true
 
-  if [[ -n "$SECRETS_SOURCE_DIR" ]]; then
-    if [[ -z "$ENV_FILE_SOURCE" ]]; then
-      if [[ -f "$SECRETS_SOURCE_DIR/$ENV_FILE" ]]; then
-        ENV_FILE_SOURCE="$SECRETS_SOURCE_DIR/$ENV_FILE"
-      elif [[ -f "$SECRETS_SOURCE_DIR/.env" ]]; then
-        ENV_FILE_SOURCE="$SECRETS_SOURCE_DIR/.env"
-      else
-        err "Missing env source in $SECRETS_SOURCE_DIR. Expected $ENV_FILE or .env."
-        exit 1
-      fi
-    fi
-
-    if [[ -z "$DAPR_SECRETS_FILE_SOURCE" ]]; then
-      DAPR_SECRETS_FILE_SOURCE="$SECRETS_SOURCE_DIR/dapr-secrets.json"
-    fi
-
-    if [[ -z "$FIREBASE_SERVICE_ACCOUNT_FILE_SOURCE" && -f "$SECRETS_SOURCE_DIR/firebase-service-account.json" ]]; then
-      FIREBASE_SERVICE_ACCOUNT_FILE_SOURCE="$SECRETS_SOURCE_DIR/firebase-service-account.json"
-    fi
+  if [[ ! -f "$env_source" && -f "$SECRETS_SOURCE_DIR/.env" ]]; then
+    env_source="$SECRETS_SOURCE_DIR/.env"
   fi
 
-  if [[ -n "$ENV_FILE_SOURCE" ]]; then
-    if [[ "$FORCE_SECRET_OVERWRITE" == "true" || ! -f "$env_path" ]]; then
-      copy_source_file "$ENV_FILE_SOURCE" "$env_path" "0600" "$owner"
-    else
-      log "preserved existing env file: $env_path"
-    fi
-  elif [[ ! -f "$env_path" || "$FORCE_SECRET_OVERWRITE" == "true" ]]; then
-    if [[ ! -f "$APP_DIR/$ENV_EXAMPLE" ]]; then
-      err "Missing $APP_DIR/$ENV_EXAMPLE. Is the repo up to date?"
-      exit 1
-    fi
-    copy_source_file "$APP_DIR/$ENV_EXAMPLE" "$env_path" "0600" "$owner"
-  else
-    log "preserved existing env file: $env_path"
-    chmod 600 "$env_path" || true
-    chown "$owner" "$env_path" || true
-  fi
+  copy_source_file "$env_source" "$env_path" "0600" "$owner"
+  copy_source_file "$dapr_source" "$secret_path" "0644" "$owner"
+  copy_source_file "$firebase_source" "$firebase_path" "0644" "$owner"
 
   replace_or_append_env "$env_path" "COMPOSE_PROJECT_NAME" "$COMPOSE_PROJECT"
   replace_or_append_env "$env_path" "PAWIFY_ENV_FILE" "$ENV_FILE"
@@ -522,47 +409,6 @@ prepare_runtime_files() {
   replace_or_append_env "$env_path" "REDIS_MAXMEMORY_POLICY" "$REDIS_MAXMEMORY_POLICY_VALUE"
   replace_or_append_env "$env_path" "SENTRY_ENVIRONMENT" "$SENTRY_ENVIRONMENT"
   replace_or_append_env "$env_path" "GOOGLE_APPLICATION_CREDENTIALS" "/var/pawify/secrets/firebase-service-account.json"
-
-  local redis_password
-  redis_password="$REDIS_PASSWORD_INPUT"
-  if [[ -z "$redis_password" ]]; then
-    redis_password="$(read_env_value "$env_path" "REDIS_PASSWORD")"
-  fi
-  if [[ -z "$redis_password" || "$redis_password" == replace-with-* ]]; then
-    redis_password="$(random_secret)"
-  fi
-  replace_or_append_env "$env_path" "REDIS_PASSWORD" "$redis_password"
-
-  if [[ -n "$DAPR_SECRETS_FILE_SOURCE" ]]; then
-    if [[ "$FORCE_SECRET_OVERWRITE" == "true" || ! -f "$secret_path" ]]; then
-      copy_source_file "$DAPR_SECRETS_FILE_SOURCE" "$secret_path" "0644" "$owner"
-    else
-      log "preserved existing Dapr secret file: $secret_path"
-    fi
-  elif [[ ! -f "$secret_path" || "$FORCE_SECRET_OVERWRITE" == "true" ]]; then
-    write_file "$secret_path" "0600" "$owner" <<EOF_SECRETS
-{
-  "gmail-email": "CHANGE_ME_GMAIL_EMAIL",
-  "gmail-password": "CHANGE_ME_GMAIL_APP_PASSWORD",
-  "discogs-token": "",
-  "genius-access-token": ""
-}
-EOF_SECRETS
-  else
-    log "preserved existing Dapr secret file: $secret_path"
-    chmod 644 "$secret_path" || true
-    chown "$owner" "$secret_path" || true
-  fi
-
-  if [[ -n "$FIREBASE_SERVICE_ACCOUNT_FILE_SOURCE" ]]; then
-    if [[ "$FORCE_SECRET_OVERWRITE" == "true" || ! -f "$firebase_path" ]]; then
-      copy_source_file "$FIREBASE_SERVICE_ACCOUNT_FILE_SOURCE" "$firebase_path" "0644" "$owner"
-    else
-      log "preserved existing Firebase service account file: $firebase_path"
-    fi
-  elif [[ ! -f "$firebase_path" ]]; then
-    warn "Firebase service account file is not present yet: $firebase_path"
-  fi
 
   chmod 600 "$env_path" 2>/dev/null || true
   chmod 644 "$secret_path" "$firebase_path" 2>/dev/null || true
@@ -619,17 +465,10 @@ start_stack() {
   log "Validating Docker Compose config for $ENVIRONMENT"
   compose_cmd "config >/dev/null"
 
-  if [[ -n "$PREBUILT_IMAGE" ]]; then
-    log "Pulling prebuilt Pawify $ENVIRONMENT image: $PREBUILT_IMAGE"
-    compose_cmd "pull pawify pawify-dapr redis"
-    stop_existing_stack
-    compose_cmd "up -d --no-build"
-  else
-    log "Building and starting Pawify $ENVIRONMENT stack"
-    compose_cmd "build pawify"
-    stop_existing_stack
-    compose_cmd "up -d"
-  fi
+  log "Pulling prebuilt Pawify $ENVIRONMENT image: $PREBUILT_IMAGE"
+  compose_cmd "pull pawify pawify-dapr redis"
+  stop_existing_stack
+  compose_cmd "up -d --no-build"
 
   compose_cmd "ps"
 
@@ -653,8 +492,7 @@ main() {
 
   need_cmd git
 
-  if [[ "$INSTALL_DOCKER" == "true" ]] \
-    || ! command -v docker >/dev/null 2>&1 \
+  if ! command -v docker >/dev/null 2>&1 \
     || ! docker compose version >/dev/null 2>&1; then
     install_docker
   fi
@@ -664,14 +502,11 @@ main() {
   clone_or_update_repo
   create_runtime_dirs
   prepare_runtime_files
-
-  if [[ "$START_STACK" == "true" ]]; then
-    start_stack
-  fi
+  start_stack
 
   cat <<NEXT_STEPS
 
-Done. Pawify $ENVIRONMENT is prepared in:
+Done. Pawify $ENVIRONMENT is deployed from:
   $APP_DIR
 
 Branch:
@@ -683,14 +518,10 @@ Host route target:
 Public hostname expected:
   $PUBLIC_HOSTNAME
 
-Runtime files to review:
+Runtime files:
   $APP_DIR/$ENV_FILE
   $APP_DIR/secrets/$SECRETS_SUBDIR/dapr-secrets.json
   $APP_DIR/secrets/$SECRETS_SUBDIR/firebase-service-account.json
-
-Deploy/start command:
-  cd $APP_DIR
-  docker compose --env-file $ENV_FILE up -d --build
 
 Logs:
   cd $APP_DIR
