@@ -13,6 +13,15 @@ on:
     branches:
       - main
       - develop
+  workflow_dispatch:
+    inputs:
+      deploy_environment:
+        description: Deploy target. Use production from main, or test from develop.
+        required: true
+        type: choice
+        options:
+          - test
+          - production
 
 concurrency:
   group: pawify-${{ github.workflow }}-${{ github.ref_name }}
@@ -48,28 +57,53 @@ jobs:
 
       - name: Prepare Docker image tags
         id: image
-        if: github.event_name == 'push'
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref_name == 'main')
+        env:
+          DEPLOY_ENVIRONMENT: ${{ inputs.deploy_environment }}
         run: |
           set -Eeuo pipefail
 
           image_repo="ghcr.io/${GITHUB_REPOSITORY,,}"
           image_ref="${image_repo}:sha-${GITHUB_SHA}"
+          deploy_environment="${DEPLOY_ENVIRONMENT:-}"
 
-          case "$GITHUB_REF_NAME" in
-            main) environment_tag="prod" ;;
-            develop) environment_tag="test" ;;
+          if [[ -z "$deploy_environment" ]]; then
+            case "$GITHUB_REF_NAME" in
+              main) deploy_environment="production" ;;
+              develop) deploy_environment="test" ;;
+              *)
+                echo "Unsupported deploy branch: $GITHUB_REF_NAME" >&2
+                exit 2
+                ;;
+            esac
+          fi
+
+          case "$deploy_environment" in
+            production)
+              expected_branch="main"
+              environment_tag="prod"
+              ;;
+            test)
+              expected_branch="develop"
+              environment_tag="test"
+              ;;
             *)
-              echo "Unsupported image branch: $GITHUB_REF_NAME" >&2
+              echo "Unsupported deploy environment: $deploy_environment" >&2
               exit 2
               ;;
           esac
+
+          if [[ "$GITHUB_REF_NAME" != "$expected_branch" ]]; then
+            echo "Ref $GITHUB_REF_NAME cannot deploy to $deploy_environment. Use $expected_branch." >&2
+            exit 2
+          fi
 
           echo "image_repo=$image_repo" >> "$GITHUB_OUTPUT"
           echo "image_ref=$image_ref" >> "$GITHUB_OUTPUT"
           echo "environment_ref=${image_repo}:${environment_tag}" >> "$GITHUB_OUTPUT"
 
       - name: Login to GHCR
-        if: github.event_name == 'push'
+        if: steps.image.outputs.image_ref != ''
         env:
           GHCR_TOKEN: ${{ github.token }}
         run: |
@@ -94,9 +128,9 @@ jobs:
     name: Deploy ${{ github.ref_name }}
     needs: build-test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref_name == 'main')
     environment:
-      name: ${{ github.ref_name == 'main' && 'production' || 'test' }}
+      name: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_environment || 'production' }}
 
     steps:
       - name: Deploy on VPS

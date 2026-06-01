@@ -133,7 +133,7 @@ Never commit Firebase service accounts, API keys, Gmail app passwords, Redis cre
 
 Protected branches:
 
-- `develop` is the integration branch and deploys to the test VPS stack.
+- `develop` is the integration branch. It runs CI automatically, but test deploys are manual while the VPS memory budget is tight.
 - `main` is the production branch and deploys to the production VPS stack.
 
 Working branches:
@@ -150,7 +150,7 @@ git pull --rebase origin develop
 git switch -c feature/<short-name>
 ```
 
-Open pull requests from `feature/*` or `fix/*` into `develop`. When merged, GitHub Actions runs CI and deploys test from `develop`.
+Open pull requests from `feature/*` or `fix/*` into `develop`. When merged, GitHub Actions runs CI for `develop`; test deployment is triggered manually from GitHub Actions when needed.
 
 Production promotion is a pull request from `develop` into `main`. When merged, GitHub Actions runs CI and deploys production from `main`.
 
@@ -234,8 +234,9 @@ Common authenticated routes:
 ## Deployment
 
 - Pull requests run build, tests, and Docker image validation.
-- Pushes to `develop` build and push a GHCR image, then deploy the test stack at `http://127.0.0.1:3101`.
+- Pushes to `develop` run CI only. They do not deploy to the VPS while the test stack is paused.
 - Pushes to `main` build and push a GHCR image, then deploy the production stack at `http://127.0.0.1:3001`.
+- Manual GitHub Actions runs can deploy the test stack from `develop` to `http://127.0.0.1:3101`.
 - Use the Docker Compose stack in this repo for the single-VPS deployment.
 - Dapr components live in `dapr/components`; secret files are mounted from `secrets/<environment>`.
 - Redis is local to each Compose network, password-protected, and configured with AOF plus RDB snapshots.

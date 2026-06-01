@@ -75,9 +75,20 @@ chmod 700 secrets secrets/prod secrets/test
 chmod 600 secrets/prod/* secrets/test/*
 ```
 
-## Automatic Deploys
+## Automatic And Manual Deploys
 
-Pushes to `develop` deploy the test stack. Pushes to `main` deploy the production stack. Pull requests into either branch run CI but do not deploy.
+Pushes to `main` deploy the production stack. Pushes to `develop` run CI only and do not deploy while the test stack is paused to save VPS memory. Pull requests into either branch run CI but do not deploy.
+
+To deploy test from GitHub without re-enabling automatic `develop` deploys:
+
+1. Open the `CI and Deploy Pawify` workflow in GitHub Actions.
+2. Choose `Run workflow`.
+3. Select branch `develop`.
+4. Set `deploy_environment` to `test`.
+
+The manual run button appears only after this workflow exists on GitHub's default branch. Until then, use the manual VPS deploy command below for test.
+
+Production can also be run manually from branch `main` with `deploy_environment=production`, but normal production deploys still happen automatically when `main` is updated.
 
 Deployment waits for CI to pass first:
 
@@ -88,7 +99,7 @@ npm test --if-present
 docker build
 ```
 
-For pushes to `develop` and `main`, GitHub Actions builds the Docker image on the GitHub runner and pushes it to GitHub Container Registry. The VPS then pulls that immutable image by SHA instead of building on the server. This keeps deploy-time memory and disk pressure much lower on a small VPS.
+For production pushes and manual deploy runs, GitHub Actions builds the Docker image on the GitHub runner and pushes it to GitHub Container Registry. The VPS then pulls that immutable image by SHA instead of building on the server. This keeps deploy-time memory and disk pressure much lower on a small VPS.
 
 Image tags:
 
