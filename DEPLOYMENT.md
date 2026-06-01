@@ -101,6 +101,8 @@ docker build
 
 For production pushes and manual deploy runs, GitHub Actions builds the Docker image on the GitHub runner and pushes it to GitHub Container Registry. The VPS then pulls that immutable image by SHA instead of building on the server. This keeps deploy-time memory and disk pressure much lower on a small VPS.
 
+Docker builds use Buildx with the GitHub Actions cache, so repeated PR and deploy builds can reuse unchanged Docker layers while still producing an image for the exact commit being checked or deployed.
+
 Image tags:
 
 ```text

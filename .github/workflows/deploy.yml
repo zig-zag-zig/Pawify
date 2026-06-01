@@ -55,6 +55,9 @@ jobs:
       - name: Run tests
         run: npm test --if-present
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Prepare Docker image tags
         id: image
         if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref_name == 'main')
@@ -110,19 +113,26 @@ jobs:
           printf '%s\n' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
 
       - name: Build Docker image
-        env:
-          IMAGE_REF: ${{ steps.image.outputs.image_ref }}
-          ENVIRONMENT_REF: ${{ steps.image.outputs.environment_ref }}
-        run: |
-          set -Eeuo pipefail
+        if: steps.image.outputs.image_ref == ''
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: pawify-ci
+          cache-from: type=gha,scope=pawify-api
+          cache-to: type=gha,scope=pawify-api,mode=max
 
-          if [[ -n "$IMAGE_REF" ]]; then
-            docker build -t "$IMAGE_REF" -t "$ENVIRONMENT_REF" .
-            docker push "$IMAGE_REF"
-            docker push "$ENVIRONMENT_REF"
-          else
-            docker build -t pawify-ci .
-          fi
+      - name: Build and push Docker image
+        if: steps.image.outputs.image_ref != ''
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.image.outputs.image_ref }}
+            ${{ steps.image.outputs.environment_ref }}
+          cache-from: type=gha,scope=pawify-api
+          cache-to: type=gha,scope=pawify-api,mode=max
 
   deploy:
     name: Deploy ${{ github.ref_name }}
