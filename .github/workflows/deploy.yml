@@ -182,20 +182,49 @@ jobs:
           chmod 600 ~/.ssh/pawify_deploy_key
           ssh-keyscan -p "$VPS_PORT" "$VPS_HOST" >> ~/.ssh/known_hosts
 
+          secret_upload_dir="$(mktemp -d)"
+          cleanup_local() {
+            rm -rf "$secret_upload_dir"
+          }
+          trap cleanup_local EXIT
+
+          decode_b64_secret() {
+            local encoded="$1"
+            local path="$2"
+            local label="$3"
+
+            if ! printf '%s' "$encoded" | base64 -d > "$path"; then
+              rm -f "$path"
+              echo "Could not base64-decode GitHub environment secret: $label" >&2
+              exit 1
+            fi
+
+            chmod 600 "$path"
+          }
+
+          decode_b64_secret "$PAWIFY_ENV_FILE_B64" "$secret_upload_dir/.env" PAWIFY_ENV_FILE_B64
+          decode_b64_secret "$PAWIFY_DAPR_SECRETS_JSON_B64" "$secret_upload_dir/dapr-secrets.json" PAWIFY_DAPR_SECRETS_JSON_B64
+          decode_b64_secret "$PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64" "$secret_upload_dir/firebase-service-account.json" PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64
+
+          remote_secret_upload_dir="$(ssh -p "$VPS_PORT" -i ~/.ssh/pawify_deploy_key "$VPS_USER@$VPS_HOST" 'mktemp -d')"
+          scp -P "$VPS_PORT" -i ~/.ssh/pawify_deploy_key \
+            "$secret_upload_dir/.env" \
+            "$secret_upload_dir/dapr-secrets.json" \
+            "$secret_upload_dir/firebase-service-account.json" \
+            "$VPS_USER@$VPS_HOST:$remote_secret_upload_dir/"
+
           remote_repo_url="$(printf '%q' "$PAWIFY_REPO_URL")"
           remote_branch="$(printf '%q' "$PAWIFY_DEPLOY_BRANCH")"
           remote_prod_secret_source_dir="$(printf '%q' "$PAWIFY_PROD_SECRET_SOURCE_DIR")"
           remote_test_secret_source_dir="$(printf '%q' "$PAWIFY_TEST_SECRET_SOURCE_DIR")"
-          remote_env_file_b64="$(printf '%q' "$PAWIFY_ENV_FILE_B64")"
-          remote_dapr_secrets_json_b64="$(printf '%q' "$PAWIFY_DAPR_SECRETS_JSON_B64")"
-          remote_firebase_service_account_json_b64="$(printf '%q' "$PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64")"
+          remote_secret_upload_dir_quoted="$(printf '%q' "$remote_secret_upload_dir")"
           remote_deploy_image="$(printf '%q' "$PAWIFY_DEPLOY_IMAGE")"
           remote_image_registry="$(printf '%q' "$PAWIFY_IMAGE_REGISTRY")"
           remote_image_registry_user="$(printf '%q' "$PAWIFY_IMAGE_REGISTRY_USER")"
           remote_image_registry_token="$(printf '%q' "$PAWIFY_IMAGE_REGISTRY_TOKEN")"
 
           ssh -p "$VPS_PORT" -i ~/.ssh/pawify_deploy_key "$VPS_USER@$VPS_HOST" \
-            "PAWIFY_REPO_URL=$remote_repo_url PAWIFY_DEPLOY_BRANCH=$remote_branch PAWIFY_PROD_SECRET_SOURCE_DIR=$remote_prod_secret_source_dir PAWIFY_TEST_SECRET_SOURCE_DIR=$remote_test_secret_source_dir PAWIFY_ENV_FILE_B64=$remote_env_file_b64 PAWIFY_DAPR_SECRETS_JSON_B64=$remote_dapr_secrets_json_b64 PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64=$remote_firebase_service_account_json_b64 PAWIFY_DEPLOY_IMAGE=$remote_deploy_image PAWIFY_IMAGE_REGISTRY=$remote_image_registry PAWIFY_IMAGE_REGISTRY_USER=$remote_image_registry_user PAWIFY_IMAGE_REGISTRY_TOKEN=$remote_image_registry_token bash -se" <<'REMOTE'
+            "PAWIFY_REPO_URL=$remote_repo_url PAWIFY_DEPLOY_BRANCH=$remote_branch PAWIFY_PROD_SECRET_SOURCE_DIR=$remote_prod_secret_source_dir PAWIFY_TEST_SECRET_SOURCE_DIR=$remote_test_secret_source_dir PAWIFY_SECRET_UPLOAD_DIR=$remote_secret_upload_dir_quoted PAWIFY_DEPLOY_IMAGE=$remote_deploy_image PAWIFY_IMAGE_REGISTRY=$remote_image_registry PAWIFY_IMAGE_REGISTRY_USER=$remote_image_registry_user PAWIFY_IMAGE_REGISTRY_TOKEN=$remote_image_registry_token bash -se" <<'REMOTE'
           set -Eeuo pipefail
 
           require_apt_get() {
@@ -240,36 +269,27 @@ jobs:
               ;;
           esac
 
-          write_b64_file() {
-            local encoded="$1"
-            local path="$2"
+          install_secret_file() {
+            local source_path="$1"
+            local dest_path="$2"
             local label="$3"
-            local tmp
 
-            if [[ -z "$encoded" ]]; then
-              echo "Missing GitHub environment secret: $label" >&2
+            if [[ ! -f "$source_path" ]]; then
+              echo "Missing uploaded secret file: $label" >&2
               exit 1
             fi
 
-            tmp="$(mktemp)"
-            if ! printf '%s' "$encoded" | base64 -d > "$tmp"; then
-              rm -f "$tmp"
-              echo "Could not base64-decode GitHub environment secret: $label" >&2
-              exit 1
-            fi
-
-            sudo install -d -m 0700 "$(dirname "$path")"
-            sudo install -m 0600 "$tmp" "$path"
-            rm -f "$tmp"
+            sudo install -d -m 0700 "$(dirname "$dest_path")"
+            sudo install -m 0600 "$source_path" "$dest_path"
           }
 
-          write_b64_file "$PAWIFY_ENV_FILE_B64" "$secret_source_dir/.env" PAWIFY_ENV_FILE_B64
-          write_b64_file "$PAWIFY_DAPR_SECRETS_JSON_B64" "$secret_source_dir/dapr-secrets.json" PAWIFY_DAPR_SECRETS_JSON_B64
-          write_b64_file "$PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64" "$secret_source_dir/firebase-service-account.json" PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64
+          install_secret_file "$PAWIFY_SECRET_UPLOAD_DIR/.env" "$secret_source_dir/.env" PAWIFY_ENV_FILE_B64
+          install_secret_file "$PAWIFY_SECRET_UPLOAD_DIR/dapr-secrets.json" "$secret_source_dir/dapr-secrets.json" PAWIFY_DAPR_SECRETS_JSON_B64
+          install_secret_file "$PAWIFY_SECRET_UPLOAD_DIR/firebase-service-account.json" "$secret_source_dir/firebase-service-account.json" PAWIFY_FIREBASE_SERVICE_ACCOUNT_JSON_B64
 
           tmp_dir="$(mktemp -d)"
           cleanup() {
-            rm -rf "$tmp_dir"
+            rm -rf "$tmp_dir" "$PAWIFY_SECRET_UPLOAD_DIR"
           }
           trap cleanup EXIT
 
