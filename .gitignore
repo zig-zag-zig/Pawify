@@ -1,6 +1,7 @@
 # Compiled JavaScript files
 lib/
 lib-test/
+lib-test-emulator/
 
 # TypeScript v1 declaration files
 typings/
@@ -11,6 +12,10 @@ node_modules/
 .env
 .env.*
 !.env.*.example
+firebase-debug.log
+firestore-debug.log
+database-debug.log
+ui-debug.log
 secrets/
 backups/
 service-account*.json
