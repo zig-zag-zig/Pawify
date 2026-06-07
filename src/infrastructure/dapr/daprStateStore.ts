@@ -60,7 +60,7 @@ export const saveStateValues = async (
     await assertOk(response, `save Dapr state batch`);
 };
 
-export const deleteStateValue = async (
+const deleteStateValue = async (
     key: string,
     storeName = DEFAULT_STATE_STORE_NAME,
 ): Promise<void> => {

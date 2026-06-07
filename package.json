@@ -1,5 +1,5 @@
 {
-  "name": "functions",
+  "name": "pawify-api",
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",

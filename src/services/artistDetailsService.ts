@@ -10,9 +10,11 @@ import { replaceCachedData, getCachedData } from './cacheService.js';
 import type { CachedArtistDetails } from '../utils/types/cacheTypes.js';
 import {
     fetchMusicBrainzWithStatus,
+} from './musicApi/musicBrainzClient.js';
+import {
     isConfirmedMissingFetchFailure,
     isFetchFailureResult,
-} from './musicApi.js';
+} from './musicApi/types.js';
 import { getArtistTtl } from '../utils/helpers/followingHelper.js';
 import { getCacheKey } from '../utils/helpers/cacheHelpers.js';
 import type { FollowedArtistSummary } from '../utils/types/followedArtistTypes.js';

@@ -18,7 +18,7 @@ export const getArtistDetailsHandler = authenticatedHandler('/getArtistDetails',
     const payload = await artistUseCases.getArtistDetails(userId, artistId);
 
     if (!payload) {
-        throw new NotFoundError('Artist was not found in Musicbrainz');
+        throw new NotFoundError('Artist was not found in MusicBrainz');
     }
 
     res.status(200).send(payload);

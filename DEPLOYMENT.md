@@ -24,7 +24,7 @@ The Compose stack sets container caps for a small VPS:
 
 Redis uses `REDIS_MAXMEMORY_POLICY=allkeys-lru`, so cache pressure evicts old cache entries instead of letting Redis grow until the host is unhealthy. VPS Redis persistence stays enabled with `PAWIFY_REDIS_PERSISTENCE=true`. Local Docker can set `PAWIFY_REDIS_PERSISTENCE=false`.
 
-Container log rotation is configured in Compose with `PAWIFY_LOG_MAX_SIZE=10m` and `PAWIFY_LOG_MAX_FILE=3`.
+Container logs use Docker's disk-efficient `local` driver with `PAWIFY_LOG_MAX_SIZE=2m`, `PAWIFY_LOG_MAX_FILE=30`, and `PAWIFY_LOG_COMPRESS=true`. Docker removes the oldest rotated file after the limit, bounding logs to roughly 60 MB per container before compression.
 
 ## Environment File
 
@@ -172,7 +172,7 @@ docker compose --env-file .env.prod logs -f --tail=100 pawify pawify-dapr redis
 ```bash
 cd /srv/pawify-prod
 docker compose --env-file .env.prod ps
-curl http://127.0.0.1:3001/v1/keep-alive
+curl http://127.0.0.1:3001/v1/health
 docker compose --env-file .env.prod exec redis redis-cli -a "$(grep '^REDIS_PASSWORD=' .env.prod | cut -d= -f2-)" ping
 docker compose --env-file .env.prod exec pawify-dapr wget -qO- http://localhost:3500/v1.0/metadata
 ```

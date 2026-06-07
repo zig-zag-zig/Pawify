@@ -29,7 +29,6 @@ import type {
 
 const logger = createLogger('services.backgroundTasks');
 
-type SessionWithReused<T> = TaskSessionController<T> & { reused: boolean };
 type QueueChunkedTaskOptions<T extends BackgroundTaskResultPayload, TChunk> = {
     userId: string;
     type: BackgroundTaskType;
@@ -137,20 +136,7 @@ const chunkReleaseGroupReleasePageEntries = (
     return chunks;
 };
 
-export const createArtistReleaseGroupCoversTaskSession = (
-    userId: string,
-    artistId: string,
-): SessionWithReused<ReleaseGroupCoverTaskResult> => {
-    return createBackgroundTaskSession(userId, 'release_group_covers', {
-        dedupeKey: `release_group_covers:${artistId}`,
-        initialResult: {
-            artistId,
-            covers: {},
-        },
-    });
-};
-
-export const submitArtistReleaseGroupCoversPage = (
+const submitArtistReleaseGroupCoversPage = (
     session: TaskSessionController<ReleaseGroupCoverTaskResult>,
     artistId: string,
     pageEntries: ReleaseGroupPageEntry[],
@@ -159,26 +145,7 @@ export const submitArtistReleaseGroupCoversPage = (
     session.submitPage(async (signal) => await fetchAndUpsertArtistReleaseGroupCovers(artistId, pageEntries, ttl, signal));
 };
 
-export const finalizeArtistReleaseGroupCoversTaskSession = (
-    session: SessionWithReused<ReleaseGroupCoverTaskResult>,
-): void => {
-    session.finalize();
-};
-
-export const createReleaseGroupReleaseCoversTaskSession = (
-    userId: string,
-    releaseGroupId: string,
-): SessionWithReused<ReleaseGroupReleaseCoverTaskResult> => {
-    return createBackgroundTaskSession(userId, 'release_group_release_covers', {
-        dedupeKey: `release_group_release_covers:${releaseGroupId}`,
-        initialResult: {
-            releaseGroupId,
-            covers: {},
-        },
-    });
-};
-
-export const submitReleaseGroupReleaseCoversPage = (
+const submitReleaseGroupReleaseCoversPage = (
     session: TaskSessionController<ReleaseGroupReleaseCoverTaskResult>,
     pageEntry: ReleaseGroupReleasesPageEntry,
     ttl: number | undefined,
@@ -186,25 +153,7 @@ export const submitReleaseGroupReleaseCoversPage = (
     session.submitPage(async (signal) => await fetchAndUpsertReleaseGroupReleaseCovers(pageEntry.releaseGroupId, pageEntry.releaseIds, ttl, signal));
 };
 
-export const finalizeReleaseGroupReleaseCoversTaskSession = (
-    session: SessionWithReused<ReleaseGroupReleaseCoverTaskResult>,
-): void => {
-    session.finalize();
-};
-
-export const createNewReleaseCoversTaskSession = (
-    userId: string,
-    dedupeKey: string,
-): SessionWithReused<NewReleaseCoverTaskResult> => {
-    return createBackgroundTaskSession(userId, 'new_release_covers', {
-        dedupeKey,
-        initialResult: {
-            covers: {},
-        },
-    });
-};
-
-export const submitNewReleaseCoversPage = (
+const submitNewReleaseCoversPage = (
     session: TaskSessionController<NewReleaseCoverTaskResult>,
     pageEntries: ReleaseGroupReleasesPageEntry[],
     ttl: number | undefined,
@@ -221,26 +170,7 @@ export const submitNewReleaseCoversPage = (
     });
 };
 
-export const finalizeNewReleaseCoversTaskSession = (
-    session: SessionWithReused<NewReleaseCoverTaskResult>,
-): void => {
-    session.finalize();
-};
-
-export const createTrackLyricsTaskSession = (
-    userId: string,
-    releaseId: string,
-): SessionWithReused<TrackLyricsTaskResult> => {
-    return createBackgroundTaskSession(userId, 'release_tracks_lyrics', {
-        dedupeKey: `release_tracks_lyrics:${releaseId}`,
-        initialResult: {
-            releaseId,
-            tracks: {},
-        },
-    });
-};
-
-export const submitTrackLyricsPage = (
+const submitTrackLyricsPage = (
     session: TaskSessionController<TrackLyricsTaskResult>,
     releaseId: string,
     tracks: TrackLyricsRequest[],
@@ -249,37 +179,13 @@ export const submitTrackLyricsPage = (
     session.submitPage(async (signal) => await fetchAndUpsertTrackLyrics(releaseId, tracks, ttl, signal));
 };
 
-export const finalizeTrackLyricsTaskSession = (
-    session: SessionWithReused<TrackLyricsTaskResult>,
-): void => {
-    session.finalize();
-};
-
-export const createArtistProfileImagesTaskSession = (
-    userId: string,
-    dedupeKey: string,
-): SessionWithReused<ArtistProfileImageTaskResult> => {
-    return createBackgroundTaskSession(userId, 'artist_profile_images', {
-        dedupeKey,
-        initialResult: {
-            artists: {},
-        },
-    });
-};
-
-export const submitArtistProfileImagesPage = (
+const submitArtistProfileImagesPage = (
     session: TaskSessionController<ArtistProfileImageTaskResult>,
     userId: string,
     artistLookups: ArtistProfileImageLookup[],
     ttl: number | undefined,
 ): void => {
     session.submitPage(async (signal) => await fetchAndUpsertArtistProfileImages(userId, artistLookups, ttl, signal));
-};
-
-export const finalizeArtistProfileImagesTaskSession = (
-    session: SessionWithReused<ArtistProfileImageTaskResult>,
-): void => {
-    session.finalize();
 };
 
 export const queueArtistReleaseGroupCoversTask = (

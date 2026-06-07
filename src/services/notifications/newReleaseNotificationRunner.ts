@@ -1,22 +1,21 @@
-import { createLogger } from '../common/logging/logger.js';
-import { nameWithDisambiguation } from '../modules/utils/helpers.js';
-import { mapWithConcurrency } from '../utils/helpers/promisePool.js';
-import { getAllUsers } from './firebaseService.js';
+import { createLogger } from '../../common/logging/logger.js';
+import { nameWithDisambiguation } from '../../modules/utils/helpers.js';
+import { mapWithConcurrency } from '../../utils/helpers/promisePool.js';
+import { getAllUsers } from '../firebase/userStore.js';
 import {
     acquireNotifyNewReleasesLock,
     releaseNotifyNewReleasesLock,
-} from './firebase/notificationRunLockStore.js';
-import { getNewReleases } from './musicbrainzService.js';
+} from '../firebase/notificationRunLockStore.js';
+import { getNewReleases } from '../musicbrainz/newReleaseDetection.js';
 import {
     getValidPushTokens,
-    sendPushNotification,
     sendPushNotificationToTokens,
-    type PushDeliveryOptions,
-} from './notifications/pushNotificationDelivery.js';
+} from './pushNotificationDelivery.js';
+import { notificationEvents } from './notificationEvents.js';
 
 const logger = createLogger('services.notifications');
-const NEW_RELEASE_NOTIFICATION_USER_CONCURRENCY = 4;
-const USER_VISIBLE_NOTIFICATION_CONCURRENCY = 4;
+const newReleaseNotificationUserConcurrency = 4;
+const userVisibleNotificationConcurrency = 4;
 
 type NotificationDelivery = {
     visibleNotificationsSent: number;
@@ -84,13 +83,13 @@ const notifyUserAboutNewReleases = async (userId: string): Promise<NotificationD
         if (validPushTokens.length > 0) {
             await mapWithConcurrency(
                 notifications,
-                USER_VISIBLE_NOTIFICATION_CONCURRENCY,
+                userVisibleNotificationConcurrency,
                 async (notification) => {
                     await sendPushNotificationToTokens(userId, validPushTokens, notification);
                 },
             );
             await sendPushNotificationToTokens(userId, validPushTokens, {
-                eventName: 'releases',
+                eventName: notificationEvents.releases,
             }, 'data');
         }
 
@@ -115,21 +114,6 @@ const notifyUserAboutNewReleases = async (userId: string): Promise<NotificationD
     }
 };
 
-export const sendDataOnlyNotification = async (
-    userId: string,
-    eventName: string,
-    payload?: Record<string, unknown>,
-    deliveryOptions: PushDeliveryOptions = {},
-): Promise<void> =>
-    await sendPushNotification(
-        userId,
-        {
-            eventName,
-            payload,
-        },
-        deliveryOptions,
-    );
-
 export const notifyNewReleases = async (): Promise<void> => {
     let lock: Awaited<ReturnType<typeof acquireNotifyNewReleasesLock>> = null;
 
@@ -149,7 +133,7 @@ export const notifyNewReleases = async (): Promise<void> => {
 
         const deliveries = await mapWithConcurrency(
             users,
-            NEW_RELEASE_NOTIFICATION_USER_CONCURRENCY,
+            newReleaseNotificationUserConcurrency,
             async (user) => await notifyUserAboutNewReleases(user.uid),
         );
 

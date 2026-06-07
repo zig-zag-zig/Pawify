@@ -1,15 +1,18 @@
 import {
-  getFollowingFromDb,
-  getReleaseNotificationSettingsFromDb,
-  saveReleaseNotificationSettingsToDb,
-} from '../../../services/firebaseService.js';
+    getFollowingFromDb,
+} from '../../../services/firebase/followingStore.js';
+import {
+    getReleaseNotificationSettingsFromDb,
+    saveReleaseNotificationSettingsToDb,
+} from '../../../services/firebase/userSettingsStore.js';
 import { replaceKnownArtistReleaseIdsInDb } from '../../../services/firebase/knownReleasesStore.js';
 import {
   readNewReleasesState,
   writeNewReleasesState,
 } from '../../../services/firebase/newReleasesStore.js';
 import { fetchAllReleasesForArtist } from '../../../services/musicbrainz/releaseQueries.js';
-import { sendDataOnlyNotification } from '../../../services/notificationService.js';
+import { sendDataOnlyNotification } from '../../../services/notifications/dataNotificationPublisher.js';
+import { notificationEvents } from '../../../services/notifications/notificationEvents.js';
 import { releaseDateMatchesNotificationSettings } from '../../../utils/helpers/releaseNotificationFilter.js';
 import type { UserSettingsUseCaseDependencies } from '../ports.js';
 
@@ -45,7 +48,7 @@ export const userSettingsDependencies: UserSettingsUseCaseDependencies = {
   },
   userSettingsNotifier: {
     notifySettingsChanged: async (userId, settings, sourcePushToken) => {
-      await sendDataOnlyNotification(userId, 'releaseNotificationSettings', {
+      await sendDataOnlyNotification(userId, notificationEvents.releaseNotificationSettings, {
         settings,
         sourcePushToken,
       }, {
@@ -53,7 +56,7 @@ export const userSettingsDependencies: UserSettingsUseCaseDependencies = {
       });
     },
     notifyReleasesChanged: async (userId, sourcePushToken) => {
-      await sendDataOnlyNotification(userId, 'releases', {
+      await sendDataOnlyNotification(userId, notificationEvents.releases, {
         sourcePushToken,
       }, {
         excludePushToken: sourcePushToken,

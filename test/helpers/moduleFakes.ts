@@ -2,22 +2,34 @@ import { createRequire } from 'node:module';
 
 const requireForTest = createRequire(__filename);
 
-const unexpectedFirebaseCall = (name: string) => async (): Promise<never> => {
-    throw new Error(`Unexpected firebaseService.${name} call in unit test`);
-};
-
-export const installFirebaseServiceFake = (): void => {
-    const modulePath = requireForTest.resolve('../../src/services/firebaseService.js');
+export const installModuleFake = (
+    modulePathFromHelper: string,
+    exports: Record<string, unknown>,
+): void => {
+    const modulePath = requireForTest.resolve(modulePathFromHelper);
 
     requireForTest.cache[modulePath] = {
         id: modulePath,
         filename: modulePath,
         loaded: true,
-        exports: {
-            getKnownArtistReleaseIdsFromDb: unexpectedFirebaseCall('getKnownArtistReleaseIdsFromDb'),
-            getKnownReleasesFromDb: unexpectedFirebaseCall('getKnownReleasesFromDb'),
-            getNewReleasesSnapshotFromDb: unexpectedFirebaseCall('getNewReleasesSnapshotFromDb'),
-            removeNewReleasesFromDb: unexpectedFirebaseCall('removeNewReleasesFromDb'),
-        },
+        exports,
     } as NodeModule;
+};
+
+const unexpectedFirebaseCall = (name: string) => async (): Promise<never> => {
+    throw new Error(`Unexpected Firebase store ${name} call in unit test`);
+};
+
+export const installFirebaseServiceFake = (): void => {
+    installModuleFake('../../src/services/firebase/followingStore.js', {
+        getFollowingFromDb: unexpectedFirebaseCall('getFollowingFromDb'),
+    });
+    installModuleFake('../../src/services/firebase/knownReleasesStore.js', {
+        getKnownArtistReleaseIdsFromDb: unexpectedFirebaseCall('getKnownArtistReleaseIdsFromDb'),
+        getKnownReleasesFromDb: unexpectedFirebaseCall('getKnownReleasesFromDb'),
+    });
+    installModuleFake('../../src/services/firebase/newReleasesStore.js', {
+        getNewReleasesSnapshotFromDb: unexpectedFirebaseCall('getNewReleasesSnapshotFromDb'),
+        removeNewReleasesFromDb: unexpectedFirebaseCall('removeNewReleasesFromDb'),
+    });
 };

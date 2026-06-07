@@ -1,4 +1,4 @@
-import { getFollowingFromDb } from '../../services/firebaseService.js';
+import { getFollowingFromDb } from '../../services/firebase/followingStore.js';
 import { cacheConfig } from '../../config/runtimeConfig.js';
 
 const FOLLOWING_MEMBERSHIP_CACHE_TTL_MS = 30_000;

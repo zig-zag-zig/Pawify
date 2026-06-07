@@ -2,9 +2,11 @@ import { Release, DEFAULT_RELEASE_NOTIFICATION_SETTINGS, ReleaseNotificationSett
 import {
     getKnownArtistReleaseIdsFromDb,
     getKnownReleasesFromDb,
+} from '../../services/firebase/knownReleasesStore.js';
+import {
     getNewReleasesSnapshotFromDb,
     removeNewReleasesFromDb,
-} from '../../services/firebaseService.js';
+} from '../../services/firebase/newReleasesStore.js';
 import { releaseMatchesNotificationSettings } from './releaseNotificationFilter.js';
 import { groupByReleaseGroup } from './releaseGroupingHelpers.js';
 

@@ -33,26 +33,9 @@ const optionalEnv = (name: string): string | undefined => {
 
 const runtimeEnvironment = optionalEnv('APP_ENV') ?? optionalEnv('NODE_ENV') ?? 'development';
 
-const parseOptionalUrlEnv = (name: string): string | undefined => {
-    const value = optionalEnv(name);
-    if (!value) {
-        return undefined;
-    }
-
-    try {
-        return new URL(value).toString();
-    } catch {
-        throw new Error(`Environment variable ${name} must be a valid URL`);
-    }
-};
-
 export const serverConfig = {
     port: parsePositiveIntEnv(process.env.PORT, 10000),
     requestBodyLimit: optionalEnv('REQUEST_BODY_LIMIT') ?? '5mb',
-    keepAliveUrl: parseBooleanEnv(process.env.DISABLE_KEEP_ALIVE, false)
-        ? undefined
-        : parseOptionalUrlEnv('KEEP_ALIVE_URL'),
-    keepAliveIntervalMs: parsePositiveIntEnv(process.env.KEEP_ALIVE_INTERVAL_MS, 5 * 60_000),
 };
 
 export const backgroundTaskConfig = {

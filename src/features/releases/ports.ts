@@ -19,11 +19,11 @@ type NewReleasesSnapshot = {
     coverPageEntries: ReleaseGroupReleasesPageEntry[];
 };
 
-interface ArtistReleaseContextGateway {
+export interface ArtistReleaseContextGateway {
     getArtistTtl(userId: string, artistId: string): Promise<number | undefined>;
 }
 
-interface ReleaseCatalogGateway {
+export interface ReleaseCatalogGateway {
     getArtistReleases(
         artistId: string,
         ttl: number | undefined,
@@ -38,7 +38,7 @@ interface ReleaseCatalogGateway {
     releaseExists(releaseId: string): Promise<boolean>;
 }
 
-interface ReleaseTaskQueue {
+export interface ReleaseTaskQueue {
     addTaskUser(taskId: string, userId: string): void;
     queueArtistReleaseGroupCovers(
         userId: string,
@@ -57,19 +57,19 @@ interface ReleaseTaskQueue {
     queueReleaseArtistProfileImages(userId: string, release: Release, ttl: number | undefined): string;
 }
 
-interface NewReleasesRepository {
+export interface NewReleasesRepository {
     getNewReleasesSnapshot(userId: string): Promise<NewReleasesSnapshot>;
     deleteNewReleases(userId: string, releaseIds: string[]): Promise<void>;
 }
 
-interface MissingReleaseCleanupRepository {
+export interface MissingReleaseCleanupRepository {
     removeMissingRelease(releaseId: string): Promise<{
         affectedUserIds: string[];
         removedFromNewReleasesUserIds: string[];
     }>;
 }
 
-interface ReleaseNotifier {
+export interface ReleaseNotifier {
     notifyReleasesChanged(userId: string, sourcePushToken?: string): Promise<void>;
 }
 

@@ -5,24 +5,9 @@ import { captureError, flushErrorMonitoring } from './infrastructure/monitoring/
 
 const logger = createLogger('server');
 
-const startKeepAlive = (): void => {
-    const keepAliveUrl = serverConfig.keepAliveUrl;
-    if (!keepAliveUrl) {
-        return;
-    }
-
-    const keepAlive = () => {
-        void fetch(keepAliveUrl).catch(() => { });
-    };
-
-    keepAlive();
-    setInterval(keepAlive, serverConfig.keepAliveIntervalMs).unref?.();
-};
-
 export const startServer = (app: Express): void => {
     app.listen(serverConfig.port, () => {
         logger.info('server started', { port: serverConfig.port });
-        startKeepAlive();
     });
 };
 

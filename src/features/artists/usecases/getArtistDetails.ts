@@ -1,5 +1,5 @@
 import type { Artist } from '../../../modules/models/models.js';
-import { getExternalLinkUrlsByService } from '../../../utils/helpers/externalLinks.js';
+import { mapArtistToProfileImageLookup } from '../domain/profileImageLookups.js';
 import type { ArtistReadUseCaseDependencies } from '../ports.js';
 
 type GetArtistDetailsResult = {
@@ -40,11 +40,7 @@ export const createGetArtistDetailsUseCase = ({
         profileImageTaskId: artistProfileImageQueue.queueArtistProfileImagesWithLookups(
             userId,
             'artist_details',
-            [{
-                artistId,
-                artistName: artist.name,
-                discogsUrls: getExternalLinkUrlsByService(artist.externalLinks, 'discogs'),
-            }],
+            [mapArtistToProfileImageLookup(artistId, artist)],
             ttl,
         ),
     };

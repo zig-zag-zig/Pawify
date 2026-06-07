@@ -2,7 +2,8 @@ import { mapToNewRelease } from '../../infrastructure/musicbrainz/musicbrainzMap
 import { DEFAULT_RELEASE_NOTIFICATION_SETTINGS, NewRelease, Release, ReleaseNotificationSettings } from '../../modules/models/models.js';
 import { sortReleasesByDate } from '../../modules/utils/dateUtil.js';
 import { getReleaseCover } from '../../services/coverArtService.js';
-import { saveArtistAndKnownReleasesToDb, type StoredNewRelease } from '../../services/firebaseService.js';
+import { saveArtistAndKnownReleasesToDb } from '../../services/firebase/artistStore.js';
+import type { StoredNewRelease } from '../../services/firebase/types.js';
 import {
     getCurrentReleases,
     analyzeReleaseChanges,

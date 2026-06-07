@@ -1,42 +1,31 @@
-import { mapToRelease } from '../infrastructure/musicbrainz/musicbrainzMapper.js';
-import { NewRelease, Release, ReleaseGroupReleaseListItem, ReleaseNotificationSettings } from '../modules/models/models.js';
-import { replaceCachedData, getCachedData } from './cacheService.js';
+import type { Release, ReleaseGroupReleaseListItem } from '../../modules/models/models.js';
+import { replaceCachedData, getCachedData } from '../cacheService.js';
 import type {
     CachedArtistReleases,
     CachedReleaseGroupReleaseCovers,
     CachedReleaseGroupReleases,
-} from '../utils/types/cacheTypes.js';
-import {
-    getFollowingFromDb,
-    getKnownReleasesFromDb,
-    getReleaseNotificationSettingsFromDb,
-    mergeKnownArtistReleaseIdsInDb,
-} from './firebaseService.js';
-import { getReleaseCover } from './coverArtService.js';
-import { fetchMusicBrainz } from './musicApi.js';
+} from '../../utils/types/cacheTypes.js';
 import {
     groupByReleaseGroup,
     mapReleaseGroupsToArtistReleases,
     normalizeReleaseGroups,
-} from '../utils/helpers/releaseGroupingHelpers.js';
+} from '../../utils/helpers/releaseGroupingHelpers.js';
 import {
     getCacheKey,
-} from '../utils/helpers/cacheHelpers.js';
-import { processArtistReleases } from '../utils/helpers/newReleaseHelpers.js';
-import { mapWithConcurrency } from '../utils/helpers/promisePool.js';
+} from '../../utils/helpers/cacheHelpers.js';
+import { mapWithConcurrency } from '../../utils/helpers/promisePool.js';
 import {
     createCachedArtistReleaseGroups,
     createCachedReleaseGroupReleases,
-} from '../utils/helpers/artistReleaseCacheHelpers.js';
+} from '../../utils/helpers/artistReleaseCacheHelpers.js';
 import {
     dedupeAndSortReleaseGroupReleases,
     fetchAllReleaseIdsForArtist,
     fetchAllReleasesForArtist,
     fetchAllReleasesForReleaseGroup,
-    getPrimaryArtistId,
     mapReleaseGroupReleasesList,
     processAndGroupReleases,
-} from './musicbrainz/releaseQueries.js';
+} from './releaseQueries.js';
 
 type GetArtistReleasesOptions = {
     onReleaseGroupPage?: (releaseGroupEntries: { releaseGroupId: string; releaseIds: string[] }[], isLastPage: boolean) => Promise<void> | void;
@@ -317,118 +306,4 @@ const getReleaseArtistIds = (releases: Release[]): string[] => {
     }
 
     return Array.from(artistIds);
-};
-
-export const getRelease = async (
-    releaseId: string,
-): Promise<Release | null> => {
-    try {
-        const musicbrainzResult = await fetchMusicBrainz(`/release/${releaseId}?fmt=json&inc=recordings+release-groups+artist-credits+url-rels`);
-
-        if (musicbrainzResult === null) {
-            return null;
-        }
-
-        const release = mapToRelease(musicbrainzResult, getPrimaryArtistId(musicbrainzResult));
-        const cover = await getReleaseCover(release.id, release.releaseGroupId, undefined);
-        release.cover_url = cover.state.url;
-
-        return release;
-    } catch (error) {
-        throw new Error(`Failed to fetch release: ${error}`);
-    }
-};
-
-type ArtistProcessResult = {
-    deletedReleaseIds: string[];
-    newReleases: NewRelease[];
-};
-
-const getArtistReleasesForProcessing = async (
-    artistId: string,
-    _useCache: boolean,
-    _ttl: number | undefined,
-): Promise<Release[]> => {
-    return await fetchAllReleasesForArtist(artistId, true);
-};
-
-const processSingleArtist = async (
-    userId: string,
-    artistId: string,
-    currentReleasesByArtist: { [artistId: string]: string[] },
-    releaseNotificationSettings: ReleaseNotificationSettings,
-): Promise<ArtistProcessResult> => {
-    return await processArtistReleases(
-        userId,
-        artistId,
-        getArtistReleasesForProcessing,
-        currentReleasesByArtist,
-        releaseNotificationSettings,
-    );
-};
-
-const mergeKnownReleasesForFollowedReleaseArtists = async (
-    userId: string,
-    followedArtistIds: string[],
-    newReleases: NewRelease[],
-): Promise<void> => {
-    const followedArtistIdSet = new Set(followedArtistIds);
-    const releaseIdsByFollowedArtist = new Map<string, Set<string>>();
-
-    for (const release of newReleases) {
-        for (const artistId of Object.keys(release.artists)) {
-            if (!followedArtistIdSet.has(artistId)) {
-                continue;
-            }
-
-            const releaseIds = releaseIdsByFollowedArtist.get(artistId) ?? new Set<string>();
-            releaseIds.add(release.id);
-            releaseIdsByFollowedArtist.set(artistId, releaseIds);
-        }
-    }
-
-    await mapWithConcurrency(
-        Array.from(releaseIdsByFollowedArtist.entries()),
-        4,
-        async ([artistId, releaseIds]) => {
-            await mergeKnownArtistReleaseIdsInDb(userId, artistId, Array.from(releaseIds));
-        },
-    );
-};
-
-export const getNewReleases = async (userId: string): Promise<NewRelease[]> => {
-    try {
-        const followingArtists = await getFollowingFromDb(userId);
-        const releaseNotificationSettings = await getReleaseNotificationSettingsFromDb(userId);
-        const currentReleasesByArtist = await getKnownReleasesFromDb(userId);
-        for (const artistId of followingArtists) {
-            currentReleasesByArtist[artistId] ??= [];
-        }
-        const result: NewRelease[] = [];
-
-        const artistResults = await mapWithConcurrency(
-            followingArtists,
-            4,
-            async (artistId) => await processSingleArtist(
-                userId,
-                artistId,
-                currentReleasesByArtist,
-                releaseNotificationSettings,
-            ),
-        );
-
-        for (const { newReleases } of artistResults) {
-            if (newReleases.length > 0) {
-                result.push(...newReleases);
-            }
-        }
-
-        if (result.length > 0) {
-            await mergeKnownReleasesForFollowedReleaseArtists(userId, followingArtists, result);
-        }
-
-        return result;
-    } catch (error) {
-        throw new Error(`Failed to fetch new releases: ${error}`);
-    }
 };
