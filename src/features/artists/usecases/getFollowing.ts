@@ -3,6 +3,8 @@ import { createLogger } from '../../../common/logging/logger.js';
 import type { ArtistMinimal } from '../../../modules/models/models.js';
 import { mapWithConcurrency } from '../../../utils/helpers/promisePool.js';
 import { artistCacheTtlHours } from '../../../utils/helpers/followingHelper.js';
+import type { ArtistProfileImageLookup } from '../../../utils/types/taskTypes.js';
+import { mapArtistSummaryToProfileImageLookup } from '../domain/profileImageLookups.js';
 import type { ArtistReadUseCaseDependencies } from '../ports.js';
 
 const logger = createLogger('features.artists').child('getFollowing');
@@ -10,23 +12,6 @@ const logger = createLogger('features.artists').child('getFollowing');
 type GetFollowingResult = {
     artists: ArtistMinimal[];
     profileImageTaskId: string;
-};
-
-const getSummaryDiscogsUrls = (
-    summary: { id: string; name: string },
-): string[] | undefined => {
-    const candidate = summary as typeof summary & {
-        discogsUrls?: unknown;
-    };
-
-    if (!Array.isArray(candidate.discogsUrls)) {
-        return undefined;
-    }
-
-    const urls = candidate.discogsUrls
-        .filter((url): url is string => typeof url === 'string' && url.trim().length > 0);
-
-    return urls.length > 0 ? urls : undefined;
 };
 
 export const createGetFollowingUseCase = ({
@@ -76,7 +61,7 @@ export const createGetFollowingUseCase = ({
         }
 
         const artists: ArtistMinimal[] = [];
-        const artistLookups: { artistId: string; artistName: string; discogsUrls?: string[] }[] = [];
+        const artistLookups: ArtistProfileImageLookup[] = [];
 
         for (const artistId of artistIds) {
             const summary = storedArtistSummaries[artistId];
@@ -90,11 +75,7 @@ export const createGetFollowingUseCase = ({
                 name: summary.name,
             });
 
-            artistLookups.push({
-                artistId: summary.id,
-                artistName: summary.name,
-                discogsUrls: getSummaryDiscogsUrls(summary),
-            });
+            artistLookups.push(mapArtistSummaryToProfileImageLookup(summary));
         }
 
         return {

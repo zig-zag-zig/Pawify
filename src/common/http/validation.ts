@@ -1,6 +1,6 @@
 import { BadRequestError } from './errors.js';
 
-const getRecord = (value: unknown): Record<string, unknown> => {
+export const requireBodyObject = (value: unknown): Record<string, unknown> => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
         throw new BadRequestError('Request body must be an object');
     }
@@ -9,7 +9,7 @@ const getRecord = (value: unknown): Record<string, unknown> => {
 };
 
 export const requireString = (body: unknown, property: string): string => {
-    const value = getRecord(body)[property];
+    const value = requireBodyObject(body)[property];
 
     if (typeof value !== 'string' || value.trim().length === 0) {
         throw new BadRequestError(`The ${property} property in the body is required`);
@@ -19,7 +19,7 @@ export const requireString = (body: unknown, property: string): string => {
 };
 
 export const optionalString = (body: unknown, property: string): string | undefined => {
-    const value = getRecord(body)[property];
+    const value = requireBodyObject(body)[property];
 
     if (value === undefined || value === null) {
         return undefined;
@@ -34,7 +34,7 @@ export const optionalString = (body: unknown, property: string): string | undefi
 };
 
 export const requireBoolean = (body: unknown, property: string): boolean => {
-    const value = getRecord(body)[property];
+    const value = requireBodyObject(body)[property];
 
     if (typeof value !== 'boolean') {
         throw new BadRequestError(`The ${property} property in the body must be a boolean`);
@@ -44,7 +44,7 @@ export const requireBoolean = (body: unknown, property: string): boolean => {
 };
 
 export const requireStringArray = (body: unknown, property: string): string[] => {
-    const value = getRecord(body)[property];
+    const value = requireBodyObject(body)[property];
 
     if (!Array.isArray(value) || value.length === 0) {
         throw new BadRequestError(`The ${property} property in the body must be a non-empty array`);
@@ -78,7 +78,7 @@ export const requireNullablePositiveInteger = (
     property: string,
     max?: number,
 ): number | null => {
-    const value = getRecord(body)[property];
+    const value = requireBodyObject(body)[property];
 
     if (value === null) {
         return null;
@@ -98,7 +98,7 @@ export const optionalPositiveInteger = (
     property: string,
     fallback: number,
 ): number => {
-    const value = getRecord(body)[property];
+    const value = requireBodyObject(body)[property];
 
     if (value === undefined || value === null || value === '') {
         return fallback;
@@ -120,7 +120,7 @@ export const optionalIntegerInRange = (
     min: number,
     max: number,
 ): number => {
-    const value = getRecord(body)[property];
+    const value = requireBodyObject(body)[property];
 
     if (value === undefined || value === null || value === '') {
         return fallback;

@@ -1,12 +1,11 @@
-import admin, { db } from "../infrastructure/firebase/firebaseInit.js";
 import * as crypto from 'crypto';
-import { sendOtpEmail } from "./emailService.js";
-import { auth } from "firebase-admin";
-import { createLogger } from '../common/logging/logger.js';
+import admin, { db } from '../../infrastructure/firebase/firebaseInit.js';
+import { createLogger } from '../../common/logging/logger.js';
+import { sendOtpEmail } from '../emailService.js';
 
 const OTP_EXPIRY_MINUTES = 15;
 const MAX_OTP_ATTEMPTS = 3;
-const logger = createLogger('services.account');
+const logger = createLogger('services.account.passwordResetOtp');
 const OTP_DELIVERY_FAILED_MESSAGE = 'Could not send OTP. Please check the email address and try again.';
 const RESET_REQUEST_NOT_FOUND_MESSAGE = 'Password reset request was not found or has expired.';
 const OTP_ATTEMPTS_EXCEEDED_MESSAGE = 'Too many incorrect OTP attempts. Please request a new OTP.';
@@ -36,7 +35,15 @@ const getErrorMessage = (error: unknown): string => {
     return error instanceof Error ? error.message : 'Unknown account service error';
 };
 
-export const sendOtp = async (email: string) => {
+const getUidWithEmail = async (email: string) => {
+    try {
+        return await admin.auth().getUserByEmail(email);
+    } catch (error) {
+        return null;
+    }
+};
+
+export const sendOtp = async (email: string): Promise<void> => {
     try {
         const user = await getUidWithEmail(email);
         if (!user) {
@@ -51,7 +58,7 @@ export const sendOtp = async (email: string) => {
             otpHash: hashOtp(otp),
             expiresAt,
             attempts: 0,
-            verified: false
+            verified: false,
         });
 
         try {
@@ -64,16 +71,17 @@ export const sendOtp = async (email: string) => {
         logger.warn('send otp failed', { error });
         throw new Error(OTP_DELIVERY_FAILED_MESSAGE);
     }
-}
+};
 
-export const verifyOtp = async (email: string, otp: string) => {
+export const verifyOtp = async (email: string, otp: string): Promise<string> => {
     try {
         const user = await getUidWithEmail(email);
         if (!user) {
             throw new Error('User not found');
         }
 
-        const doc = await db.collection('passwordResets').doc(user.uid).get();
+        const resetRef = db.collection('passwordResets').doc(user.uid);
+        const doc = await resetRef.get();
 
         if (!doc.exists) {
             throw new Error(RESET_REQUEST_NOT_FOUND_MESSAGE);
@@ -83,8 +91,6 @@ export const verifyOtp = async (email: string, otp: string) => {
         if (!resetData) {
             throw new Error(RESET_REQUEST_NOT_FOUND_MESSAGE);
         }
-
-        const resetRef = db.collection('passwordResets').doc(user.uid);
 
         if (resetData.attempts >= MAX_OTP_ATTEMPTS) {
             await resetRef.delete();
@@ -104,8 +110,8 @@ export const verifyOtp = async (email: string, otp: string) => {
                 throw new Error(OTP_ATTEMPTS_EXCEEDED_MESSAGE);
             }
 
-            await db.collection('passwordResets').doc(user.uid).update({
-                attempts: admin.firestore.FieldValue.increment(1)
+            await resetRef.update({
+                attempts: admin.firestore.FieldValue.increment(1),
             });
             throw new Error('Invalid OTP');
         }
@@ -120,29 +126,3 @@ export const verifyOtp = async (email: string, otp: string) => {
         throw new Error(getErrorMessage(error));
     }
 };
-
-export const revokeToken = async (userId: string): Promise<void> => {
-    try {
-        await auth().revokeRefreshTokens(userId);
-    } catch (error) {
-        logger.warn('revoke token failed', { error });
-        throw new Error('Could not update the sign-in session. Please try again.');
-    }
-};
-
-export const changeEmail = async (userId: string, email: string) => {
-    try {
-        await admin.auth().updateUser(userId, { email });
-    } catch (error) {
-        logger.warn('change email failed', { error });
-        throw new Error('Could not change email. Please try again.');
-    }
-}
-
-const getUidWithEmail = async (email: string) => {
-    try {
-        return await admin.auth().getUserByEmail(email);
-    } catch (error) {
-        return null;
-    }
-}

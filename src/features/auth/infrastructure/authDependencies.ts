@@ -1,10 +1,12 @@
 import {
     changeEmail,
     revokeToken,
+} from '../../../services/account/accountIdentityService.js';
+import {
     sendOtp,
     verifyOtp,
-} from '../../../services/accountService.js';
-import { deleteUserAccount as deleteFirebaseUserAccount } from '../../../services/firebaseService.js';
+} from '../../../services/account/passwordResetOtpService.js';
+import { deleteUserAccount as deleteFirebaseUserAccount } from '../../../services/firebase/userStore.js';
 import { invalidateFollowingArtistIdsCache } from '../../../utils/helpers/followingHelper.js';
 import type { AuthUseCaseDependencies } from '../ports.js';
 

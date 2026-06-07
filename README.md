@@ -60,17 +60,19 @@ The local server uses `PORT`, defaulting to `10000`.
 Health check:
 
 ```bash
-curl http://localhost:10000/v1/keep-alive
+curl http://localhost:10000/v1/health
 ```
 
 ## Local Docker
 
-Local Docker uses the same Compose, Redis, and Dapr wiring as the VPS, but with a separate Compose project and a local host port:
+Local Docker uses the same Compose, Redis, and Dapr wiring as the VPS, but with a separate Compose project and a local host port. First-time setup:
 
 ```bash
 cp .env.local.example .env.local
 mkdir -p secrets/local
 ```
+
+Edit `.env.local` with your local Firebase/database and token values.
 
 Create `secrets/local/dapr-secrets.json`:
 
@@ -89,20 +91,42 @@ Put a Firebase service account at:
 secrets/local/firebase-service-account.json
 ```
 
+Allow the non-root containers to read the mounted secret files:
+
+```bash
+chmod 755 secrets/local && chmod 644 secrets/local/*.json
+```
+
 Then run:
 
 ```bash
-docker compose --env-file .env.local up -d --build
-curl http://127.0.0.1:10000/v1/keep-alive
+docker compose --env-file .env.local up -d --build --wait
+curl http://127.0.0.1:10000/v1/health
 ```
 
-The VPS production tunnel keeps using `3001`. Local Docker uses `PAWIFY_HOST_PORT=10000` from `.env.local`, so it does not change the VPS tunnel setup.
+The health URL assumes `.env.local` uses `PAWIFY_HOST_PORT=10000` from the current example. The VPS production tunnel keeps using `3001`.
 
 Local Redis persistence is disabled by default through `PAWIFY_REDIS_PERSISTENCE=false`. That keeps local cache/lock behavior realistic without local AOF/RDB files mattering. To stop local Docker:
 
 ```bash
 docker compose --env-file .env.local down
 ```
+
+### Docker Logs
+
+Follow recent logs from the full local stack:
+
+```bash
+docker compose --env-file .env.local logs -f --tail=100 pawify pawify-dapr redis
+```
+
+Show available Pawify API logs from the last 14 days:
+
+```bash
+docker compose --env-file .env.local logs --since=336h pawify
+```
+
+For production, use the same commands with `.env.prod`. Docker's disk-efficient `local` logging driver rotates compressed logs in 2 MB chunks, keeps `30` files, and removes the oldest file when the limit is reached. This caps logs at roughly 60 MB per container before compression. Docker's built-in file drivers cannot guarantee 14 days of retention: `--since=336h` shows any retained logs from that period, but high log volume can rotate them sooner.
 
 ## Environment
 
@@ -123,7 +147,6 @@ Production-like runs need values for:
 Common optional values:
 
 - `MUSICBRAINZ_USER_AGENT`
-- `KEEP_ALIVE_URL`
 - Cache TTL and task tuning values from the matching `.env.*.example` file.
 
 Never commit Firebase service accounts, API keys, Gmail app passwords, Redis credentials, Dapr secret files, or `.env` files.
@@ -197,7 +220,7 @@ Pawify keeps provider concurrency and provider-specific rate-limit backoff in ap
 
 Public endpoints:
 
-- `GET /v1/keep-alive`
+- `GET /v1/health`
 - `POST /v1/sendOtp`
 - `POST /v1/verifyOtp`
 

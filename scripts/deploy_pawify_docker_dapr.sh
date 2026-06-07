@@ -387,8 +387,9 @@ prepare_runtime_files() {
   replace_or_append_env "$env_path" "DAPR_GRPC_PORT" "50001"
   replace_or_append_env "$env_path" "DAPR_APP_ID" "pawify-api"
   replace_or_append_env "$env_path" "DAPR_SECRET_STORE_NAME" "pawify-secrets"
-  replace_or_append_env "$env_path" "PAWIFY_LOG_MAX_SIZE" "10m"
-  replace_or_append_env "$env_path" "PAWIFY_LOG_MAX_FILE" "3"
+  replace_or_append_env "$env_path" "PAWIFY_LOG_MAX_SIZE" "2m"
+  replace_or_append_env "$env_path" "PAWIFY_LOG_MAX_FILE" "30"
+  replace_or_append_env "$env_path" "PAWIFY_LOG_COMPRESS" "true"
   replace_or_append_env "$env_path" "PAWIFY_APP_MEMORY_LIMIT" "$APP_MEMORY_LIMIT"
   replace_or_append_env "$env_path" "PAWIFY_APP_MEMORY_SWAP_LIMIT" "$APP_MEMORY_SWAP_LIMIT"
   replace_or_append_env "$env_path" "PAWIFY_APP_MEMORY_RESERVATION" "$APP_MEMORY_RESERVATION"
@@ -472,10 +473,10 @@ start_stack() {
 
   compose_cmd "ps"
 
-  log "Health check: http://127.0.0.1:$HOST_PORT/v1/keep-alive"
+  log "Health check: http://127.0.0.1:$HOST_PORT/v1/health"
   sleep 3
   if command -v curl >/dev/null 2>&1; then
-    if curl -fsS "http://127.0.0.1:$HOST_PORT/v1/keep-alive" >/dev/null; then
+    if curl -fsS "http://127.0.0.1:$HOST_PORT/v1/health" >/dev/null; then
       log "Pawify $ENVIRONMENT health check succeeded"
     else
       warn "Pawify health check failed. Check: cd $APP_DIR && docker compose --env-file $ENV_FILE logs -f --tail=100 pawify pawify-dapr redis"

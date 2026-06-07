@@ -1,26 +1,6 @@
 import type { ArtistWriteUseCaseDependencies } from '../ports.js';
 import { artistCacheTtlHours } from '../../../utils/helpers/followingHelper.js';
-
-const getSummaryDiscogsUrls = (
-    summary: { id: string; name: string } | null,
-): string[] | undefined => {
-    if (!summary) {
-        return undefined;
-    }
-
-    const candidate = summary as typeof summary & {
-        discogsUrls?: unknown;
-    };
-
-    if (!Array.isArray(candidate.discogsUrls)) {
-        return undefined;
-    }
-
-    const urls = candidate.discogsUrls
-        .filter((url): url is string => typeof url === 'string' && url.trim().length > 0);
-
-    return urls.length > 0 ? urls : undefined;
-};
+import { mapArtistSummaryToProfileImageLookup } from '../domain/profileImageLookups.js';
 
 export const createFollowArtistUseCase = ({
     artistDetailsGateway,
@@ -52,11 +32,9 @@ export const createFollowArtistUseCase = ({
     artistProfileImageQueue.queueArtistProfileImagesWithLookups(
         userId,
         'follow_artist',
-        [{
-            artistId,
-            artistName: artistSummary?.name,
-            discogsUrls: getSummaryDiscogsUrls(artistSummary),
-        }],
+        artistSummary
+            ? [mapArtistSummaryToProfileImageLookup(artistSummary)]
+            : [{ artistId }],
         artistCacheTtlHours,
     );
 

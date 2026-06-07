@@ -4,15 +4,16 @@ import { artistProfileImageTaskQueue } from '../../../infrastructure/taskQueues/
 import {
     getFollowingFromDb,
     getFollowingStateFromDb,
-    saveArtistAndKnownReleasesToDb,
     saveFollowingArtistSummariesToDb,
-} from '../../../services/firebaseService.js';
+} from '../../../services/firebase/followingStore.js';
+import { saveArtistAndKnownReleasesToDb } from '../../../services/firebase/artistStore.js';
 import {
     getArtistDetails as getArtistDetailsFromService,
     getFollowedArtistSummary as getFollowedArtistSummaryFromService,
 } from '../../../services/artistDetailsService.js';
-import { getArtistKnownReleaseIds } from '../../../services/musicbrainzService.js';
-import { sendDataOnlyNotification } from '../../../services/notificationService.js';
+import { getArtistKnownReleaseIds } from '../../../services/musicbrainz/cachedReleaseCatalog.js';
+import { sendDataOnlyNotification } from '../../../services/notifications/dataNotificationPublisher.js';
+import { notificationEvents } from '../../../services/notifications/notificationEvents.js';
 import { deleteArtist } from '../../../utils/helpers/cacheManagementHelpers.js';
 import {
     getArtistTtl,
@@ -84,7 +85,7 @@ export const artistDependencies: ArtistUseCaseDependencies = {
     },
     followingNotifier: {
         notifyFollowingChanged: async (userId, sourcePushToken) => {
-            await sendDataOnlyNotification(userId, 'following', undefined, {
+            await sendDataOnlyNotification(userId, notificationEvents.following, undefined, {
                 excludePushToken: sourcePushToken,
             });
         },

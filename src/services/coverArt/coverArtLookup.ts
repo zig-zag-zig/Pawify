@@ -1,4 +1,4 @@
-import { getCoverArtArchiveUrl } from '../musicApi.js';
+import { getCoverArtArchiveUrl } from '../musicApi/coverArtArchiveClient.js';
 import {
     mapCoverState,
     shouldRefetchRemoteState,

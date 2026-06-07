@@ -13,12 +13,14 @@ import type {
 } from '../../../utils/types/taskTypes.js';
 import { getCachedData, replaceCachedData } from '../../cacheService.js';
 import {
-    fetchMusicBrainzWithStatus,
     getDiscogsData,
     getDiscogsUrls,
+} from '../../musicApi/discogsClient.js';
+import { fetchMusicBrainzWithStatus } from '../../musicApi/musicBrainzClient.js';
+import {
     isConfirmedMissingFetchFailure,
     isFetchFailureResult,
-} from '../../musicApi.js';
+} from '../../musicApi/types.js';
 import {
     hasLegacyArtistImageFields,
     mapArtistImageToState,

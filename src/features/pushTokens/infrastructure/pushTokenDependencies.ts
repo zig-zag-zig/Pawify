@@ -1,7 +1,7 @@
 import {
     deleteDevicePushTokenFromDb,
     savePushTokenToDb,
-} from '../../../services/firebaseService.js';
+} from '../../../services/firebase/pushTokenStore.js';
 import type { PushTokenUseCaseDependencies } from '../ports.js';
 
 export const pushTokenDependencies: PushTokenUseCaseDependencies = {

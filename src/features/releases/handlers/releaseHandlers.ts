@@ -36,7 +36,7 @@ export const getReleaseHandler = authenticatedHandler('/getRelease', async ({ re
     const payload = await releaseUseCases.getRelease(userId, releaseId);
 
     if (!payload) {
-        throw new NotFoundError('Release was not found in Musicbrainz');
+        throw new NotFoundError('Release was not found in MusicBrainz');
     }
 
     res.status(200).send(payload);

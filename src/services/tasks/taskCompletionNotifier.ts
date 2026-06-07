@@ -2,7 +2,8 @@ import { createLogger } from '../../common/logging/logger.js';
 import type { RequestLogContext } from '../../common/logging/requestContext.js';
 import { backgroundTaskConfig } from '../../config/runtimeConfig.js';
 import type { BackgroundTaskType } from '../../utils/types/taskTypes.js';
-import { sendDataOnlyNotification } from '../notificationService.js';
+import { sendDataOnlyNotification } from '../notifications/dataNotificationPublisher.js';
+import { notificationEvents } from '../notifications/notificationEvents.js';
 import { withTaskContext } from './taskContext.js';
 
 const logger = createLogger('services.tasks.notifications');
@@ -45,7 +46,7 @@ const sendTaskCompletedNotificationNow = async (
 
         await Promise.all(userIds.map(async (userId) => {
             try {
-                await sendDataOnlyNotification(userId, 'taskCompleted', {
+                await sendDataOnlyNotification(userId, notificationEvents.taskCompleted, {
                     taskId,
                     taskType,
                     status,

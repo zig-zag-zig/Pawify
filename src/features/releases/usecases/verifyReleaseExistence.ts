@@ -12,7 +12,7 @@ export const createVerifyReleaseExistenceUseCase = ({
     ReleaseWriteUseCaseDependencies,
     'missingReleaseCleanupRepository' | 'releaseCatalogGateway' | 'releaseNotifier'
 >) => async (
-    userId: string,
+    _userId: string,
     releaseId: string,
 ): Promise<VerifyReleaseExistenceResult> => {
     const exists = await releaseCatalogGateway.releaseExists(releaseId);

@@ -1,26 +1,19 @@
 import {
   optionalString,
+  requireBodyObject,
   requireBoolean,
 } from '../../common/http/validation.js';
 import { BadRequestError } from '../../common/http/errors.js';
 import { authenticatedHandler } from '../../infrastructure/http/authenticatedHandler.js';
-import { ReleaseNotificationSettings } from '../../modules/models/models.js';
+import type { ReleaseNotificationSettings } from '../../modules/models/models.js';
 import {
   coerceReleaseNotificationLookbackMonths,
   formatReleaseNotificationLookbackMonthOptions,
 } from '../../utils/types/releaseNotificationSettings.js';
 import { userSettingsUseCases } from './userSettingsUseCases.js';
 
-const getBodyRecord = (body: unknown): Record<string, unknown> => {
-  if (!body || typeof body !== 'object' || Array.isArray(body)) {
-    throw new BadRequestError('Request body must be an object');
-  }
-
-  return body as Record<string, unknown>;
-};
-
 const parseOldestReleaseDateMonths = (body: unknown): number | null => {
-  const value = getBodyRecord(body).oldestReleaseDateMonths;
+  const value = requireBodyObject(body).oldestReleaseDateMonths;
   const parsed = coerceReleaseNotificationLookbackMonths(value);
 
   if (parsed === undefined) {
@@ -33,7 +26,7 @@ const parseOldestReleaseDateMonths = (body: unknown): number | null => {
 };
 
 const parseReleaseNotificationSettings = (body: unknown): ReleaseNotificationSettings => {
-  getBodyRecord(body);
+  requireBodyObject(body);
 
   return {
     oldestReleaseDateMonths: parseOldestReleaseDateMonths(body),

@@ -45,12 +45,12 @@ afterEach(async () => {
 });
 
 describe('health routes', () => {
-    it('returns the keep-alive response from /v1/keep-alive', async () => {
+    it('returns the health response from /v1/health', async () => {
         const baseUrl = await startTestServer();
 
-        const response = await fetch(`${baseUrl}/v1/keep-alive`);
+        const response = await fetch(`${baseUrl}/v1/health`);
 
         assert.equal(response.status, 200);
-        assert.equal(await response.text(), 'Server is alive.');
+        assert.equal(await response.text(), 'Server is healthy.');
     });
 });
