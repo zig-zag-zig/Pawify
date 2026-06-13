@@ -224,6 +224,7 @@ This compiles TypeScript via `tsconfig.test.json` (output to `lib-test/`) and ru
 | Rate limiter | `test/rateLimiter.test.ts` |
 | Dapr infrastructure | `test/daprMigration.test.ts` |
 | Health routes | `test/healthRoutes.test.ts` |
+| HTTP route integration | `test/httpRoutes.test.ts` |
 
 ### Test helpers
 
@@ -233,6 +234,7 @@ This compiles TypeScript via `tsconfig.test.json` (output to `lib-test/`) and ru
 | `test/helpers/releaseFixtures.ts` | Factory functions for `Release`, `NewRelease`, `ReleaseNotificationSettings` |
 | `test/helpers/releaseUseCaseFakes.ts` | Fake dependencies for release use case tests |
 | `test/helpers/userSettingsUseCaseFakes.ts` | Fake dependencies for user settings use case tests |
+| `test/helpers/httpTestApp.ts` | Integration test infrastructure: installs module fakes for Firebase/Dapr, starts test Express server |
 
 ### Writing new tests
 
