@@ -40,7 +40,6 @@ describe('sortNewReleasesNewestFirst', () => {
 
     it('treats null dates equally (dateToTimestamp returns MIN_SAFE_INTEGER)', () => {
         // When date is null, dateToTimestamp returns Number.MIN_SAFE_INTEGER (truthy),
-        // so the || fallback to dateForDisplayToTimestamp never triggers.
         // All null-date releases sort equally and maintain insertion order.
         const releases = [
             createNewRelease({ id: 'a', date: null, date_for_display: '15.06.2024' }),
