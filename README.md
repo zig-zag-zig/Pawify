@@ -225,6 +225,7 @@ This compiles TypeScript via `tsconfig.test.json` (output to `lib-test/`) and ru
 | Dapr infrastructure | `test/daprMigration.test.ts` |
 | Health routes | `test/healthRoutes.test.ts` |
 | HTTP route integration | `test/httpRoutes.test.ts` |
+| Firebase emulator integration | `test/emulator/firebaseEmulator.test.ts` (requires `npm run test:emulator`) |
 
 ### Test helpers
 
@@ -235,6 +236,27 @@ This compiles TypeScript via `tsconfig.test.json` (output to `lib-test/`) and ru
 | `test/helpers/releaseUseCaseFakes.ts` | Fake dependencies for release use case tests |
 | `test/helpers/userSettingsUseCaseFakes.ts` | Fake dependencies for user settings use case tests |
 | `test/helpers/httpTestApp.ts` | Integration test infrastructure: installs module fakes for Firebase/Dapr, starts test Express server |
+
+### NPM scripts
+
+| Command | Purpose |
+|---|---|
+| `npm test` | Compile and run all unit + integration tests (emulator tests auto-skip when emulators are not running) |
+| `npm run test:emulator` | Compile and run Firebase emulator integration tests (requires `firebase-tools` installed) |
+| `npm run build` | Compile TypeScript to `lib/` |
+| `npm run dev` | Run dev server with `ts-node` |
+
+### Firebase emulator tests
+
+The `test/emulator/` directory contains integration tests that run against real Firebase emulators. These tests are automatically skipped when emulators are not running, so `npm test` is always safe to run.
+
+To run emulator tests:
+
+```bash
+npm run test:emulator
+```
+
+This requires `firebase-tools` (installed as a dev dependency) and will start the Auth, Firestore, and Database emulators automatically. The emulator configuration is in `firebase.json`.
 
 ### Writing new tests
 
