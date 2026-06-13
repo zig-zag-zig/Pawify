@@ -201,7 +201,9 @@ This compiles TypeScript via `tsconfig.test.json` (output to `lib-test/`) and ru
 | Promise pool | `test/promisePool.test.ts` |
 | Logger redaction | `test/loggerRedaction.test.ts` |
 | MusicBrainz mapper | `test/musicbrainzMapper.test.ts` |
+| Music API types | `test/musicApiTypes.test.ts` |
 | External links | `test/externalLinks.test.ts` |
+| Profile image lookups | `test/profileImageLookups.test.ts` |
 | Remote state helpers | `test/remoteStateHelpers.test.ts` |
 | New release sorting | `test/newReleaseSorting.test.ts` |
 | Release filtering/grouping | `test/releaseFilteringAndGrouping.test.ts` |
