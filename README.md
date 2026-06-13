@@ -177,19 +177,82 @@ Open pull requests from `feature/*`, `fix/*`, or `hotfix/*` into `main`. Keep ch
 
 ## Testing
 
-Run tests:
+The test suite uses Node.js built-in `node:test` and `node:assert/strict` — zero test framework dependencies.
+
+Run all tests:
 
 ```bash
 npm test
 ```
 
-Compile TypeScript:
+This compiles TypeScript via `tsconfig.test.json` (output to `lib-test/`) and runs `node --test "lib-test/**/*.test.js"`.
 
-```bash
-npm run build
+### Test coverage
+
+| Area | Test file |
+|---|---|
+| Date utilities | `test/dateUtil.test.ts` |
+| Array utilities | `test/arrayUtils.test.ts` |
+| HTTP errors | `test/httpErrors.test.ts` |
+| HTTP error middleware | `test/errorMiddleware.test.ts` |
+| Config env parsing | `test/envParsing.test.ts` |
+| Request validation | `test/httpValidation.test.ts` |
+| Request deduper | `test/requestDeduper.test.ts` |
+| Promise pool | `test/promisePool.test.ts` |
+| Logger redaction | `test/loggerRedaction.test.ts` |
+| MusicBrainz mapper | `test/musicbrainzMapper.test.ts` |
+| External links | `test/externalLinks.test.ts` |
+| Remote state helpers | `test/remoteStateHelpers.test.ts` |
+| New release sorting | `test/newReleaseSorting.test.ts` |
+| Release filtering/grouping | `test/releaseFilteringAndGrouping.test.ts` |
+| Release processing helpers | `test/releaseProcessingHelpers.test.ts` |
+| Release use cases | `test/releaseUseCases.test.ts` |
+| Release existence use case | `test/releaseExistenceUseCases.test.ts` |
+| Artist use cases | `test/artistUseCases.test.ts` |
+| Auth use cases | `test/authUseCases.test.ts` |
+| User settings use cases | `test/userSettingsUseCases.test.ts` |
+| Notification use cases | `test/notificationUseCases.test.ts` |
+| Push token use cases | `test/pushTokenUseCases.test.ts` |
+| Push notification payloads | `test/pushNotificationPayloads.test.ts` |
+| Push notification delivery | `test/pushNotificationDelivery.test.ts` |
+| Task use cases | `test/taskUseCases.test.ts` |
+| Task result serialization | `test/taskResultSerialization.test.ts` |
+| Background task mappers | `test/backgroundTaskMappers.test.ts` |
+| Cache serialization | `test/cacheSerialization.test.ts` |
+| Rate limiter | `test/rateLimiter.test.ts` |
+| Dapr infrastructure | `test/daprMigration.test.ts` |
+| Health routes | `test/healthRoutes.test.ts` |
+
+### Test helpers
+
+| Helper | Purpose |
+|---|---|
+| `test/helpers/moduleFakes.ts` | `installModuleFake` / `installFirebaseServiceFake` for mocking ES module imports |
+| `test/helpers/releaseFixtures.ts` | Factory functions for `Release`, `NewRelease`, `ReleaseNotificationSettings` |
+| `test/helpers/releaseUseCaseFakes.ts` | Fake dependencies for release use case tests |
+| `test/helpers/userSettingsUseCaseFakes.ts` | Fake dependencies for user settings use case tests |
+
+### Writing new tests
+
+Tests use the `describe`/`it` pattern from `node:test` with `assert` from `node:assert/strict`. Use case tests create fake dependency objects matching the port interfaces and assert on recorded call arguments. For modules that trigger Firebase side effects on import, use `installFirebaseServiceFake()` before dynamic `await import()`.
+
+```typescript
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+
+describe('feature', () => {
+    it('does the thing', () => {
+        assert.equal(actual, expected);
+    });
+});
 ```
 
-Tests should focus on local Pawify logic: request validation, release filtering/grouping, notification decisions, task serialization, cache helper behavior, and upstream-error handling. Firebase, Dapr, Redis, email, Expo push delivery, and external music providers should be mocked unless an explicit emulator/integration command is added.
+### Extracted testable modules
+
+Several modules were extracted from implementation files to make pure functions independently testable:
+
+- `src/config/envParsing.ts` — environment variable parsing helpers
+- `src/services/cache/cacheSerialization.ts` — cache serialization, chunking, and TTL helpers
 
 ## Firebase Emulators
 
@@ -259,11 +322,14 @@ Common authenticated routes:
 ```text
 src/api/              Versioned route registration
 src/common/           HTTP, logging, request, and utility code
-src/config/           Runtime configuration
+src/config/           Runtime configuration and env parsing
 src/features/         Auth, artists, releases, notifications, push tokens, tasks
 src/infrastructure/   Firebase, monitoring, and provider adapters
 src/services/         Music APIs, cache, email, tasks, notifications
+src/services/cache/   Cache serialization and chunking helpers
 src/utils/            Helpers and shared types
+test/                 Unit and integration tests
+test/helpers/         Test fixtures, fakes, and module mocking utilities
 ```
 
 ## License
