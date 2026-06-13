@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { installFirebaseServiceFake } from './helpers/moduleFakes.js';
-import type { ArtistWriteUseCaseDependencies } from '../src/features/artists/ports.js';
+import type { ArtistWriteUseCaseDependencies, ArtistReadUseCaseDependencies } from '../src/features/artists/ports.js';
 import type { FollowedArtistSummary } from '../src/utils/types/followedArtistTypes.js';
 
 installFirebaseServiceFake();
@@ -107,5 +107,111 @@ describe('artist use cases', () => {
         }]);
         assert.ok(queueCalls[0]?.ttl && queueCalls[0].ttl > 0);
         assert.deepEqual(notificationCalls, ['source-token']);
+    });
+
+    it('unfollows multiple artists and notifies clients', async () => {
+        const { createUnfollowArtistsUseCase } = await import('../src/features/artists/usecases/unfollowArtists.js');
+        const deleteCalls: string[] = [];
+        let notifyCalled = false;
+
+        const deps: Pick<ArtistWriteUseCaseDependencies, 'artistFollowingRepository' | 'followingNotifier'> = {
+            artistFollowingRepository: {
+                async getFollowingArtistIds() { throw new Error('should not run'); },
+                async getFollowingState() { throw new Error('should not run'); },
+                async saveFollowedArtist() { throw new Error('should not run'); },
+                async saveFollowingArtistSummaries() { throw new Error('should not run'); },
+                async deleteFollowedArtist(_userId, artistId) { deleteCalls.push(artistId); },
+            },
+            followingNotifier: {
+                async notifyFollowingChanged(_userId, sourcePushToken) {
+                    notifyCalled = true;
+                    assert.equal(sourcePushToken, 'push-token-1');
+                },
+            },
+        };
+
+        const useCase = createUnfollowArtistsUseCase(deps);
+        await useCase('user-1', ['artist-1', 'artist-2', 'artist-3'], 'push-token-1');
+
+        assert.deepEqual(deleteCalls, ['artist-1', 'artist-2', 'artist-3']);
+        assert.equal(notifyCalled, true);
+    });
+
+    it('returns artist details and queues profile image task', async () => {
+        const { createGetArtistDetailsUseCase } = await import('../src/features/artists/usecases/getArtistDetails.js');
+        const fakeRequestDeduper = {
+            async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
+                return worker();
+            },
+        };
+        const artist = {
+            id: 'artist-1',
+            name: 'Artist One',
+            type: 'Group' as const,
+            disambiguation: null,
+            aliases: [],
+            members: [],
+            externalLinks: [],
+            lifeSpan: { begin: null, end: null, ended: false },
+            beginArea: { name: null },
+        };
+        const deps: Pick<
+            ArtistReadUseCaseDependencies,
+            'artistDetailsGateway' | 'artistProfileImageQueue' | 'cacheTtlGateway' | 'requestDeduper'
+        > = {
+            artistDetailsGateway: {
+                async getArtistDetails(_userId, _artistId, options) {
+                    assert.equal(options?.skipTtlLookup, true);
+                    return artist;
+                },
+                async getFollowedArtistSummary() { throw new Error('should not run'); },
+            },
+            artistProfileImageQueue: {
+                queueArtistProfileImages() { throw new Error('should not run'); },
+                queueArtistProfileImagesWithLookups() { return 'task-1'; },
+            },
+            cacheTtlGateway: {
+                async getArtistTtl() { return 500; },
+            },
+            requestDeduper: fakeRequestDeduper,
+        };
+
+        const useCase = createGetArtistDetailsUseCase(deps);
+        const result = await useCase('user-1', 'artist-1');
+
+        assert.ok(result);
+        assert.equal(result.artist.id, 'artist-1');
+        assert.equal(result.profileImageTaskId, 'task-1');
+    });
+
+    it('returns null when artist is not found', async () => {
+        const { createGetArtistDetailsUseCase } = await import('../src/features/artists/usecases/getArtistDetails.js');
+        const fakeRequestDeduper = {
+            async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
+                return worker();
+            },
+        };
+        const deps: Pick<
+            ArtistReadUseCaseDependencies,
+            'artistDetailsGateway' | 'artistProfileImageQueue' | 'cacheTtlGateway' | 'requestDeduper'
+        > = {
+            artistDetailsGateway: {
+                async getArtistDetails() { return null; },
+                async getFollowedArtistSummary() { throw new Error('should not run'); },
+            },
+            artistProfileImageQueue: {
+                queueArtistProfileImages() { throw new Error('should not run'); },
+                queueArtistProfileImagesWithLookups() { throw new Error('should not run'); },
+            },
+            cacheTtlGateway: {
+                async getArtistTtl() { return undefined; },
+            },
+            requestDeduper: fakeRequestDeduper,
+        };
+
+        const useCase = createGetArtistDetailsUseCase(deps);
+        const result = await useCase('user-1', 'artist-missing');
+
+        assert.equal(result, null);
     });
 });
