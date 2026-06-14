@@ -106,6 +106,14 @@ curl http://127.0.0.1:10000/v1/health
 
 The health URL assumes `.env.local` uses `PAWIFY_HOST_PORT=10000` from the current example. The VPS production tunnel keeps using `3001`.
 
+If you are running the Purrivacy mobile app on a connected Android device or emulator, forward the backend port so the app can reach the host Docker service:
+
+```bash
+adb reverse tcp:10000 tcp:10000
+```
+
+Then the app can call http://127.0.0.1:10000 through the reverse proxy.
+
 Local Redis persistence is disabled by default through `PAWIFY_REDIS_PERSISTENCE=false`. That keeps local cache/lock behavior realistic without local AOF/RDB files mattering. To stop local Docker:
 
 ```bash
