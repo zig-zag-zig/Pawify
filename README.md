@@ -104,6 +104,14 @@ docker compose --env-file .env.local up -d --build --wait
 curl http://127.0.0.1:10000/v1/health
 ```
 
+For local development with hot reload, use the dev override instead. This mounts `src/` and runs `tsx watch` so code changes restart the server automatically:
+
+```bash
+docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.dev.yml up -d --build --wait
+```
+
+If file changes are not detected inside the container (common on macOS and Windows Docker Desktop), add `CHOKIDAR_USEPOLLING=true` to the `environment` section in `docker-compose.dev.yml`.
+
 The health URL assumes `.env.local` uses `PAWIFY_HOST_PORT=10000` from the current example. The VPS production tunnel keeps using `3001`.
 
 If you are running the Purrivacy mobile app on a connected Android device or emulator, forward the backend port so the app can reach the host Docker service:
@@ -118,6 +126,12 @@ Local Redis persistence is disabled by default through `PAWIFY_REDIS_PERSISTENCE
 
 ```bash
 docker compose --env-file .env.local down
+```
+
+To stop a hot-reload dev session:
+
+```bash
+docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.dev.yml down
 ```
 
 ### Docker Logs
