@@ -104,12 +104,34 @@ docker compose --env-file .env.local up -d --build --wait
 curl http://127.0.0.1:10000/v1/health
 ```
 
+For local development with hot reload, use the dev override instead. This mounts `src/` and runs `tsx watch` so code changes restart the server automatically:
+
+```bash
+docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.dev.yml up -d --build --wait
+```
+
+If file changes are not detected inside the container (common on macOS and Windows Docker Desktop), add `CHOKIDAR_USEPOLLING=true` to the `environment` section in `docker-compose.dev.yml`.
+
 The health URL assumes `.env.local` uses `PAWIFY_HOST_PORT=10000` from the current example. The VPS production tunnel keeps using `3001`.
+
+If you are running the Purrivacy mobile app on a connected Android device or emulator, forward the backend port so the app can reach the host Docker service:
+
+```bash
+adb reverse tcp:10000 tcp:10000
+```
+
+Then the app can call http://127.0.0.1:10000 through the reverse proxy.
 
 Local Redis persistence is disabled by default through `PAWIFY_REDIS_PERSISTENCE=false`. That keeps local cache/lock behavior realistic without local AOF/RDB files mattering. To stop local Docker:
 
 ```bash
 docker compose --env-file .env.local down
+```
+
+To stop a hot-reload dev session:
+
+```bash
+docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.dev.yml down
 ```
 
 ### Docker Logs
@@ -177,19 +199,108 @@ Open pull requests from `feature/*`, `fix/*`, or `hotfix/*` into `main`. Keep ch
 
 ## Testing
 
-Run tests:
+The test suite uses Node.js built-in `node:test` and `node:assert/strict` — zero test framework dependencies.
+
+Run all tests:
 
 ```bash
 npm test
 ```
 
-Compile TypeScript:
+This compiles TypeScript via `tsconfig.test.json` (output to `lib-test/`) and runs `node --test "lib-test/**/*.test.js"`.
+
+### Test coverage
+
+| Area | Test file |
+|---|---|
+| Date utilities | `test/dateUtil.test.ts` |
+| Array utilities | `test/arrayUtils.test.ts` |
+| HTTP errors | `test/httpErrors.test.ts` |
+| HTTP error middleware | `test/errorMiddleware.test.ts` |
+| Config env parsing | `test/envParsing.test.ts` |
+| Request validation | `test/httpValidation.test.ts` |
+| Request deduper | `test/requestDeduper.test.ts` |
+| Promise pool | `test/promisePool.test.ts` |
+| Logger redaction | `test/loggerRedaction.test.ts` |
+| MusicBrainz mapper | `test/musicbrainzMapper.test.ts` |
+| Music API types | `test/musicApiTypes.test.ts` |
+| External links | `test/externalLinks.test.ts` |
+| Profile image lookups | `test/profileImageLookups.test.ts` |
+| Remote state helpers | `test/remoteStateHelpers.test.ts` |
+| New release sorting | `test/newReleaseSorting.test.ts` |
+| Release filtering/grouping | `test/releaseFilteringAndGrouping.test.ts` |
+| Release processing helpers | `test/releaseProcessingHelpers.test.ts` |
+| Release use cases | `test/releaseUseCases.test.ts` |
+| Release existence use case | `test/releaseExistenceUseCases.test.ts` |
+| Artist use cases | `test/artistUseCases.test.ts` |
+| Auth use cases | `test/authUseCases.test.ts` |
+| User settings use cases | `test/userSettingsUseCases.test.ts` |
+| Notification use cases | `test/notificationUseCases.test.ts` |
+| Push token use cases | `test/pushTokenUseCases.test.ts` |
+| Push notification payloads | `test/pushNotificationPayloads.test.ts` |
+| Push notification delivery | `test/pushNotificationDelivery.test.ts` |
+| Task use cases | `test/taskUseCases.test.ts` |
+| Task result serialization | `test/taskResultSerialization.test.ts` |
+| Background task mappers | `test/backgroundTaskMappers.test.ts` |
+| Cache serialization | `test/cacheSerialization.test.ts` |
+| Rate limiter | `test/rateLimiter.test.ts` |
+| Dapr infrastructure | `test/daprMigration.test.ts` |
+| Health routes | `test/healthRoutes.test.ts` |
+| HTTP route integration | `test/httpRoutes.test.ts` |
+| Firebase emulator integration | `test/emulator/firebaseEmulator.test.ts` (requires `npm run test:emulator`) |
+
+### Test helpers
+
+| Helper | Purpose |
+|---|---|
+| `test/helpers/moduleFakes.ts` | `installModuleFake` / `installFirebaseServiceFake` for mocking ES module imports |
+| `test/helpers/releaseFixtures.ts` | Factory functions for `Release`, `NewRelease`, `ReleaseNotificationSettings` |
+| `test/helpers/releaseUseCaseFakes.ts` | Fake dependencies for release use case tests |
+| `test/helpers/userSettingsUseCaseFakes.ts` | Fake dependencies for user settings use case tests |
+| `test/helpers/httpTestApp.ts` | Integration test infrastructure: installs module fakes for Firebase/Dapr, starts test Express server |
+
+### NPM scripts
+
+| Command | Purpose |
+|---|---|
+| `npm test` | Compile and run all unit + integration tests (emulator tests auto-skip when emulators are not running) |
+| `npm run test:emulator` | Compile and run Firebase emulator integration tests (requires `firebase-tools` installed) |
+| `npm run build` | Compile TypeScript to `lib/` |
+| `npm run dev` | Run dev server with `ts-node` |
+
+### Firebase emulator tests
+
+The `test/emulator/` directory contains integration tests that run against real Firebase emulators. These tests are automatically skipped when emulators are not running, so `npm test` is always safe to run.
+
+To run emulator tests:
 
 ```bash
-npm run build
+npm run test:emulator
 ```
 
-Tests should focus on local Pawify logic: request validation, release filtering/grouping, notification decisions, task serialization, cache helper behavior, and upstream-error handling. Firebase, Dapr, Redis, email, Expo push delivery, and external music providers should be mocked unless an explicit emulator/integration command is added.
+This requires `firebase-tools` (installed as a dev dependency) and will start the Auth, Firestore, and Database emulators automatically. The emulator configuration is in `firebase.json`.
+
+### Writing new tests
+
+Tests use the `describe`/`it` pattern from `node:test` with `assert` from `node:assert/strict`. Use case tests create fake dependency objects matching the port interfaces and assert on recorded call arguments. For modules that trigger Firebase side effects on import, use `installFirebaseServiceFake()` before dynamic `await import()`.
+
+```typescript
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+
+describe('feature', () => {
+    it('does the thing', () => {
+        assert.equal(actual, expected);
+    });
+});
+```
+
+### Extracted testable modules
+
+Several modules were extracted from implementation files to make pure functions independently testable:
+
+- `src/config/envParsing.ts` — environment variable parsing helpers
+- `src/services/cache/cacheSerialization.ts` — cache serialization, chunking, and TTL helpers
 
 ## Firebase Emulators
 
@@ -259,11 +370,14 @@ Common authenticated routes:
 ```text
 src/api/              Versioned route registration
 src/common/           HTTP, logging, request, and utility code
-src/config/           Runtime configuration
+src/config/           Runtime configuration and env parsing
 src/features/         Auth, artists, releases, notifications, push tokens, tasks
 src/infrastructure/   Firebase, monitoring, and provider adapters
 src/services/         Music APIs, cache, email, tasks, notifications
+src/services/cache/   Cache serialization and chunking helpers
 src/utils/            Helpers and shared types
+test/                 Unit and integration tests
+test/helpers/         Test fixtures, fakes, and module mocking utilities
 ```
 
 ## License

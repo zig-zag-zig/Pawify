@@ -15,7 +15,7 @@ const READ_ONLY_OPERATION_VERBS = [
 
 const logger = createLogger('common.requestDeduper');
 
-const getDefaultInFlightDedupeAgeMs = (ttlMs: number): number => {
+export const getDefaultInFlightDedupeAgeMs = (ttlMs: number): number => {
     const withBuffer = ttlMs - DEFAULT_IN_FLIGHT_DEDUPE_BUFFER_MS;
     if (withBuffer >= MIN_IN_FLIGHT_DEDUPE_AGE_MS) {
         return withBuffer;
@@ -25,7 +25,7 @@ const getDefaultInFlightDedupeAgeMs = (ttlMs: number): number => {
     return Math.max(Math.floor(ttlMs * 0.9), 0);
 };
 
-const classifyOperationKey = (key: string): { operationName: string; isReadOnly: boolean } => {
+export const classifyOperationKey = (key: string): { operationName: string; isReadOnly: boolean } => {
     const operationName = key.split(':', 1)[0]?.trim().toLowerCase() ?? '';
 
     return {

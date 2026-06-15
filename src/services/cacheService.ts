@@ -6,6 +6,13 @@ import {
     saveStateValues,
     type DaprStateSaveItem,
 } from '../infrastructure/dapr/daprStateStore.js';
+import {
+    serializeData,
+    deserializeData,
+    splitUtf8StringByByteSize,
+    parseChunkMetadata,
+    getEffectiveTtlInHours,
+} from './cache/cacheSerialization.js';
 
 const logger = createLogger('services.cache');
 
@@ -13,58 +20,9 @@ const MAX_REQUEST_SIZE = 1024 * 1024;
 const METADATA_OVERHEAD = 100;
 const DEFAULT_CACHE_TTL_HOURS = cacheConfig.defaultTtlHours;
 
-const UNDEFINED_MARKER = '__redis__undefined__';
-
-const getEffectiveTtlInHours = (ttlInHours?: number): number => (
-    ttlInHours && Number.isFinite(ttlInHours) && ttlInHours > 0
-        ? ttlInHours
-        : DEFAULT_CACHE_TTL_HOURS
-);
-
 const getSafeChunkSize = (key: string): number => {
     const chunkKeySize = Buffer.byteLength(`${key}:chunk0000`, 'utf-8');
     return MAX_REQUEST_SIZE - chunkKeySize - METADATA_OVERHEAD;
-};
-
-const splitUtf8StringByByteSize = (value: string, maxBytes: number): string[] => {
-    const chunks: string[] = [];
-    let currentChunk = '';
-    let currentChunkBytes = 0;
-
-    for (const char of value) {
-        const charBytes = Buffer.byteLength(char, 'utf-8');
-
-        if (charBytes > maxBytes) {
-            throw new Error('A single character is larger than the Redis chunk size');
-        }
-
-        if (currentChunk && currentChunkBytes + charBytes > maxBytes) {
-            chunks.push(currentChunk);
-            currentChunk = '';
-            currentChunkBytes = 0;
-        }
-
-        currentChunk += char;
-        currentChunkBytes += charBytes;
-    }
-
-    if (currentChunk) {
-        chunks.push(currentChunk);
-    }
-
-    return chunks;
-};
-
-const serializeData = (data: unknown): string => {
-    return JSON.stringify(data, (_, value) =>
-        value === undefined ? UNDEFINED_MARKER : value,
-    );
-};
-
-const deserializeData = <T = unknown>(dataString: string): T => {
-    return JSON.parse(dataString, (_, value) =>
-        value === UNDEFINED_MARKER ? undefined : value,
-    ) as T;
 };
 
 const getMetadataKey = (key: string): string => `${key}:metadata`;
@@ -72,20 +30,6 @@ const getMetadataKey = (key: string): string => `${key}:metadata`;
 const getChunkKeys = (key: string, totalChunks: number): string[] => (
     Array.from({ length: totalChunks }, (_, index) => `${key}:chunk${index.toString().padStart(4, '0')}`)
 );
-
-const parseChunkMetadata = (metadata: string | null): number | null => {
-    if (!metadata) {
-        return null;
-    }
-
-    try {
-        const parsed = JSON.parse(metadata) as Record<string, unknown>;
-        const totalChunks = Number.parseInt(String(parsed.totalChunks ?? ''), 10);
-        return Number.isFinite(totalChunks) && totalChunks > 0 ? totalChunks : null;
-    } catch {
-        return null;
-    }
-};
 
 export const deleteCachedData = async (key: string): Promise<void> => {
     try {
@@ -124,7 +68,7 @@ const setCachedData = async (
     try {
         await deleteCachedData(key);
 
-        const effectiveTtlInHours = getEffectiveTtlInHours(ttlInHours);
+        const effectiveTtlInHours = getEffectiveTtlInHours(ttlInHours, DEFAULT_CACHE_TTL_HOURS);
         const ttlInSeconds = effectiveTtlInHours * 3600;
         const dataString = serializeData(data);
         const safeChunkSize = getSafeChunkSize(key);
