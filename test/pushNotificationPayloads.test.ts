@@ -132,4 +132,9 @@ describe('buildExpoPushMessages', () => {
         assert.equal(messages[0]!.to, 'ExpoPushToken[a]');
         assert.equal(messages[1]!.to, 'ExpoPushToken[b]');
     });
+
+    it('returns empty array for empty token list', () => {
+        const messages = buildExpoPushMessages([], { title: 'Hi' }, 'visible');
+        assert.deepEqual(messages, []);
+    });
 });

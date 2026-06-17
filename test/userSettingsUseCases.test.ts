@@ -5,6 +5,8 @@ import { installFirebaseServiceFake } from './helpers/moduleFakes.js';
 import { createRelease, createReleaseNotificationSettings } from './helpers/releaseFixtures.js';
 import { createUserSettingsDependencies } from './helpers/userSettingsUseCaseFakes.js';
 
+// Prevent Firebase store modules from loading and triggering firebaseInit.js
+// which requires credentials. The fake prevents transitive load of firebaseInit.
 installFirebaseServiceFake();
 
 describe('user settings use cases', () => {
@@ -70,5 +72,28 @@ describe('user settings use cases', () => {
 
         assert.deepEqual(state.saveCalls, [nextSettings, previousSettings]);
         assert.deepEqual(state.notificationCalls, []);
+    });
+
+    it('getReleaseNotificationSettings returns stored settings', async () => {
+        const { createGetReleaseNotificationSettingsUseCase } = await import(
+            '../src/features/userSettings/usecases/getReleaseNotificationSettings.js'
+        );
+        const settings = createReleaseNotificationSettings({ oldestReleaseDateMonths: 6 });
+        const deps = {
+            releaseNotificationSettingsRepository: {
+                async getSettings(_userId: string) {
+                    return settings;
+                },
+                async saveSettings() {
+                    throw new Error('should not run');
+                },
+            },
+        };
+
+        const useCase = createGetReleaseNotificationSettingsUseCase(deps);
+        const result = await useCase('user-1');
+
+        assert.deepEqual(result, settings);
+        assert.equal(result.oldestReleaseDateMonths, 6);
     });
 });
