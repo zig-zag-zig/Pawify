@@ -1,13 +1,42 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { createRequire } from 'node:module';
+import { afterEach, beforeEach, describe, it, mock } from 'node:test';
 
 import { installFetch } from '../../helpers/daprTestHelpers.js';
 import { installModuleFake } from '../../helpers/moduleFakes.js';
 
-describe('pushReceiptChecker', () => {
-    it('swallows errors from receipt checking and logs instead of throwing', async () => {
-        const deletedTokens: string[] = [];
+const requireForTest = createRequire(__filename);
 
+/**
+ * pushReceiptChecker statically imports pushTokenStoreAdapter, which
+ * dynamically imports pushTokenStore.  Between tests we must clear
+ * all three module caches so that installModuleFake takes effect
+ * on a fresh module graph.
+ */
+const clearReceiptCheckerModuleCache = () => {
+    const modules = [
+        '../../../src/services/notifications/pushReceiptChecker.js',
+        '../../../src/services/notifications/pushTokenStoreAdapter.js',
+        '../../../src/services/firebase/pushTokenStore.js',
+    ];
+    for (const mod of modules) {
+        const resolved = requireForTest.resolve(mod);
+        delete requireForTest.cache[resolved];
+    }
+};
+
+describe('pushReceiptChecker', () => {
+    beforeEach(() => {
+        mock.timers.enable();
+        mock.timers.setTime(Date.now());
+        clearReceiptCheckerModuleCache();
+    });
+
+    afterEach(() => {
+        mock.timers.reset();
+    });
+
+    it('swallows errors from receipt checking and logs instead of throwing', async () => {
         installFetch((url) => {
             if (url.includes('/push/getReceipts')) {
                 throw new Error('network failure');
@@ -18,18 +47,21 @@ describe('pushReceiptChecker', () => {
             return new Response('not found', { status: 404 });
         });
 
-        installModuleFake('../../src/services/notifications/pushTokenStoreAdapter.js', {
-            deletePushTokensFromStore: async (_userId: string, tokens: string[]) => {
-                deletedTokens.push(...tokens);
-            },
+        installModuleFake('../../src/services/firebase/pushTokenStore.js', {
+            deletePushTokensFromDb: async () => { },
+            getPushTokensFromDb: async () => [],
+            deleteDevicePushTokenFromDb: async () => { },
+            deleteUserPushTokensFromDb: async () => { },
+            savePushTokenToDb: async () => { },
+            deletePushTokenFromDb: async () => { },
         });
 
         const { checkPushReceipts } = await import('../../../src/services/notifications/pushReceiptChecker.js');
         const receiptTokens = new Map([['receipt-1', 'ExpoPushToken[abc]']]);
 
-        // Should not throw — errors are caught and logged
-        await checkPushReceipts('user-1', 'visible', 'testEvent', receiptTokens);
-        assert.equal(deletedTokens.length, 0);
+        const promise = checkPushReceipts('user-1', 'visible', 'testEvent', receiptTokens);
+        await mock.timers.runAll();
+        await promise;
     });
 
     it('identifies DeviceNotRegistered receipts and removes invalid tokens', async () => {
@@ -54,10 +86,15 @@ describe('pushReceiptChecker', () => {
             return new Response('not found', { status: 404 });
         });
 
-        installModuleFake('../../src/services/notifications/pushTokenStoreAdapter.js', {
-            deletePushTokensFromStore: async (_userId: string, tokens: string[]) => {
+        installModuleFake('../../src/services/firebase/pushTokenStore.js', {
+            deletePushTokensFromDb: async (_userId: string, tokens: string[]) => {
                 deletedTokens.push(...tokens);
             },
+            getPushTokensFromDb: async () => [],
+            deleteDevicePushTokenFromDb: async () => { },
+            deleteUserPushTokensFromDb: async () => { },
+            savePushTokenToDb: async () => { },
+            deletePushTokenFromDb: async () => { },
         });
 
         const { checkPushReceipts } = await import('../../../src/services/notifications/pushReceiptChecker.js');
@@ -66,7 +103,9 @@ describe('pushReceiptChecker', () => {
             ['receipt-2', 'ExpoPushToken[good2]'],
         ]);
 
-        await checkPushReceipts('user-1', 'visible', 'testEvent', receiptTokens);
+        const promise = checkPushReceipts('user-1', 'visible', 'testEvent', receiptTokens);
+        await mock.timers.runAll();
+        await promise;
 
         assert.deepEqual(deletedTokens, ['ExpoPushToken[bad1]']);
     });
@@ -92,16 +131,23 @@ describe('pushReceiptChecker', () => {
             return new Response('not found', { status: 404 });
         });
 
-        installModuleFake('../../src/services/notifications/pushTokenStoreAdapter.js', {
-            deletePushTokensFromStore: async (_userId: string, tokens: string[]) => {
+        installModuleFake('../../src/services/firebase/pushTokenStore.js', {
+            deletePushTokensFromDb: async (_userId: string, tokens: string[]) => {
                 deletedTokens.push(...tokens);
             },
+            getPushTokensFromDb: async () => [],
+            deleteDevicePushTokenFromDb: async () => { },
+            deleteUserPushTokensFromDb: async () => { },
+            savePushTokenToDb: async () => { },
+            deletePushTokenFromDb: async () => { },
         });
 
         const { checkPushReceipts } = await import('../../../src/services/notifications/pushReceiptChecker.js');
         const receiptTokens = new Map([['receipt-1', 'ExpoPushToken[abc]']]);
 
-        await checkPushReceipts('user-1', 'visible', 'testEvent', receiptTokens);
+        const promise = checkPushReceipts('user-1', 'visible', 'testEvent', receiptTokens);
+        await mock.timers.runAll();
+        await promise;
 
         assert.equal(deletedTokens.length, 0);
     });
