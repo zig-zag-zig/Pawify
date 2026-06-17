@@ -21,7 +21,7 @@
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.13.8",
-    "firebase-tools": "^15.20.0",
+    "firebase-tools": "~13.35.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
   },
