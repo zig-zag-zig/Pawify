@@ -58,4 +58,31 @@ describe('music API rate limiting', () => {
         await delay(20);
         assert.equal(limiter.activeRequests, 0);
     });
+
+    it('applies min rate limit wait when retry-after is below minimum', async () => {
+        process.env.MUSICBRAINZ_MIN_RATE_LIMIT_WAIT_MS = '1500';
+        const { RateLimiter, applyRateLimitHeaders } = await importRateLimiter();
+        const limiter = new RateLimiter(1, 0);
+
+        const response = new Response(null, {
+            status: 429,
+            headers: { 'retry-after': '0.5' },
+        });
+
+        const backoffMs = applyRateLimitHeaders(response, limiter, 'musicbrainz');
+
+        // 0.5s retry-after + 1s buffer = 1500ms < 1500ms min → should clamp to 1500ms
+        assert.ok(backoffMs >= 1500);
+    });
+
+    it('allows requests through when backoff has expired', async () => {
+        const { RateLimiter } = await importRateLimiter();
+        const limiter = new RateLimiter(1, 0);
+        // Set backoff to the past
+        limiter.backoffUntil = Date.now() - 1000;
+
+        const release = await limiter.acquire();
+        assert.equal(limiter.activeRequests, 1);
+        release();
+    });
 });

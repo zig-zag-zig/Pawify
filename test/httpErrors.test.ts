@@ -33,7 +33,7 @@ describe('HttpError subclasses', () => {
         assert.equal(error.expose, true);
     });
 
-    it('UnauthorizedError uses status 41 with default message', () => {
+    it('UnauthorizedError uses status 401 with default message', () => {
         const error = new UnauthorizedError();
         assert.equal(error.statusCode, 401);
         assert.equal(error.message, 'User is not authenticated.');

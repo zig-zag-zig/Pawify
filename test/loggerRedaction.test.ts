@@ -101,4 +101,45 @@ describe('logger redaction', () => {
         // The key matches the redaction pattern, so the entire value is replaced
         assert.equal(log.userId, '[redacted]');
     });
+
+    it('child logger preserves redaction behavior', () => {
+        const lines = captureConsoleLog();
+        const logger = createLogger('test');
+        const child = logger.child('sub');
+
+        child.info('child message', { token: 'jwt-token', path: '/v1/test' });
+
+        const log = parseLastLog(lines);
+        assert.equal(log.token, '[redacted]');
+        assert.equal(log.path, '/v1/test');
+        assert.equal(log.scope, 'test.sub');
+    });
+
+    it('serializes bigint values in metadata', () => {
+        const lines = captureConsoleLog();
+        const logger = createLogger('test');
+
+        logger.info('bigint test', { count: BigInt(42), name: 'test' });
+
+        const log = parseLastLog(lines);
+        assert.equal(log.count, '42');
+        assert.equal(log.name, 'test');
+    });
+
+    it('respects log level filtering (debug suppressed at info)', () => {
+        const lines: string[] = [];
+        const originalLevel = process.env.LOG_LEVEL;
+        try {
+            process.env.LOG_LEVEL = 'info';
+            mock.method(console, 'log', (line: string) => { lines.push(line); });
+
+            const logger = createLogger('test');
+            logger.debug('should not appear');
+
+            assert.equal(lines.length, 0);
+        } finally {
+            process.env.LOG_LEVEL = originalLevel;
+        }
+    });
+
 });

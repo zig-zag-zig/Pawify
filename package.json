@@ -1,12 +1,17 @@
 {
   "name": "pawify-api",
   "scripts": {
-    "build": "tsc",
+    "build": "npm run test:all && npm run build:unchecked",
+    "build:unchecked": "tsc",
     "build:watch": "tsc --watch",
+    "typecheck": "tsc --noEmit",
     "test": "tsc -p tsconfig.test.json && node --test \"lib-test/**/*.test.js\"",
-    "test:emulator": "tsc -p tsconfig.test.json && firebase emulators:exec --only auth,database,firestore --project pawify-test \"node --test lib-test/test/emulator/**/*.test.js\"",
+    "test:coverage": "tsc -p tsconfig.test.json && node --experimental-test-coverage --test \"lib-test/**/*.test.js\"",
+    "test:integration": "tsc -p tsconfig.test.json && firebase emulators:exec --only auth,database,firestore --project pawify-test \"node --test lib-test/test/emulator/**/*.test.js\"",
+    "test:all": "npm test && npm run test:integration",
     "start": "node --enable-source-maps lib/index.js",
-    "dev": "ts-node src/index.ts"
+    "dev": "ts-node src/index.ts",
+    "verify": "npm run typecheck && npm test"
   },
   "engines": {
     "node": "22"
@@ -21,7 +26,7 @@
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.13.8",
-    "firebase-tools": "^15.20.0",
+    "firebase-tools": "~13.35.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
   },

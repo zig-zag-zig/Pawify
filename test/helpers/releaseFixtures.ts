@@ -3,6 +3,8 @@ import type {
     Release,
     ReleaseNotificationSettings,
 } from '../../src/modules/models/models.js';
+import type { FollowedArtistSummary } from '../../src/utils/types/followedArtistTypes.js';
+import type { ArtistProfileImageLookup } from '../../src/utils/types/taskTypes.js';
 
 export const createReleaseNotificationSettings = (
     overrides: Partial<ReleaseNotificationSettings> = {},
@@ -36,5 +38,22 @@ export const createRelease = (overrides: Partial<Release> = {}): Release => ({
     releaseGroupId: null,
     cover_url: null,
     externalLinks: [],
+    ...overrides,
+});
+
+export const createFollowedArtistSummary = (
+    overrides: Partial<FollowedArtistSummary> = {},
+): FollowedArtistSummary => ({
+    id: 'artist-1',
+    name: 'Artist One',
+    refreshedAt: Date.now(),
+    ...overrides,
+});
+
+export const createArtistProfileImageLookup = (
+    overrides: Partial<ArtistProfileImageLookup> = {},
+): ArtistProfileImageLookup => ({
+    artistId: 'artist-1',
+    artistName: 'Artist One',
     ...overrides,
 });

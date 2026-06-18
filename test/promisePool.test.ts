@@ -28,4 +28,30 @@ describe('mapWithConcurrency', () => {
 
         assert.deepEqual(results, []);
     });
+
+    it('propagates mapper errors immediately', async () => {
+        let callCount = 0;
+        await assert.rejects(
+            () => mapWithConcurrency([10, 0, 20], 2, async (waitMs, index) => {
+                callCount += 1;
+                await delay(waitMs);
+                if (index === 1) {
+                    throw new Error(`mapper failed at index ${index}`);
+                }
+                return `result-${index}`;
+            }),
+            /mapper failed at index 1/,
+        );
+        // Note: some concurrent tasks may still run before the rejection propagates
+        assert.ok(callCount >= 2, 'at least 2 tasks should have started');
+    });
+
+    it('preserves result order even when tasks complete out of order', async () => {
+        const results = await mapWithConcurrency([30, 10, 20], 3, async (waitMs, index) => {
+            await delay(waitMs);
+            return `result-${index}`;
+        });
+
+        assert.deepEqual(results, ['result-0', 'result-1', 'result-2']);
+    });
 });

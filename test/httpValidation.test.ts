@@ -65,4 +65,19 @@ describe('request validation helpers', () => {
             'The limit property in the body must be an integer between 1 and 50',
         );
     });
+
+    it('requireBoolean rejects string "true"', () => {
+        assertBadRequest(
+            () => requireBoolean({ enabled: 'true' }, 'enabled'),
+            'The enabled property in the body must be a boolean',
+        );
+    });
+
+    it('optionalPositiveInteger returns fallback for undefined', () => {
+        assert.equal(optionalPositiveInteger({}, 'page', 0), 0);
+    });
+
+    it('optionalString returns undefined for missing key', () => {
+        assert.equal(optionalString({}, 'missing'), undefined);
+    });
 });

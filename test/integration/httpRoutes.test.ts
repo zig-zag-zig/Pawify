@@ -2,22 +2,22 @@ import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 
 import express from 'express';
-import { errorMiddleware } from '../src/common/http/errorMiddleware.js';
+import { errorMiddleware } from '../../src/common/http/errorMiddleware.js';
 import {
     installAllFakes,
     startTestServer,
     stopTestServer,
     setFakeCheckAuth,
-} from './helpers/httpTestApp.js';
+} from '../helpers/httpTestApp.js';
 
 installAllFakes();
 
 let baseUrl: string;
 
 beforeEach(async () => {
-    const { healthRoutes } = await import('../src/features/health/healthRoutes.js');
-    const { authRoutes } = await import('../src/features/auth/authRoutes.js');
-    const { pushTokenRoutes } = await import('../src/features/pushTokens/pushTokenRoutes.js');
+    const { healthRoutes } = await import('../../src/features/health/healthRoutes.js');
+    const { authRoutes } = await import('../../src/features/auth/authRoutes.js');
+    const { pushTokenRoutes } = await import('../../src/features/pushTokens/pushTokenRoutes.js');
 
     const app = express();
     app.use(express.json());
@@ -66,6 +66,15 @@ describe('HTTP route integration', () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({}),
+            });
+            assert.equal(response.status, 400);
+        });
+
+        it('POST /v1/sendOtp returns 400 when email is not a string', async () => {
+            const response = await fetch(`${baseUrl}/v1/sendOtp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: 123 }),
             });
             assert.equal(response.status, 400);
         });
@@ -126,6 +135,13 @@ describe('HTTP route integration', () => {
             assert.equal(response.status, 400);
         });
 
+        it('POST /v1/deleteUserAccount returns 401 without authorization', async () => {
+            const response = await fetch(`${baseUrl}/v1/deleteUserAccount`, {
+                method: 'POST',
+            });
+            assert.equal(response.status, 401);
+        });
+
         it('POST /v1/deleteUserAccount returns 200 with valid token', async () => {
             const response = await fetch(`${baseUrl}/v1/deleteUserAccount`, {
                 method: 'POST',
@@ -153,6 +169,27 @@ describe('HTTP route integration', () => {
                     Authorization: 'Bearer valid-token',
                 },
                 body: JSON.stringify({ deviceId: 'd1', pushToken: 'ExpoPushToken[abc]' }),
+            });
+            assert.equal(response.status, 200);
+        });
+
+        it('POST /v1/deletePushToken returns 401 without authorization', async () => {
+            const response = await fetch(`${baseUrl}/v1/deletePushToken`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deviceId: 'd1' }),
+            });
+            assert.equal(response.status, 401);
+        });
+
+        it('POST /v1/deletePushToken returns 200 with valid token', async () => {
+            const response = await fetch(`${baseUrl}/v1/deletePushToken`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'Bearer valid-token',
+                },
+                body: JSON.stringify({ deviceId: 'd1' }),
             });
             assert.equal(response.status, 200);
         });

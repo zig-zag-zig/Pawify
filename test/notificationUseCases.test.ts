@@ -19,7 +19,23 @@ describe('notification use cases', () => {
         assert.equal(called, true);
     });
 
-    it('propagates gateway errors', async () => {
+    it('calls notifyNewReleases once per invocation', async () => {
+        let callCount = 0;
+        const deps: NotificationUseCaseDependencies = {
+            newReleaseNotificationGateway: {
+                async notifyNewReleases() { callCount += 1; },
+            },
+        };
+        const useCase = createNotifyNewReleasesUseCase(deps);
+
+        await useCase();
+        await useCase();
+        await useCase();
+
+        assert.equal(callCount, 3);
+    });
+
+    it('propagates gateway errors without wrapping', async () => {
         const deps: NotificationUseCaseDependencies = {
             newReleaseNotificationGateway: {
                 async notifyNewReleases() { throw new Error('lock failed'); },
