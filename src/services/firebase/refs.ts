@@ -1,4 +1,5 @@
-import admin, { db } from '../../infrastructure/firebase/firebaseInit.js';
+import { db } from '../../infrastructure/firebase/firebaseInit.js';
+import type { DocumentReference, CollectionReference, WriteBatch } from 'firebase-admin/firestore';
 import type { FollowingArtistsMap, StoredNewReleasesMap } from './types.js';
 import { makeDeepCopy } from './utils.js';
 
@@ -7,21 +8,21 @@ export const NEW_RELEASES_SUBCOLLECTION = 'newReleases';
 const MAP_DOC_ID = 'maps';
 const BATCH_WRITE_LIMIT = 450;
 
-export const getUserRef = (userId: string): admin.firestore.DocumentReference => db.collection('users').doc(userId);
+export const getUserRef = (userId: string): DocumentReference => db.collection('users').doc(userId);
 
-const getFollowingCollectionRef = (userId: string): admin.firestore.CollectionReference => (
+const getFollowingCollectionRef = (userId: string): CollectionReference => (
   getUserRef(userId).collection(FOLLOWING_SUBCOLLECTION)
 );
 
-export const getFollowingMapDocRef = (userId: string): admin.firestore.DocumentReference => (
+export const getFollowingMapDocRef = (userId: string): DocumentReference => (
   getFollowingCollectionRef(userId).doc(MAP_DOC_ID)
 );
 
-const getNewReleasesCollectionRef = (userId: string): admin.firestore.CollectionReference => (
+const getNewReleasesCollectionRef = (userId: string): CollectionReference => (
   getUserRef(userId).collection(NEW_RELEASES_SUBCOLLECTION)
 );
 
-export const getNewReleasesMapDocRef = (userId: string): admin.firestore.DocumentReference => (
+export const getNewReleasesMapDocRef = (userId: string): DocumentReference => (
   getNewReleasesCollectionRef(userId).doc(MAP_DOC_ID)
 );
 
@@ -34,7 +35,7 @@ export const buildNewReleasesCollectionPayload = (
 ): StoredNewReleasesMap => makeDeepCopy(newReleasesMap);
 
 export const commitBatchMutations = async (
-  mutations: Array<(batch: admin.firestore.WriteBatch) => void>,
+  mutations: Array<(batch: WriteBatch) => void>,
 ): Promise<void> => {
   if (mutations.length === 0) {
     return;

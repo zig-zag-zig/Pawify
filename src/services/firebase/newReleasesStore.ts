@@ -10,6 +10,7 @@ import {
   getNewReleasesMapDocRef,
 } from './refs.js';
 import { isPlainObject } from './utils.js';
+import { monitorUserMapsDocSizes } from '../monitoring/mapsDocSizeMonitor.js';
 
 const normalizePrimaryType = (value: unknown): string | null => (
   typeof value === 'string' ? value : null
@@ -187,6 +188,10 @@ export const readNewReleasesState = async (
 ): Promise<StoredNewReleasesMap> => {
   const mapDoc = await getNewReleasesMapDocRef(userId).get();
   const normalizedMapDoc = normalizeNewReleasesCollectionDocument(mapDoc.data());
+
+  // Opportunistic monitoring of maps doc size
+  monitorUserMapsDocSizes(userId).catch(() => {});
+
   if (normalizedMapDoc) {
     return normalizedMapDoc;
   }

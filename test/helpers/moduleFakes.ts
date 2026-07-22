@@ -35,31 +35,41 @@ export const installFirebaseServiceFake = (): void => {
     });
 };
 
-const makeMockAdmin = () => ({
-    apps: [{ name: '[DEFAULT]' }],
-    app: () => ({ name: '[DEFAULT]' }),
-    initializeApp: () => ({ name: '[DEFAULT]' }),
-    credential: {
-        cert: () => ({}),
-    },
-    auth: () => ({
-        verifyIdToken: async (token: string) => {
-            if (token === 'valid-token') {
-                return { uid: 'test-user-id' };
-            }
-            throw new Error('Invalid token');
-        },
-        getUser: async (uid: string) => ({
-            uid,
-            email: 'test@example.com',
-            emailVerified: true,
-            displayName: 'Test User',
-        }),
-        setCustomUserClaims: async () => { },
-        updateUser: async (_uid: string, _props: unknown) => ({}),
-        deleteUser: async () => { },
+const makeMockAuth = () => ({
+    revokeRefreshTokens: async () => { },
+    updateUser: async (_uid: string, _props: unknown) => ({}),
+    deleteUser: async () => { },
+    getUser: async (uid: string) => ({
+        uid,
+        email: 'test@example.com',
+        emailVerified: true,
+        displayName: 'Test User',
+    } satisfies { uid: string; email: string; emailVerified: boolean; displayName: string }),
+    getUserByEmail: async (email: string) => ({
+        uid: 'test-user-id',
+        email,
+        emailVerified: true,
+        displayName: 'Test User',
     }),
-    firestore: () => ({
+    verifyIdToken: async (token: string) => {
+        if (token === 'valid-token') {
+            return { uid: 'test-user-id' };
+        }
+        throw new Error('Invalid token');
+    },
+    listUsers: async () => ({ users: [], pageToken: undefined }),
+    setCustomUserClaims: async () => { },
+    createCustomToken: async (_uid: string, _claims?: unknown) => 'custom-token',
+});
+
+const makeMockFirestore = () => {
+    const batchFn = () => ({
+        set: () => { },
+        update: () => { },
+        delete: () => { },
+        commit: async () => { },
+    });
+    return {
         collection: () => ({
             doc: () => ({
                 get: async () => ({ exists: false, data: () => null }),
@@ -68,23 +78,26 @@ const makeMockAdmin = () => ({
                 delete: async () => { },
             }),
         }),
-    }),
-    database: () => ({
-        ref: () => ({
-            once: async () => ({ val: () => null }),
-            set: async () => { },
-            remove: async () => { },
-        }),
+        batch: batchFn,
+        recursiveDelete: async () => { },
+    };
+};
+
+const makeMockRtdb = () => ({
+    ref: () => ({
+        once: async () => ({ val: () => null }),
+        set: async () => { },
+        remove: async () => { },
+        update: async () => { },
     }),
 });
 
 /** Installs a full working Firebase mock. Used by HTTP integration tests. */
 export const installFirebaseFakes = (): void => {
-    const mockAdmin = makeMockAdmin();
     installModuleFake('../../src/infrastructure/firebase/firebaseInit.js', {
-        default: mockAdmin,
-        db: mockAdmin.firestore(),
-        rtdb: mockAdmin.database(),
+        db: makeMockFirestore(),
+        auth: makeMockAuth(),
+        rtdb: makeMockRtdb(),
     });
 };
 

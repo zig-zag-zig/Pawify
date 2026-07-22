@@ -12,6 +12,7 @@ import {
   isPlainObject,
   stripDiscogsUrls,
 } from './utils.js';
+import { monitorUserMapsDocSizes } from '../monitoring/mapsDocSizeMonitor.js';
 import { getDocumentRefAndSnapshot } from './userStore.js';
 
 const normalizeFollowedArtistSummary = (
@@ -102,6 +103,10 @@ export const readFollowingArtistsMap = async (
 ): Promise<FollowingArtistsMap> => {
   const mapDoc = await getFollowingMapDocRef(userId).get();
   const normalizedMapDoc = normalizeFollowingCollectionDocument(mapDoc.data());
+
+  // Opportunistic monitoring of maps doc size
+  monitorUserMapsDocSizes(userId).catch(() => {});
+
   if (normalizedMapDoc) {
     return normalizedMapDoc;
   }

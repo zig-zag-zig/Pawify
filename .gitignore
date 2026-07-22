@@ -20,3 +20,4 @@ secrets/
 backups/
 service-account*.json
 firebase-service-account*.json
+.pi*

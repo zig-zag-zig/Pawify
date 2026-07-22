@@ -1,4 +1,5 @@
-import admin, { db } from '../../infrastructure/firebase/firebaseInit.js';
+import { db } from '../../infrastructure/firebase/firebaseInit.js';
+import type { WriteBatch } from 'firebase-admin/firestore';
 import type {
   MissingReleaseCleanupResult,
 } from './types.js';
@@ -32,7 +33,7 @@ export const removeReleaseFromAllUserDocuments = async (
     .collectionGroup(NEW_RELEASES_SUBCOLLECTION)
     .get();
 
-  const newReleaseMutations: Array<(batch: admin.firestore.WriteBatch) => void> = [];
+  const newReleaseMutations: Array<(batch: WriteBatch) => void> = [];
   for (const newReleaseDocument of newReleaseMatches.docs) {
     const normalized = normalizeNewReleasesCollectionDocument(newReleaseDocument.data());
     if (!normalized) {
