@@ -1,7 +1,12 @@
 import * as crypto from 'crypto';
-import admin, { db } from '../../infrastructure/firebase/firebaseInit.js';
+import { auth, db } from '../../infrastructure/firebase/firebaseInit.js';
+import { FieldValue } from 'firebase-admin/firestore';
 import { createLogger } from '../../common/logging/logger.js';
 import { sendOtpEmail } from '../emailService.js';
+import { hashOtp, isOtpMatch } from './otpHashing.js';
+
+// Re-export for backward-compatible imports and unit testing.
+export { hashOtp, isOtpMatch };
 
 const OTP_EXPIRY_MINUTES = 15;
 const MAX_OTP_ATTEMPTS = 3;
@@ -10,34 +15,13 @@ const OTP_DELIVERY_FAILED_MESSAGE = 'Could not send OTP. Please check the email 
 const RESET_REQUEST_NOT_FOUND_MESSAGE = 'Password reset request was not found or has expired.';
 const OTP_ATTEMPTS_EXCEEDED_MESSAGE = 'Too many incorrect OTP attempts. Please request a new OTP.';
 
-const hashOtp = (otp: string): string => {
-    return crypto.createHash('sha256').update(otp).digest('hex');
-};
-
-const constantTimeEquals = (left: string, right: string): boolean => {
-    const leftBuffer = Buffer.from(left);
-    const rightBuffer = Buffer.from(right);
-
-    return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer);
-};
-
-const isOtpMatch = (resetData: admin.firestore.DocumentData, otp: string): boolean => {
-    const hashedOtp = hashOtp(otp);
-
-    if (typeof resetData.otpHash === 'string') {
-        return constantTimeEquals(resetData.otpHash, hashedOtp);
-    }
-
-    return typeof resetData.otp === 'string' && constantTimeEquals(hashOtp(resetData.otp), hashedOtp);
-};
-
 const getErrorMessage = (error: unknown): string => {
     return error instanceof Error ? error.message : 'Unknown account service error';
 };
 
 const getUidWithEmail = async (email: string) => {
     try {
-        return await admin.auth().getUserByEmail(email);
+        return await auth.getUserByEmail(email);
     } catch (error) {
         return null;
     }
@@ -111,12 +95,12 @@ export const verifyOtp = async (email: string, otp: string): Promise<string> => 
             }
 
             await resetRef.update({
-                attempts: admin.firestore.FieldValue.increment(1),
+                attempts: FieldValue.increment(1),
             });
             throw new Error('Invalid OTP');
         }
 
-        const tempToken = await admin.auth().createCustomToken(user.uid, { signInMethod: 'customToken' });
+        const tempToken = await auth.createCustomToken(user.uid, { signInMethod: 'customToken' });
 
         await resetRef.delete();
 

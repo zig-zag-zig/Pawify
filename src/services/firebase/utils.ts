@@ -1,4 +1,4 @@
-import type admin from 'firebase-admin';
+import type { DocumentReference } from 'firebase-admin/firestore';
 import type { FollowedArtistSummary } from '../../utils/types/followedArtistTypes.js';
 
 export const makeDeepCopy = <T>(data: T): T => JSON.parse(JSON.stringify(data));
@@ -16,7 +16,7 @@ export const stripDiscogsUrls = (artistSummary: FollowedArtistSummary): Followed
 };
 
 export const getParentUserIdFromSubcollectionDocument = (
-  documentReference: admin.firestore.DocumentReference,
+  documentReference: DocumentReference,
 ): string | null => {
   return documentReference.parent.parent?.id ?? null;
 };

@@ -88,6 +88,39 @@ export const monitoringConfig = {
     sentryTracesSampleRate: parseFloatEnv(process.env.SENTRY_TRACES_SAMPLE_RATE, 0, 0, 1),
 };
 
+/**
+ * Resolve the password-reset OTP pepper from env. Exported for unit testing.
+ * In production, an empty/missing pepper throws (fail-fast) unless explicitly
+ * bypassed with ALLOW_INSECURE_PASSWORD_RESET_PEPPER=true.
+ */
+export const resolvePasswordResetPepper = (
+    pepper: string | undefined,
+    allowInsecure: string | undefined,
+    production: boolean,
+): string => {
+    const trimmed = pepper?.trim();
+    if (trimmed) {
+        return trimmed;
+    }
+    if (allowInsecure === 'true') {
+        return 'insecure-dev-pepper';
+    }
+    if (production) {
+        throw new Error('PASSWORD_RESET_PEPPER is required in production. Set ALLOW_INSECURE_PASSWORD_RESET_PEPPER=true to bypass.');
+    }
+    return 'insecure-dev-pepper';
+};
+
+const isProduction = runtimeEnvironment === 'production';
+
+export const securityConfig = {
+    passwordResetPepper: resolvePasswordResetPepper(
+        process.env.PASSWORD_RESET_PEPPER,
+        process.env.ALLOW_INSECURE_PASSWORD_RESET_PEPPER,
+        isProduction,
+    ),
+};
+
 export const firebaseAdminConfig = {
     serviceAccountJson: optionalEnv('FIREBASE_SERVICE_ACCOUNT_JSON'),
     credentialsFilePath: optionalEnv('GOOGLE_APPLICATION_CREDENTIALS'),
