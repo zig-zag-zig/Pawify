@@ -3,6 +3,10 @@ import type { MusicBrainzPriority } from './types.js';
 
 export type ExternalService = 'musicbrainz' | 'coverartarchive' | 'discogs' | 'genius' | 'expo' | 'other';
 
+// Node clamps setTimeout delays above 2^31 - 1 ms to 1 ms, which turns an
+// oversized wait into a tight timer storm. Never schedule beyond this.
+export const MAX_TIMEOUT_MS = 2 ** 31 - 1;
+
 const RATE_LIMIT_CONFIG = {
     musicbrainzForeground: { maxConcurrent: 1, delayMs: musicApiConfig.musicBrainzDelayMs },
     musicbrainzBackground: { maxConcurrent: 1, delayMs: musicApiConfig.musicBrainzBackgroundDelayMs },
@@ -19,6 +23,7 @@ export class RateLimiter {
     lastDispatchTime: number;
     processing: boolean;
     backoffUntil: number;
+    pendingTimer: ReturnType<typeof setTimeout> | undefined;
 
     constructor(maxConcurrent: number, delayMs: number) {
         this.maxConcurrent = maxConcurrent;
@@ -28,6 +33,7 @@ export class RateLimiter {
         this.lastDispatchTime = 0;
         this.processing = false;
         this.backoffUntil = 0;
+        this.pendingTimer = undefined;
     }
 
     async acquire(): Promise<() => void> {
@@ -43,11 +49,13 @@ export class RateLimiter {
 
     private release() {
         this.activeRequests = Math.max(0, this.activeRequests - 1);
-        setTimeout(() => this.processQueue(), 10);
+        this.scheduleProcessQueue(10);
     }
 
     setBackoff(ms: number) {
-        this.backoffUntil = Date.now() + ms;
+        // Concurrent responses can finish out of order; never let a shorter
+        // remaining wait override a longer deadline already in effect.
+        this.backoffUntil = Math.max(this.backoffUntil, Date.now() + ms);
     }
 
     processQueue() {
@@ -57,7 +65,8 @@ export class RateLimiter {
         }
 
         if (Date.now() < this.backoffUntil) {
-            setTimeout(() => this.processQueue(), this.backoffUntil - Date.now());
+            this.processing = true;
+            this.scheduleProcessQueue(this.backoffUntil - Date.now());
             return;
         }
 
@@ -66,12 +75,12 @@ export class RateLimiter {
         const timeSinceLastDispatch = now - this.lastDispatchTime;
 
         if (this.activeRequests >= this.maxConcurrent) {
-            setTimeout(() => this.processQueue(), 50);
+            this.scheduleProcessQueue(50);
             return;
         }
 
         if (timeSinceLastDispatch < this.delayMs) {
-            setTimeout(() => this.processQueue(), this.delayMs - timeSinceLastDispatch);
+            this.scheduleProcessQueue(this.delayMs - timeSinceLastDispatch);
             return;
         }
 
@@ -81,10 +90,20 @@ export class RateLimiter {
         if (next) next();
 
         if (this.queue.length > 0 && this.activeRequests < this.maxConcurrent) {
-            setTimeout(() => this.processQueue(), this.delayMs);
+            this.scheduleProcessQueue(this.delayMs);
         } else {
             this.processing = false;
         }
+    }
+
+    private scheduleProcessQueue(delayMs: number) {
+        if (this.pendingTimer !== undefined) {
+            clearTimeout(this.pendingTimer);
+        }
+        this.pendingTimer = setTimeout(() => {
+            this.pendingTimer = undefined;
+            this.processQueue();
+        }, Math.min(delayMs, MAX_TIMEOUT_MS));
     }
 }
 
@@ -119,6 +138,30 @@ export const getRateLimiter = (
 
 const isMusicBrainzRateLimitedStatus = (status: number): boolean => status === 429 || status === 503;
 
+// x-ratelimit-reset (Discogs, GitHub-style APIs) is an absolute Unix epoch in
+// seconds: "the current window resets at this instant". Convert it into the
+// remaining relative wait before merging it into the backoff duration.
+const addResetHeaderBackoff = (
+    remainingHeader: string | null,
+    resetHeader: string | null,
+    backoffMs: number,
+): number => {
+    if (remainingHeader === null || resetHeader === null) {
+        return backoffMs;
+    }
+
+    const remaining = parseInt(remainingHeader, 10);
+    const resetAtMs = parseInt(resetHeader, 10) * 1000;
+    if (remaining <= 0 && resetAtMs > 0) {
+        const waitMs = resetAtMs - Date.now();
+        if (waitMs > 0) {
+            backoffMs = Math.max(backoffMs, waitMs);
+        }
+    }
+
+    return backoffMs;
+};
+
 export const applyRateLimitHeaders = (
     response: Response,
     rateLimiter: RateLimiter,
@@ -139,23 +182,11 @@ export const applyRateLimitHeaders = (
 
     const discogsRemaining = response.headers.get('x-discogs-ratelimit-remaining');
     const discogsReset = response.headers.get('x-ratelimit-reset');
-    if (discogsRemaining !== null && discogsReset !== null) {
-        const remaining = parseInt(discogsRemaining, 10);
-        const resetTime = parseInt(discogsReset, 10) * 1000;
-        if (remaining <= 0 && resetTime > 0) {
-            backoffMs = Math.max(backoffMs, resetTime);
-        }
-    }
+    backoffMs = addResetHeaderBackoff(discogsRemaining, discogsReset, backoffMs);
 
     const genericRemaining = response.headers.get('x-ratelimit-remaining');
     const genericReset = response.headers.get('x-ratelimit-reset');
-    if (genericRemaining !== null && genericReset !== null) {
-        const remaining = parseInt(genericRemaining, 10);
-        const resetTime = parseInt(genericReset, 10) * 1000;
-        if (remaining <= 0 && resetTime > 0) {
-            backoffMs = Math.max(backoffMs, resetTime);
-        }
-    }
+    backoffMs = addResetHeaderBackoff(genericRemaining, genericReset, backoffMs);
 
     if (service === 'musicbrainz' && isMusicBrainzRateLimitedStatus(response.status)) {
         backoffMs = Math.max(backoffMs, musicApiConfig.musicBrainzMinRateLimitWaitMs);
