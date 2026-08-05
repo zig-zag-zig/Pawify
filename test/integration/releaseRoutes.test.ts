@@ -13,8 +13,9 @@ installAllFakes();
 let baseUrl: string;
 
 beforeEach(async () => {
-    const { releaseRoutes } = await import('../../src/features/releases/releaseRoutes.js');
-    baseUrl = await createIntegrationTestApp(releaseRoutes);
+    const { createReleaseRoutes } = await import('../../src/features/releases/releaseRoutes.js');
+    const { releasePresentersV1, releaseUseCasesV1 } = await import('../../src/api/useCaseVariants.js');
+    baseUrl = await createIntegrationTestApp(createReleaseRoutes(releaseUseCasesV1, releasePresentersV1));
 });
 
 afterEach(async () => {

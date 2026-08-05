@@ -15,6 +15,7 @@ import { fetchAndUpsertArtistProfileImages } from './tasks/workers/artistProfile
 import type {
     ArtistProfileImageTaskResult,
     ArtistProfileImageLookup,
+    ContractNamespace,
     NewReleaseCoverTaskResult,
     ReleaseGroupCoverTaskResult,
     ReleaseGroupPageEntry,
@@ -28,6 +29,15 @@ import type {
 } from '../utils/types/taskTypes.js';
 
 const logger = createLogger('services.backgroundTasks');
+
+/**
+ * Namespaces task dedupe keys per API contract so v1 and v2 never share
+ * background tasks for the same logical payload.
+ */
+export const withTaskKeyNamespace = (
+    contractNamespace: ContractNamespace | undefined,
+    key: string,
+): string => contractNamespace === 'v2' ? `v2:${key}` : key;
 
 type QueueChunkedTaskOptions<T extends BackgroundTaskResultPayload, TChunk> = {
     userId: string;
@@ -193,11 +203,12 @@ export const queueArtistReleaseGroupCoversTask = (
     artistId: string,
     pageEntries: ReleaseGroupPageEntry[],
     ttl: number | undefined,
+    contractNamespace?: ContractNamespace,
 ): string => {
     return queueChunkedTask<ReleaseGroupCoverTaskResult, ReleaseGroupPageEntry[]>({
         userId,
         type: 'release_group_covers',
-        dedupeKey: `release_group_covers:${artistId}`,
+        dedupeKey: withTaskKeyNamespace(contractNamespace, `release_group_covers:${artistId}`),
         initialResult: {
             artistId,
             covers: {},
@@ -214,11 +225,12 @@ export const queueReleaseGroupReleaseCoversTask = (
     releaseGroupId: string,
     pageEntries: ReleaseGroupReleasesPageEntry[],
     ttl: number | undefined,
+    contractNamespace?: ContractNamespace,
 ): string => {
     return queueChunkedTask<ReleaseGroupReleaseCoverTaskResult, ReleaseGroupReleasesPageEntry[]>({
         userId,
         type: 'release_group_release_covers',
-        dedupeKey: `release_group_release_covers:${releaseGroupId}`,
+        dedupeKey: withTaskKeyNamespace(contractNamespace, `release_group_release_covers:${releaseGroupId}`),
         initialResult: {
             releaseGroupId,
             covers: {},
@@ -257,11 +269,12 @@ export const queueTrackLyricsTask = (
     releaseId: string,
     tracks: TrackLyricsRequest[],
     ttl: number | undefined,
+    contractNamespace?: ContractNamespace,
 ): string => {
     return queueChunkedTask<TrackLyricsTaskResult, TrackLyricsRequest[]>({
         userId,
         type: 'release_tracks_lyrics',
-        dedupeKey: `release_tracks_lyrics:${releaseId}`,
+        dedupeKey: withTaskKeyNamespace(contractNamespace, `release_tracks_lyrics:${releaseId}`),
         initialResult: {
             releaseId,
             tracks: {},

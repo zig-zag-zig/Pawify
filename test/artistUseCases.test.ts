@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { installFirebaseServiceFake } from './helpers/moduleFakes.js';
+import { createDefaultAssetPlanner } from './helpers/assetPlannerFakes.js';
 import type { ArtistWriteUseCaseDependencies, ArtistReadUseCaseDependencies } from '../src/features/artists/ports.js';
 import type { FollowedArtistSummary } from '../src/utils/types/followedArtistTypes.js';
 
@@ -159,8 +160,11 @@ describe('artist use cases', () => {
         };
         const deps: Pick<
             ArtistReadUseCaseDependencies,
-            'artistDetailsGateway' | 'artistProfileImageQueue' | 'cacheTtlGateway' | 'requestDeduper'
+            'artistDetailsGateway' | 'artistProfileImageQueue' | 'assetPlanner' | 'cacheTtlGateway' | 'requestDeduper'
         > = {
+            assetPlanner: createDefaultAssetPlanner({
+                planArtistProfileImages: async () => ({ taskId: 'task-1', resolved: {} }),
+            }),
             artistDetailsGateway: {
                 async getArtistDetails(_userId, _artistId, options) {
                     assert.equal(options?.skipTtlLookup, true);
@@ -170,7 +174,7 @@ describe('artist use cases', () => {
             },
             artistProfileImageQueue: {
                 queueArtistProfileImages() { throw new Error('should not run'); },
-                queueArtistProfileImagesWithLookups() { return 'task-1'; },
+                queueArtistProfileImagesWithLookups() { throw new Error('should not run'); },
             },
             cacheTtlGateway: {
                 async getArtistTtl() { return 500; },
@@ -195,8 +199,9 @@ describe('artist use cases', () => {
         };
         const deps: Pick<
             ArtistReadUseCaseDependencies,
-            'artistDetailsGateway' | 'artistProfileImageQueue' | 'cacheTtlGateway' | 'requestDeduper'
+            'artistDetailsGateway' | 'artistProfileImageQueue' | 'assetPlanner' | 'cacheTtlGateway' | 'requestDeduper'
         > = {
+            assetPlanner: createDefaultAssetPlanner(),
             artistDetailsGateway: {
                 async getArtistDetails() { return null; },
                 async getFollowedArtistSummary() { throw new Error('should not run'); },
@@ -227,13 +232,20 @@ describe('artist use cases', () => {
                 'artist-1': { id: 'artist-1', name: 'Artist One', refreshedAt: Date.now() },
                 'artist-2': { id: 'artist-2', name: 'Artist Two', refreshedAt: Date.now() },
             };
-            let queueScope = '';
-            let queuedLookups: Array<{ artistId: string; artistName?: string }> = [];
+            let plannedScope = '';
+            let plannedLookups: Array<{ artistId: string; artistName?: string }> = [];
 
             const deps: Pick<
                 ArtistReadUseCaseDependencies,
-                'artistDetailsGateway' | 'artistFollowingRepository' | 'artistProfileImageQueue' | 'requestDeduper'
+                'artistDetailsGateway' | 'artistFollowingRepository' | 'artistProfileImageQueue' | 'assetPlanner' | 'requestDeduper'
             > = {
+                assetPlanner: createDefaultAssetPlanner({
+                    planArtistProfileImages: async ({ lookups, scope }) => {
+                        plannedScope = scope;
+                        plannedLookups = lookups;
+                        return { taskId: 'profile-task-1', resolved: {} };
+                    },
+                }),
                 artistDetailsGateway: {
                     async getArtistDetails() { throw new Error('should not run'); },
                     async getFollowedArtistSummary() { throw new Error('should not run'); },
@@ -252,11 +264,7 @@ describe('artist use cases', () => {
                 },
                 artistProfileImageQueue: {
                     queueArtistProfileImages() { throw new Error('should not run'); },
-                    queueArtistProfileImagesWithLookups(_userId, scope, lookups) {
-                        queueScope = scope;
-                        queuedLookups = lookups;
-                        return 'profile-task-1';
-                    },
+                    queueArtistProfileImagesWithLookups() { throw new Error('should not run'); },
                 },
                 requestDeduper: fakeRequestDeduper,
             };
@@ -268,20 +276,84 @@ describe('artist use cases', () => {
             assert.equal(result.artists[0]!.id, 'artist-1');
             assert.equal(result.artists[1]!.id, 'artist-2');
             assert.equal(result.profileImageTaskId, 'profile-task-1');
-            assert.equal(queueScope, 'following');
-            assert.equal(queuedLookups.length, 2);
+            assert.equal(plannedScope, 'following');
+            assert.equal(plannedLookups.length, 2);
         });
 
-        it('returns empty artists list when following state has no artistIds', async () => {
+        it('returns cached profile images immediately with no task when all are cached', async () => {
             const { createGetFollowingUseCase } = await import('../src/features/artists/usecases/getFollowing.js');
             const fakeRequestDeduper = {
                 async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
             };
+            const summaries: Record<string, import('../src/utils/types/followedArtistTypes.js').FollowedArtistSummary> = {
+                'artist-1': { id: 'artist-1', name: 'Artist One', refreshedAt: Date.now() },
+                'artist-2': { id: 'artist-2', name: 'Artist Two', refreshedAt: Date.now() },
+            };
+            let queueCalled = false;
 
             const deps: Pick<
                 ArtistReadUseCaseDependencies,
-                'artistDetailsGateway' | 'artistFollowingRepository' | 'artistProfileImageQueue' | 'requestDeduper'
+                'artistDetailsGateway' | 'artistFollowingRepository' | 'artistProfileImageQueue' | 'assetPlanner' | 'requestDeduper'
             > = {
+                assetPlanner: createDefaultAssetPlanner({
+                    planArtistProfileImages: async () => ({
+                        taskId: null,
+                        resolved: {
+                            'artist-1': 'https://img.example/one.jpg',
+                            'artist-2': 'https://img.example/two.jpg',
+                        },
+                    }),
+                }),
+                artistDetailsGateway: {
+                    async getArtistDetails() { throw new Error('should not run'); },
+                    async getFollowedArtistSummary() { throw new Error('should not run'); },
+                },
+                artistFollowingRepository: {
+                    async getFollowingArtistIds() { throw new Error('should not run'); },
+                    async getFollowingState() {
+                        return {
+                            artistIds: ['artist-1', 'artist-2'],
+                            artistSummaries: summaries,
+                        };
+                    },
+                    async saveFollowedArtist() { throw new Error('should not run'); },
+                    async saveFollowingArtistSummaries() { },
+                    async deleteFollowedArtist() { throw new Error('should not run'); },
+                },
+                artistProfileImageQueue: {
+                    queueArtistProfileImages() { throw new Error('should not run'); },
+                    queueArtistProfileImagesWithLookups() {
+                        queueCalled = true;
+                        return 'profile-task-1';
+                    },
+                },
+                requestDeduper: fakeRequestDeduper,
+            };
+
+            const useCase = createGetFollowingUseCase(deps);
+            const result = await useCase('user-1');
+
+            assert.equal(result.artists.length, 2);
+            assert.deepEqual(result.profileImages, {
+                'artist-1': 'https://img.example/one.jpg',
+                'artist-2': 'https://img.example/two.jpg',
+            });
+            assert.equal(result.profileImageTaskId, null);
+            assert.equal(queueCalled, false);
+        });
+
+        it('returns empty artists list and no task when following state has no artistIds', async () => {
+            const { createGetFollowingUseCase } = await import('../src/features/artists/usecases/getFollowing.js');
+            const fakeRequestDeduper = {
+                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
+            };
+            let queueCalled = false;
+
+            const deps: Pick<
+                ArtistReadUseCaseDependencies,
+                'artistDetailsGateway' | 'artistFollowingRepository' | 'artistProfileImageQueue' | 'assetPlanner' | 'requestDeduper'
+            > = {
+                assetPlanner: createDefaultAssetPlanner(),
                 artistDetailsGateway: {
                     async getArtistDetails() { throw new Error('should not run'); },
                     async getFollowedArtistSummary() { throw new Error('should not run'); },
@@ -297,7 +369,8 @@ describe('artist use cases', () => {
                 },
                 artistProfileImageQueue: {
                     queueArtistProfileImages() { throw new Error('should not run'); },
-                    queueArtistProfileImagesWithLookups(_userId, _scope, _lookups) {
+                    queueArtistProfileImagesWithLookups() {
+                        queueCalled = true;
                         return 'profile-task-empty';
                     },
                 },
@@ -308,7 +381,9 @@ describe('artist use cases', () => {
             const result = await useCase('user-1');
 
             assert.equal(result.artists.length, 0);
-            assert.equal(result.profileImageTaskId, 'profile-task-empty');
+            assert.deepEqual(result.profileImages, {});
+            assert.equal(result.profileImageTaskId, null);
+            assert.equal(queueCalled, false);
         });
 
         it('refetches stale summaries and persists them, swallowing persistence errors', async () => {
@@ -330,8 +405,9 @@ describe('artist use cases', () => {
 
             const deps: Pick<
                 ArtistReadUseCaseDependencies,
-                'artistDetailsGateway' | 'artistFollowingRepository' | 'artistProfileImageQueue' | 'requestDeduper'
+                'artistDetailsGateway' | 'artistFollowingRepository' | 'artistProfileImageQueue' | 'assetPlanner' | 'requestDeduper'
             > = {
+                assetPlanner: createDefaultAssetPlanner(),
                 artistDetailsGateway: {
                     async getArtistDetails() { throw new Error('should not run'); },
                     async getFollowedArtistSummary() { return freshSummary; },
@@ -375,20 +451,23 @@ describe('artist use cases', () => {
             const fakeRequestDeduper = {
                 async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
             };
-            let queuedScope = '';
-            let queuedLookups: Array<{ artistId: string; artistName?: string }> = [];
+            let plannedScope = '';
+            let plannedLookups: Array<{ artistId: string; artistName?: string }> = [];
 
             const deps: Pick<
                 ArtistReadUseCaseDependencies,
-                'artistProfileImageQueue' | 'artistSearchGateway' | 'requestDeduper'
+                'artistProfileImageQueue' | 'artistSearchGateway' | 'assetPlanner' | 'requestDeduper'
             > = {
+                assetPlanner: createDefaultAssetPlanner({
+                    planArtistProfileImages: async ({ lookups, scope }) => {
+                        plannedScope = scope;
+                        plannedLookups = lookups;
+                        return { taskId: 'search-task-1', resolved: {} };
+                    },
+                }),
                 artistProfileImageQueue: {
                     queueArtistProfileImages() { throw new Error('should not run'); },
-                    queueArtistProfileImagesWithLookups(_userId, scope, lookups) {
-                        queuedScope = scope;
-                        queuedLookups = lookups;
-                        return 'search-task-1';
-                    },
+                    queueArtistProfileImagesWithLookups() { throw new Error('should not run'); },
                 },
                 artistSearchGateway: {
                     async searchArtists(_userId, _query, _offset, _limit) {
@@ -412,9 +491,113 @@ describe('artist use cases', () => {
             assert.equal(result.artists.length, 2);
             assert.equal(result.artists[0]!.name, 'Band One');
             assert.equal(result.profileImageTaskId, 'search-task-1');
-            assert.ok(queuedScope.startsWith('search:band'));
-            assert.equal(queuedLookups.length, 2);
-            assert.equal(queuedLookups[0]!.artistId, 'artist-1');
+            assert.equal(plannedScope.startsWith('search:band'), true);
+            assert.equal(plannedLookups.length, 2);
+            assert.equal(plannedLookups[0]!.artistId, 'artist-1');
+        });
+
+        it('returns cached profile images immediately with no task when all are cached', async () => {
+            const { createSearchArtistsUseCase } = await import('../src/features/artists/usecases/searchArtists.js');
+            const fakeRequestDeduper = {
+                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
+            };
+            let queueCalled = false;
+
+            const deps: Pick<
+                ArtistReadUseCaseDependencies,
+                'artistProfileImageQueue' | 'artistSearchGateway' | 'assetPlanner' | 'requestDeduper'
+            > = {
+                assetPlanner: createDefaultAssetPlanner({
+                    planArtistProfileImages: async () => ({
+                        taskId: null,
+                        resolved: {
+                            'artist-1': 'https://img.example/one.jpg',
+                            'artist-2': 'https://img.example/two.jpg',
+                        },
+                    }),
+                }),
+                artistProfileImageQueue: {
+                    queueArtistProfileImages() { throw new Error('should not run'); },
+                    queueArtistProfileImagesWithLookups() {
+                        queueCalled = true;
+                        return 'search-task-1';
+                    },
+                },
+                artistSearchGateway: {
+                    async searchArtists(_userId, _query, _offset, _limit) {
+                        return {
+                            artists: [
+                                { id: 'artist-1', name: 'Band One', type: 'Group', disambiguation: null, aliases: [], members: [], externalLinks: [], lifeSpan: { begin: null, end: null, ended: false }, beginArea: { name: null } },
+                                { id: 'artist-2', name: 'Band Two', type: 'Group', disambiguation: null, aliases: [], members: [], externalLinks: [], lifeSpan: { begin: null, end: null, ended: false }, beginArea: { name: null } },
+                            ],
+                            count: 2,
+                            offset: 0,
+                        };
+                    },
+                },
+                requestDeduper: fakeRequestDeduper,
+            };
+
+            const useCase = createSearchArtistsUseCase(deps);
+            const result = await useCase('user-1', 'band', 0, 25);
+
+            assert.equal(result.count, 2);
+            assert.deepEqual(result.profileImages, {
+                'artist-1': 'https://img.example/one.jpg',
+                'artist-2': 'https://img.example/two.jpg',
+            });
+            assert.equal(result.profileImageTaskId, null);
+            assert.equal(queueCalled, false);
+        });
+
+        it('returns cached profile images immediately and queues only pending artists', async () => {
+            const { createSearchArtistsUseCase } = await import('../src/features/artists/usecases/searchArtists.js');
+            const fakeRequestDeduper = {
+                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
+            };
+            let plannedLookups: Array<{ artistId: string }> = [];
+
+            const deps: Pick<
+                ArtistReadUseCaseDependencies,
+                'artistProfileImageQueue' | 'artistSearchGateway' | 'assetPlanner' | 'requestDeduper'
+            > = {
+                assetPlanner: createDefaultAssetPlanner({
+                    planArtistProfileImages: async ({ lookups }) => {
+                        plannedLookups = lookups;
+                        return {
+                            taskId: 'search-task-1',
+                            resolved: { 'artist-1': 'https://img.example/one.jpg' },
+                        };
+                    },
+                }),
+                artistProfileImageQueue: {
+                    queueArtistProfileImages() { throw new Error('should not run'); },
+                    queueArtistProfileImagesWithLookups() { throw new Error('should not run'); },
+                },
+                artistSearchGateway: {
+                    async searchArtists(_userId, _query, _offset, _limit) {
+                        return {
+                            artists: [
+                                { id: 'artist-1', name: 'Band One', type: 'Group', disambiguation: null, aliases: [], members: [], externalLinks: [], lifeSpan: { begin: null, end: null, ended: false }, beginArea: { name: null } },
+                                { id: 'artist-2', name: 'Band Two', type: 'Group', disambiguation: null, aliases: [], members: [], externalLinks: [], lifeSpan: { begin: null, end: null, ended: false }, beginArea: { name: null } },
+                            ],
+                            count: 2,
+                            offset: 0,
+                        };
+                    },
+                },
+                requestDeduper: fakeRequestDeduper,
+            };
+
+            const useCase = createSearchArtistsUseCase(deps);
+            const result = await useCase('user-1', 'band', 0, 25);
+
+            assert.equal(result.count, 2);
+            assert.deepEqual(result.profileImages, { 'artist-1': 'https://img.example/one.jpg' });
+            assert.equal(result.profileImageTaskId, 'search-task-1');
+            assert.equal(plannedLookups.length, 2);
+            assert.equal(plannedLookups[0]!.artistId, 'artist-1');
+            assert.equal(plannedLookups[1]!.artistId, 'artist-2');
         });
     });
 });

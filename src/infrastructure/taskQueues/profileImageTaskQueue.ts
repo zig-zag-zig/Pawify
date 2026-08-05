@@ -1,7 +1,10 @@
-import { queueArtistProfileImagesTask } from '../../services/backgroundTaskWorkers.js';
+import { queueArtistProfileImagesTask, withTaskKeyNamespace } from '../../services/backgroundTaskWorkers.js';
 import { addTaskUser } from '../../services/taskService.js';
 import { transientArtistCacheTtlHours } from '../../utils/helpers/followingHelper.js';
-import type { ArtistProfileImageLookup } from '../../utils/types/taskTypes.js';
+import type {
+    ArtistProfileImageLookup,
+    ArtistProfileImageQueueOptions,
+} from '../../utils/types/taskTypes.js';
 
 export interface ArtistProfileImageTaskQueue {
     queueArtistProfileImages(
@@ -9,12 +12,14 @@ export interface ArtistProfileImageTaskQueue {
         scope: string,
         artistIds: string[],
         ttl: number | undefined,
+        options?: ArtistProfileImageQueueOptions,
     ): string;
     queueArtistProfileImagesWithLookups(
         userId: string,
         scope: string,
         artistLookups: ArtistProfileImageLookup[],
         ttl: number | undefined,
+        options?: ArtistProfileImageQueueOptions,
     ): string;
 }
 
@@ -32,22 +37,26 @@ export const artistProfileImageTaskQueue: ArtistProfileImageTaskQueue = {
         scope: string,
         artistIds: string[],
         ttl: number | undefined,
+        options?: ArtistProfileImageQueueOptions,
     ): string => queueArtistProfileImagesInternal(
         userId,
         scope,
         artistIds.map((artistId) => ({ artistId })),
         ttl,
+        options,
     ),
     queueArtistProfileImagesWithLookups: (
         userId: string,
         scope: string,
         artistLookups: ArtistProfileImageLookup[],
         ttl: number | undefined,
+        options?: ArtistProfileImageQueueOptions,
     ): string => queueArtistProfileImagesInternal(
         userId,
         scope,
         artistLookups,
         ttl,
+        options,
     ),
 };
 
@@ -56,6 +65,7 @@ const queueArtistProfileImagesInternal = (
     scope: string,
     artistLookups: ArtistProfileImageLookup[],
     ttl: number | undefined,
+    options?: ArtistProfileImageQueueOptions,
 ): string => {
     const effectiveTtl = ttl ?? transientArtistCacheTtlHours;
     const normalizedArtistLookups = Array.from(
@@ -73,10 +83,10 @@ const queueArtistProfileImagesInternal = (
             return map;
         }, new Map<string, ArtistProfileImageLookup>()).values(),
     );
-    const uniqueArtistIds = normalizedArtistLookups.map((lookup) => lookup.artistId);
+    const uniqueArtistIds = options?.fullArtistIds ?? normalizedArtistLookups.map((lookup) => lookup.artistId);
     const taskId = queueArtistProfileImagesTask(
         userId,
-        getProfileImageDedupeKey(scope, uniqueArtistIds),
+        withTaskKeyNamespace(options?.contractNamespace, getProfileImageDedupeKey(scope, uniqueArtistIds)),
         normalizedArtistLookups,
         effectiveTtl,
     );

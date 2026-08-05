@@ -11,19 +11,20 @@ const logger = createLogger('features.artists').child('getFollowing');
 
 type GetFollowingResult = {
     artists: ArtistMinimal[];
-    profileImageTaskId: string;
+    profileImageTaskId: string | null;
+    profileImages: Record<string, string | null>;
 };
 
 export const createGetFollowingUseCase = ({
     artistDetailsGateway,
     artistFollowingRepository,
-    artistProfileImageQueue,
+    assetPlanner,
     requestDeduper,
 }: Pick<
     ArtistReadUseCaseDependencies,
     | 'artistDetailsGateway'
     | 'artistFollowingRepository'
-    | 'artistProfileImageQueue'
+    | 'assetPlanner'
     | 'requestDeduper'
 >) => async (
     userId: string,
@@ -84,13 +85,16 @@ export const createGetFollowingUseCase = ({
         };
     });
 
+    const plan = await assetPlanner.planArtistProfileImages({
+        userId,
+        scope: 'following',
+        lookups: payload.artistLookups,
+        ttl: artistCacheTtlHours,
+    });
+
     return {
         artists: payload.artists,
-        profileImageTaskId: artistProfileImageQueue.queueArtistProfileImagesWithLookups(
-            userId,
-            'following',
-            payload.artistLookups,
-            artistCacheTtlHours,
-        ),
+        profileImages: plan.resolved,
+        profileImageTaskId: plan.taskId,
     };
 };

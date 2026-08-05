@@ -6,21 +6,27 @@ const flattenNewReleasesMap = (newReleasesMap: NewReleasesById): NewRelease[] =>
     return Object.values(newReleasesMap);
 };
 
+export type GetNewReleasesResult = Omit<NewReleasesResult, 'releaseCoverTaskId'> & {
+    releaseCoverTaskId: string | null;
+    releaseCovers: Record<string, string | null>;
+};
+
 export const createGetNewReleasesUseCase = ({
     newReleasesRepository,
-    releaseTaskQueue,
-}: Pick<ReleaseUseCaseDependencies, 'newReleasesRepository' | 'releaseTaskQueue'>) => async (
+    assetPlanner,
+}: Pick<ReleaseUseCaseDependencies, 'newReleasesRepository' | 'assetPlanner'>) => async (
     userId: string,
-): Promise<NewReleasesResult> => {
+): Promise<GetNewReleasesResult> => {
     const snapshot = await newReleasesRepository.getNewReleasesSnapshot(userId);
     const releases = sortNewReleasesNewestFirst(flattenNewReleasesMap(snapshot.newReleasesMap));
+    const plan = await assetPlanner.planNewReleaseCovers({
+        userId,
+        pageEntries: snapshot.coverPageEntries,
+    });
 
     return {
         releases,
-        releaseCoverTaskId: releaseTaskQueue.queueNewReleaseCovers(
-            userId,
-            snapshot.coverPageEntries,
-            undefined,
-        ),
+        releaseCovers: plan.resolved,
+        releaseCoverTaskId: plan.taskId,
     };
 };

@@ -1,4 +1,5 @@
 import type { RequestDeduperPort } from '../../common/request/requestDeduper.js';
+import type { BackgroundAssetPlanner } from '../../services/backgroundAssets/plannerTypes.js';
 import type {
     NewRelease,
     Release,
@@ -6,8 +7,10 @@ import type {
 } from '../../modules/models/models.js';
 import type { CachedArtistReleases } from '../../utils/types/cacheTypes.js';
 import type {
+    ContractNamespace,
     ReleaseGroupPageEntry,
     ReleaseGroupReleasesPageEntry,
+    TrackLyricsRequest,
 } from '../../utils/types/taskTypes.js';
 
 export type NewReleasesById = {
@@ -38,6 +41,10 @@ export interface ReleaseCatalogGateway {
     releaseExists(releaseId: string): Promise<boolean>;
 }
 
+type TaskQueueOptions = {
+    contractNamespace?: ContractNamespace;
+};
+
 export interface ReleaseTaskQueue {
     addTaskUser(taskId: string, userId: string): void;
     queueArtistReleaseGroupCovers(
@@ -45,16 +52,40 @@ export interface ReleaseTaskQueue {
         artistId: string,
         pageEntries: ReleaseGroupPageEntry[],
         ttl: number | undefined,
+        options?: TaskQueueOptions,
     ): string;
     queueReleaseGroupReleaseCovers(
         userId: string,
         releaseGroupId: string,
         pageEntries: ReleaseGroupReleasesPageEntry[],
         ttl: number | undefined,
+        options?: TaskQueueOptions,
     ): string;
-    queueNewReleaseCovers(userId: string, pageEntries: ReleaseGroupReleasesPageEntry[], ttl: number | undefined): string;
-    queueReleaseTrackLyrics(userId: string, release: Release, ttl: number | undefined): string;
-    queueReleaseArtistProfileImages(userId: string, release: Release, ttl: number | undefined): string;
+    queueNewReleaseCovers(
+        userId: string,
+        pageEntries: ReleaseGroupReleasesPageEntry[],
+        ttl: number | undefined,
+        options?: TaskQueueOptions & {
+            pendingEntries?: ReleaseGroupReleasesPageEntry[];
+        },
+    ): string;
+    queueReleaseTrackLyrics(
+        userId: string,
+        release: Release,
+        ttl: number | undefined,
+        options?: TaskQueueOptions & {
+            pendingTracks?: TrackLyricsRequest[];
+        },
+    ): string;
+    queueReleaseArtistProfileImages(
+        userId: string,
+        release: Release,
+        ttl: number | undefined,
+        options?: TaskQueueOptions & {
+            pendingArtistIds?: string[];
+            fullArtistIds?: string[];
+        },
+    ): string;
 }
 
 export interface NewReleasesRepository {
@@ -83,6 +114,7 @@ type ReleaseSharedUseCaseDependencies = {
 };
 
 export type ReleaseReadUseCaseDependencies = ReleaseSharedUseCaseDependencies & {
+    assetPlanner: BackgroundAssetPlanner;
     requestDeduper: RequestDeduperPort;
 };
 

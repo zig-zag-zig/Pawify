@@ -1,9 +1,11 @@
 import type { RequestDeduperPort } from '../../common/request/requestDeduper.js';
+import type { ArtistProfileImagesPlanner } from '../../services/backgroundAssets/plannerTypes.js';
 import type {
     Artist,
     ArtistSearchResult,
 } from '../../modules/models/models.js';
 import type { FollowedArtistSummary } from '../../utils/types/followedArtistTypes.js';
+import type { ArtistProfileImageQueueOptions } from '../../utils/types/taskTypes.js';
 
 type FollowedArtistsById = { [artistId: string]: FollowedArtistSummary };
 
@@ -55,12 +57,14 @@ interface ArtistProfileImageQueue {
         scope: string,
         artistIds: string[],
         ttl: number | undefined,
+        options?: ArtistProfileImageQueueOptions,
     ): string;
     queueArtistProfileImagesWithLookups(
         userId: string,
         scope: string,
         artistLookups: { artistId: string; artistName?: string; discogsUrls?: string[] }[],
         ttl: number | undefined,
+        options?: ArtistProfileImageQueueOptions,
     ): string;
 }
 
@@ -88,6 +92,7 @@ type ArtistSharedUseCaseDependencies = {
 };
 
 export type ArtistReadUseCaseDependencies = ArtistSharedUseCaseDependencies & {
+    assetPlanner: ArtistProfileImagesPlanner;
     requestDeduper: RequestDeduperPort;
 };
 

@@ -1,18 +1,20 @@
 import express from 'express';
-import {
-    getArtistReleasesHandler,
-    getNewReleasesHandler,
-    getReleaseGroupReleasesHandler,
-    getReleaseHandler,
-    removeNewReleasesHandler,
-    verifyReleaseExistenceHandler,
-} from './handlers/releaseHandlers.js';
+import { createReleaseHandlers, type ReleaseWirePresenters } from './handlers/releaseHandlers.js';
+import type { ReleaseUseCases } from './releaseUseCases.js';
 
-export const releaseRoutes = express.Router();
+export const createReleaseRoutes = (
+    releaseUseCases: ReleaseUseCases,
+    presenters: ReleaseWirePresenters,
+): express.Router => {
+    const router = express.Router();
+    const handlers = createReleaseHandlers(releaseUseCases, presenters);
 
-releaseRoutes.get('/getNewReleases', getNewReleasesHandler);
-releaseRoutes.post('/removeNewReleases', removeNewReleasesHandler);
-releaseRoutes.post('/getArtistReleases', getArtistReleasesHandler);
-releaseRoutes.post('/getReleaseGroupReleases', getReleaseGroupReleasesHandler);
-releaseRoutes.post('/getRelease', getReleaseHandler);
-releaseRoutes.post('/verifyReleaseExistence', verifyReleaseExistenceHandler);
+    router.get('/getNewReleases', handlers.getNewReleasesHandler);
+    router.post('/removeNewReleases', handlers.removeNewReleasesHandler);
+    router.post('/getArtistReleases', handlers.getArtistReleasesHandler);
+    router.post('/getReleaseGroupReleases', handlers.getReleaseGroupReleasesHandler);
+    router.post('/getRelease', handlers.getReleaseHandler);
+    router.post('/verifyReleaseExistence', handlers.verifyReleaseExistenceHandler);
+
+    return router;
+};

@@ -25,7 +25,7 @@ import type { ArtistUseCaseDependencies } from '../ports.js';
 
 const logger = createLogger('features.artists.dependencies');
 
-export const artistDependencies: ArtistUseCaseDependencies = {
+export const artistDependencies: Omit<ArtistUseCaseDependencies, 'assetPlanner'> = {
     artistDetailsGateway: {
         getArtistDetails: async (userId, artistId, options) => {
             const artist = await getArtistDetailsFromService(userId, artistId, options);

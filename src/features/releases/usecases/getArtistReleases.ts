@@ -1,19 +1,26 @@
 import type { CachedArtistReleases } from '../../../utils/types/cacheTypes.js';
 import type { ReleaseReadUseCaseDependencies } from '../ports.js';
+import type { ReleaseGroupPageEntry } from '../../../utils/types/taskTypes.js';
 
 type GetArtistReleasesResult = {
     releaseGroups: CachedArtistReleases;
-    releaseGroupCoverTaskId: string;
+    releaseGroupCoverTaskId: string | null;
+    releaseGroupCovers: Record<string, string | null>;
 };
 
 export const createGetArtistReleasesUseCase = ({
     artistReleaseContextGateway,
     releaseCatalogGateway,
     releaseTaskQueue,
+    assetPlanner,
     requestDeduper,
 }: Pick<
     ReleaseReadUseCaseDependencies,
-    'artistReleaseContextGateway' | 'releaseCatalogGateway' | 'releaseTaskQueue' | 'requestDeduper'
+    | 'artistReleaseContextGateway'
+    | 'releaseCatalogGateway'
+    | 'releaseTaskQueue'
+    | 'assetPlanner'
+    | 'requestDeduper'
 >) => async (
     userId: string,
     artistId: string,
@@ -25,22 +32,31 @@ export const createGetArtistReleasesUseCase = ({
             ttl,
             async () => { },
         );
-        const releaseGroupCoverTaskId = releaseTaskQueue.queueArtistReleaseGroupCovers(
-            userId,
-            artistId,
-            releaseGroups.map(group => ({
-                releaseGroupId: group.id,
-                releaseIds: group.releaseIds,
-            })),
-            ttl,
-        );
-
         return {
             releaseGroups,
-            releaseGroupCoverTaskId,
+            ttl,
         };
     });
 
-    releaseTaskQueue.addTaskUser(payload.releaseGroupCoverTaskId, userId);
-    return payload;
+    const pageEntries: ReleaseGroupPageEntry[] = payload.releaseGroups.map(group => ({
+        releaseGroupId: group.id,
+        releaseIds: group.releaseIds,
+    }));
+
+    const plan = await assetPlanner.planArtistReleaseGroupCovers({
+        userId,
+        artistId,
+        pageEntries,
+        ttl: payload.ttl,
+    });
+
+    if (plan.taskId !== null) {
+        releaseTaskQueue.addTaskUser(plan.taskId, userId);
+    }
+
+    return {
+        releaseGroups: payload.releaseGroups,
+        releaseGroupCovers: plan.resolved,
+        releaseGroupCoverTaskId: plan.taskId,
+    };
 };
