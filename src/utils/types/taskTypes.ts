@@ -36,6 +36,19 @@ export type ArtistProfileImageLookup = {
     discogsUrls?: string[];
 };
 
+/**
+ * API contract namespace. v2 prefixes its task dedupe keys so v1 and v2
+ * clients never collide on the same background task.
+ */
+export type ContractNamespace = 'v1' | 'v2';
+
+export type ArtistProfileImageQueueOptions = {
+    /** Full artist id set used for dedupe when only a pending subset is queued. */
+    fullArtistIds?: string[];
+    /** v2 prefixes dedupe keys with 'v2:'. Defaults to v1 keys. */
+    contractNamespace?: ContractNamespace;
+};
+
 export type ReleaseGroupPageEntry = {
     releaseGroupId: string;
     releaseIds: string[];

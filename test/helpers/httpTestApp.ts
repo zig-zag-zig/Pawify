@@ -52,7 +52,23 @@ export const createIntegrationTestApp = async (router: Router): Promise<string> 
     return startTestServer(app);
 };
 
-let testServer: Server | undefined;
+let testServers: Server[] = [];
+
+const closeServer = async (server: Server): Promise<void> => {
+    // Drop keep-alive sockets so close() can finish promptly in Node 22+.
+    server.closeAllConnections?.();
+    server.closeIdleConnections?.();
+
+    await new Promise<void>((resolve, reject) => {
+        server.close((error) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+            resolve();
+        });
+    });
+};
 
 export const startTestServer = async (app?: express.Express): Promise<string> => {
     const testApp = app ?? express();
@@ -65,25 +81,18 @@ export const startTestServer = async (app?: express.Express): Promise<string> =>
             resolve(instance);
         });
     });
-    testServer = listener;
+    testServers.push(listener);
 
     const address = listener.address() as AddressInfo;
     return `http://127.0.0.1:${address.port}`;
 };
 
 export const stopTestServer = async (): Promise<void> => {
-    if (!testServer) {
+    if (testServers.length === 0) {
         return;
     }
 
-    await new Promise<void>((resolve, reject) => {
-        testServer?.close((error) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-            resolve();
-        });
-    });
-    testServer = undefined;
+    const servers = testServers;
+    testServers = [];
+    await Promise.all(servers.map((server) => closeServer(server)));
 };

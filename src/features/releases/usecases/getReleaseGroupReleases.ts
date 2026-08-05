@@ -1,18 +1,21 @@
 import type { ReleaseGroupReleaseListItem } from '../../../modules/models/models.js';
 import type { ReleaseReadUseCaseDependencies } from '../ports.js';
+import type { ReleaseGroupReleasesPageEntry } from '../../../utils/types/taskTypes.js';
 
 type GetReleaseGroupReleasesResult = {
     releases: ReleaseGroupReleaseListItem[];
-    releaseCoverTaskId: string;
+    releaseCoverTaskId: string | null;
+    releaseCovers: Record<string, string | null>;
 };
 
 export const createGetReleaseGroupReleasesUseCase = ({
     releaseCatalogGateway,
     releaseTaskQueue,
+    assetPlanner,
     requestDeduper,
 }: Pick<
     ReleaseReadUseCaseDependencies,
-    'releaseCatalogGateway' | 'releaseTaskQueue' | 'requestDeduper'
+    'releaseCatalogGateway' | 'releaseTaskQueue' | 'assetPlanner' | 'requestDeduper'
 >) => async (
     userId: string,
     releaseGroupId: string,
@@ -21,7 +24,7 @@ export const createGetReleaseGroupReleasesUseCase = ({
         `getReleaseGroupReleases:${userId}:${releaseGroupId}`,
         async () => {
             const ttl: number | undefined = undefined;
-            const coverPageEntries: { releaseGroupId: string; releaseIds: string[] }[] = [];
+            const coverPageEntries: ReleaseGroupReleasesPageEntry[] = [];
 
             const releases = await releaseCatalogGateway.getReleaseGroupReleases(releaseGroupId, ttl, async (groupId, releaseIds) => {
                 coverPageEntries.push({
@@ -30,20 +33,27 @@ export const createGetReleaseGroupReleasesUseCase = ({
                 });
             });
 
-            const releaseCoverTaskId = releaseTaskQueue.queueReleaseGroupReleaseCovers(
-                userId,
-                releaseGroupId,
-                coverPageEntries,
-                ttl,
-            );
-
             return {
                 releases,
-                releaseCoverTaskId,
+                coverPageEntries,
             };
         },
     );
 
-    releaseTaskQueue.addTaskUser(payload.releaseCoverTaskId, userId);
-    return payload;
+    const plan = await assetPlanner.planReleaseGroupReleaseCovers({
+        userId,
+        releaseGroupId,
+        pageEntries: payload.coverPageEntries,
+        ttl: undefined,
+    });
+
+    if (plan.taskId !== null) {
+        releaseTaskQueue.addTaskUser(plan.taskId, userId);
+    }
+
+    return {
+        releases: payload.releases,
+        releaseCovers: plan.resolved,
+        releaseCoverTaskId: plan.taskId,
+    };
 };

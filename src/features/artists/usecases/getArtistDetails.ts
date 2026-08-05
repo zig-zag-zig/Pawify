@@ -4,18 +4,19 @@ import type { ArtistReadUseCaseDependencies } from '../ports.js';
 
 type GetArtistDetailsResult = {
     artist: Artist;
-    profileImageTaskId: string;
+    profileImageTaskId: string | null;
+    profileImages: Record<string, string | null>;
 } | null;
 
 export const createGetArtistDetailsUseCase = ({
     artistDetailsGateway,
-    artistProfileImageQueue,
+    assetPlanner,
     cacheTtlGateway,
     requestDeduper,
 }: Pick<
     ArtistReadUseCaseDependencies,
     | 'artistDetailsGateway'
-    | 'artistProfileImageQueue'
+    | 'assetPlanner'
     | 'cacheTtlGateway'
     | 'requestDeduper'
 >) => async (
@@ -35,13 +36,17 @@ export const createGetArtistDetailsUseCase = ({
         return null;
     }
 
+    const lookup = mapArtistToProfileImageLookup(artistId, artist);
+    const plan = await assetPlanner.planArtistProfileImages({
+        userId,
+        scope: 'artist_details',
+        lookups: [lookup],
+        ttl,
+    });
+
     return {
         artist,
-        profileImageTaskId: artistProfileImageQueue.queueArtistProfileImagesWithLookups(
-            userId,
-            'artist_details',
-            [mapArtistToProfileImageLookup(artistId, artist)],
-            ttl,
-        ),
+        profileImages: plan.resolved,
+        profileImageTaskId: plan.taskId,
     };
 };

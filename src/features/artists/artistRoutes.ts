@@ -1,18 +1,20 @@
 import express from 'express';
-import {
-    followArtistHandler,
-    getArtistDetailsHandler,
-    getFollowingHandler,
-    searchArtistsHandler,
-    unfollowArtistHandler,
-    unfollowArtistsHandler,
-} from './handlers/artistHandlers.js';
+import { createArtistHandlers, type ArtistWirePresenters } from './handlers/artistHandlers.js';
+import type { ArtistUseCases } from './artistUseCases.js';
 
-export const artistRoutes = express.Router();
+export const createArtistRoutes = (
+    artistUseCases: ArtistUseCases,
+    presenters: ArtistWirePresenters,
+): express.Router => {
+    const router = express.Router();
+    const handlers = createArtistHandlers(artistUseCases, presenters);
 
-artistRoutes.get('/getFollowing', getFollowingHandler);
-artistRoutes.post('/getArtistDetails', getArtistDetailsHandler);
-artistRoutes.post('/searchArtists', searchArtistsHandler);
-artistRoutes.post('/followArtist', followArtistHandler);
-artistRoutes.post('/unfollowArtist', unfollowArtistHandler);
-artistRoutes.post('/unfollowArtists', unfollowArtistsHandler);
+    router.get('/getFollowing', handlers.getFollowingHandler);
+    router.post('/getArtistDetails', handlers.getArtistDetailsHandler);
+    router.post('/searchArtists', handlers.searchArtistsHandler);
+    router.post('/followArtist', handlers.followArtistHandler);
+    router.post('/unfollowArtist', handlers.unfollowArtistHandler);
+    router.post('/unfollowArtists', handlers.unfollowArtistsHandler);
+
+    return router;
+};

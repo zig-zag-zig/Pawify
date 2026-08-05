@@ -13,8 +13,9 @@ installAllFakes();
 let baseUrl: string;
 
 beforeEach(async () => {
-    const { artistRoutes } = await import('../../src/features/artists/artistRoutes.js');
-    baseUrl = await createIntegrationTestApp(artistRoutes);
+    const { createArtistRoutes } = await import('../../src/features/artists/artistRoutes.js');
+    const { artistPresentersV1, artistUseCasesV1 } = await import('../../src/api/useCaseVariants.js');
+    baseUrl = await createIntegrationTestApp(createArtistRoutes(artistUseCasesV1, artistPresentersV1));
 });
 
 afterEach(async () => {

@@ -3,37 +3,41 @@ import { transientArtistCacheTtlHours } from '../../../utils/helpers/followingHe
 import type { ArtistReadUseCaseDependencies } from '../ports.js';
 
 export type SearchArtistsResult = ArtistSearchResult & {
-    profileImageTaskId: string;
+    profileImageTaskId: string | null;
+    profileImages: Record<string, string | null>;
 };
 
 export const createSearchArtistsUseCase = ({
-    artistProfileImageQueue,
     artistSearchGateway,
+    assetPlanner,
     requestDeduper,
 }: Pick<
     ArtistReadUseCaseDependencies,
-    'artistProfileImageQueue' | 'artistSearchGateway' | 'requestDeduper'
+    'artistSearchGateway' | 'assetPlanner' | 'requestDeduper'
 >) => async (
     userId: string,
     query: string,
     offset: number,
     limit: number,
 ): Promise<SearchArtistsResult> => {
-    return await requestDeduper.run(`searchArtists:${userId}:${query}:${limit}:${offset}`, async () => {
-        const result = await artistSearchGateway.searchArtists(userId, query, offset, limit);
-        const artistLookups = result.artists.map((artist) => ({
-            artistId: artist.id,
-            artistName: artist.name,
-        }));
-
-        return {
-            ...result,
-            profileImageTaskId: artistProfileImageQueue.queueArtistProfileImagesWithLookups(
-                userId,
-                `search:${query}:${limit}:${offset}`,
-                artistLookups,
-                transientArtistCacheTtlHours,
-            ),
-        };
+    const result = await requestDeduper.run(
+        `searchArtists:${userId}:${query}:${limit}:${offset}`,
+        async () => await artistSearchGateway.searchArtists(userId, query, offset, limit),
+    );
+    const artistLookups = result.artists.map((artist) => ({
+        artistId: artist.id,
+        artistName: artist.name,
+    }));
+    const plan = await assetPlanner.planArtistProfileImages({
+        userId,
+        scope: `search:${query}:${limit}:${offset}`,
+        lookups: artistLookups,
+        ttl: transientArtistCacheTtlHours,
     });
+
+    return {
+        ...result,
+        profileImages: plan.resolved,
+        profileImageTaskId: plan.taskId,
+    };
 };

@@ -7,19 +7,19 @@ import { createReleaseRoutes } from '../features/releases/releaseRoutes.js';
 import { userSettingsRoutes } from '../features/userSettings/userSettingsRoutes.js';
 import { notificationRoutes } from '../features/notifications/notificationRoutes.js';
 import { taskRoutes } from '../features/tasks/taskRoutes.js';
-import { artistPresentersV1, artistUseCasesV1 } from './useCaseVariants.js';
-import { releasePresentersV1, releaseUseCasesV1 } from './useCaseVariants.js';
+import { artistPresentersV2, artistUseCasesV2 } from './useCaseVariants.js';
+import { releasePresentersV2, releaseUseCasesV2 } from './useCaseVariants.js';
 
-export const API_V1_PREFIX = '/v1';
+export const API_V2_PREFIX = '/v2';
 
-export const createApiV1Routes = (): Router => {
+export const createApiV2Routes = (): Router => {
     const router = express.Router();
 
     router.use(healthRoutes);
     router.use(authRoutes);
     router.use(pushTokenRoutes);
-    router.use(createArtistRoutes(artistUseCasesV1, artistPresentersV1));
-    router.use(createReleaseRoutes(releaseUseCasesV1, releasePresentersV1));
+    router.use(createArtistRoutes(artistUseCasesV2, artistPresentersV2));
+    router.use(createReleaseRoutes(releaseUseCasesV2, releasePresentersV2));
     router.use(userSettingsRoutes);
     router.use(notificationRoutes);
     router.use(taskRoutes);

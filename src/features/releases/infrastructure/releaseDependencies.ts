@@ -9,7 +9,7 @@ import {
 import { releaseTaskQueue } from './releaseTaskQueue.js';
 import type { ReleaseUseCaseDependencies } from '../ports.js';
 
-export const releaseDependencies: ReleaseUseCaseDependencies = {
+export const releaseDependencies: Omit<ReleaseUseCaseDependencies, 'assetPlanner'> = {
     artistReleaseContextGateway,
     missingReleaseCleanupRepository,
     newReleasesRepository,

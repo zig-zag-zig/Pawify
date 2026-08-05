@@ -195,6 +195,24 @@ describe('HTTP route integration', () => {
         });
     });
 
+    describe('v2 routes', () => {
+        it('GET /v2/health returns 200', async () => {
+            const { createApiV2Routes } = await import('../../src/api/v2Routes.js');
+            const app = express();
+            app.use(express.json());
+            app.use('/v2', createApiV2Routes());
+            app.use(errorMiddleware);
+            const v2Url = await startTestServer(app);
+            try {
+                const response = await fetch(`${v2Url}/v2/health`);
+                assert.equal(response.status, 200);
+                assert.equal(await response.text(), 'Server is healthy.');
+            } finally {
+                await stopTestServer();
+            }
+        });
+    });
+
     describe('error handling', () => {
         it('returns 404 for unknown routes', async () => {
             const response = await fetch(`${baseUrl}/v1/nonexistent`);
