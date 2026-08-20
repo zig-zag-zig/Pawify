@@ -43,10 +43,7 @@ export const createCompositeBackgroundTaskSession = <T extends BackgroundTaskRes
     return taskRuntime.createCompositeBackgroundTaskSession(userId, type, options);
 };
 
-export const getTaskResultForUser = (
-    userId: string,
-    taskId: string,
-) => {
+export const getTaskResultForUser = (userId: string, taskId: string) => {
     return taskRuntime.getTaskResultForUser(userId, taskId);
 };
 

@@ -10,8 +10,8 @@ import type { PushTokenUseCaseDependencies } from '../src/features/pushTokens/po
 const createFakeGateway = (
     overrides: Partial<PushTokenUseCaseDependencies['pushTokenGateway']> = {},
 ): PushTokenUseCaseDependencies['pushTokenGateway'] => ({
-    async savePushToken() { },
-    async deletePushToken() { },
+    async savePushToken() {},
+    async deletePushToken() {},
     ...overrides,
 });
 
@@ -36,17 +36,21 @@ describe('push token use cases', () => {
 
             await useCase('user-1', 'device-1', 'ExpoPushToken[abc123]');
 
-            assert.deepEqual(calls, [{
-                userId: 'user-1',
-                deviceId: 'device-1',
-                pushToken: 'ExpoPushToken[abc123]',
-            }]);
+            assert.deepEqual(calls, [
+                {
+                    userId: 'user-1',
+                    deviceId: 'device-1',
+                    pushToken: 'ExpoPushToken[abc123]',
+                },
+            ]);
         });
 
         it('propagates gateway errors', async () => {
             const deps = createFakeDependencies({
                 pushTokenGateway: createFakeGateway({
-                    async savePushToken() { throw new Error('Storage failure'); },
+                    async savePushToken() {
+                        throw new Error('Storage failure');
+                    },
                 }),
             });
             const useCase = createSavePushTokenUseCase(deps);
@@ -78,15 +82,14 @@ describe('push token use cases', () => {
         it('propagates gateway errors', async () => {
             const deps = createFakeDependencies({
                 pushTokenGateway: createFakeGateway({
-                    async deletePushToken() { throw new Error('Token not found'); },
+                    async deletePushToken() {
+                        throw new Error('Token not found');
+                    },
                 }),
             });
             const useCase = createDeletePushTokenUseCase(deps);
 
-            await assert.rejects(
-                () => useCase('user-1', 'device-1'),
-                /Token not found/,
-            );
+            await assert.rejects(() => useCase('user-1', 'device-1'), /Token not found/);
         });
     });
 });

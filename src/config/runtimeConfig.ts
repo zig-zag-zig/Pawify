@@ -18,7 +18,10 @@ export const backgroundTaskConfig = {
     resultRetentionMs: parsePositiveIntEnv(process.env.BACKGROUND_TASK_RESULT_RETENTION_MS, 60_000),
     cleanupIntervalMs: parsePositiveIntEnv(process.env.BACKGROUND_TASK_CLEANUP_INTERVAL_MS, 20_000),
     maxConcurrency: parsePositiveIntEnv(process.env.BACKGROUND_TASK_MAX_CONCURRENCY, 8),
-    pendingOrphanTtlMs: parsePositiveIntEnv(process.env.BACKGROUND_TASK_PENDING_ORPHAN_TTL_MS, 10 * 60_000),
+    pendingOrphanTtlMs: parsePositiveIntEnv(
+        process.env.BACKGROUND_TASK_PENDING_ORPHAN_TTL_MS,
+        10 * 60_000,
+    ),
     workerTimeoutMs: parsePositiveIntEnv(process.env.BACKGROUND_TASK_WORKER_TIMEOUT_MS, 5 * 60_000),
     subtaskItemLimit: parsePositiveIntEnv(process.env.BACKGROUND_TASK_SUBTASK_ITEM_LIMIT, 30),
     progressNotificationThrottleMs: parsePositiveIntEnv(
@@ -28,9 +31,18 @@ export const backgroundTaskConfig = {
 };
 
 export const backgroundTaskWorkerConfig = {
-    coverArtRequestConcurrency: parsePositiveIntEnv(process.env.BACKGROUND_TASK_COVER_ART_REQUEST_CONCURRENCY, 40),
-    trackLyricsRequestConcurrency: parsePositiveIntEnv(process.env.BACKGROUND_TASK_TRACK_LYRICS_REQUEST_CONCURRENCY, 20),
-    artistProfileImageRequestConcurrency: parsePositiveIntEnv(process.env.BACKGROUND_TASK_ARTIST_PROFILE_IMAGE_REQUEST_CONCURRENCY, 10),
+    coverArtRequestConcurrency: parsePositiveIntEnv(
+        process.env.BACKGROUND_TASK_COVER_ART_REQUEST_CONCURRENCY,
+        40,
+    ),
+    trackLyricsRequestConcurrency: parsePositiveIntEnv(
+        process.env.BACKGROUND_TASK_TRACK_LYRICS_REQUEST_CONCURRENCY,
+        20,
+    ),
+    artistProfileImageRequestConcurrency: parsePositiveIntEnv(
+        process.env.BACKGROUND_TASK_ARTIST_PROFILE_IMAGE_REQUEST_CONCURRENCY,
+        10,
+    ),
 };
 
 export const cacheConfig = {
@@ -51,9 +63,18 @@ export const cacheConfig = {
 export const musicApiConfig = {
     musicBrainzUserAgent: optionalEnv('MUSICBRAINZ_USER_AGENT') ?? 'MusicReleaseNotifier/1.0',
     musicBrainzDelayMs: parsePositiveIntEnv(process.env.MUSICBRAINZ_DELAY_MS, 650),
-    musicBrainzBackgroundDelayMs: parsePositiveIntEnv(process.env.MUSICBRAINZ_BACKGROUND_DELAY_MS, 1250),
-    musicBrainzMinRateLimitWaitMs: parsePositiveIntEnv(process.env.MUSICBRAINZ_MIN_RATE_LIMIT_WAIT_MS, 1500),
-    musicBrainzRetryAfterBufferMs: parsePositiveIntEnv(process.env.MUSICBRAINZ_RETRY_AFTER_BUFFER_MS, 1000),
+    musicBrainzBackgroundDelayMs: parsePositiveIntEnv(
+        process.env.MUSICBRAINZ_BACKGROUND_DELAY_MS,
+        1250,
+    ),
+    musicBrainzMinRateLimitWaitMs: parsePositiveIntEnv(
+        process.env.MUSICBRAINZ_MIN_RATE_LIMIT_WAIT_MS,
+        1500,
+    ),
+    musicBrainzRetryAfterBufferMs: parsePositiveIntEnv(
+        process.env.MUSICBRAINZ_RETRY_AFTER_BUFFER_MS,
+        1000,
+    ),
 };
 
 export const notificationConfig = {
@@ -66,7 +87,10 @@ export const notificationConfig = {
 
 const parseLogLevelEnv = (value: string | undefined): RuntimeLogLevel => {
     const normalized = value?.trim().toLowerCase();
-    return normalized === 'debug' || normalized === 'info' || normalized === 'warn' || normalized === 'error'
+    return normalized === 'debug' ||
+        normalized === 'info' ||
+        normalized === 'warn' ||
+        normalized === 'error'
         ? normalized
         : 'info';
 };
@@ -106,7 +130,9 @@ export const resolvePasswordResetPepper = (
         return 'insecure-dev-pepper';
     }
     if (production) {
-        throw new Error('PASSWORD_RESET_PEPPER is required in production. Set ALLOW_INSECURE_PASSWORD_RESET_PEPPER=true to bypass.');
+        throw new Error(
+            'PASSWORD_RESET_PEPPER is required in production. Set ALLOW_INSECURE_PASSWORD_RESET_PEPPER=true to bypass.',
+        );
     }
     return 'insecure-dev-pepper';
 };

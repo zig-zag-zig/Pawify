@@ -37,7 +37,10 @@ export const releaseTaskQueue: ReleaseTaskQueue = {
     queueNewReleaseCovers: (userId, pageEntries, ttl, options) => {
         const taskId = queueNewReleaseCoversTask(
             userId,
-            withTaskKeyNamespace(options?.contractNamespace, getNewReleaseCoverDedupeKey(pageEntries)),
+            withTaskKeyNamespace(
+                options?.contractNamespace,
+                getNewReleaseCoverDedupeKey(pageEntries),
+            ),
             options?.pendingEntries ?? pageEntries,
             ttl,
         );

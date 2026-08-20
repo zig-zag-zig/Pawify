@@ -7,6 +7,7 @@ import {
 import type { RemoteValueState } from '../../modules/models/models.js';
 import type { CachedReleaseGroupReleaseCovers, CoverState } from '../../utils/types/cacheTypes.js';
 import { dedupeStrings } from '../../common/utils/array.js';
+import { isRemoteValueState } from '../../common/utils/objectGuards.js';
 import { readReleaseCoverCache, writeReleaseCoverCache } from './coverArtCache.js';
 
 export type CoverLookupResult = {
@@ -14,31 +15,27 @@ export type CoverLookupResult = {
     isFallback: boolean;
 };
 
-export const hasUsableUrl = (url: RemoteValueState): url is string => (
-    typeof url === 'string' && url.trim().length > 0
-);
+export const hasUsableUrl = (url: RemoteValueState): url is string =>
+    typeof url === 'string' && url.trim().length > 0;
 
-const isRemoteValueState = (value: unknown): value is RemoteValueState => (
-    value === undefined || value === null || typeof value === 'string'
-);
+export const shouldUseCachedState = (
+    state: CoverState | undefined,
+    now: number = Date.now(),
+): state is CoverState =>
+    !!state &&
+    isRemoteValueState(state.url) &&
+    (state.url !== null || state.confirmedMiss === true) &&
+    !shouldRefetchRemoteState(state, now);
 
-export const shouldUseCachedState = (state: CoverState | undefined, now: number = Date.now()): state is CoverState => (
-    !!state
-    && isRemoteValueState(state.url)
-    && (state.url !== null || state.confirmedMiss === true)
-    && !shouldRefetchRemoteState(state, now)
-);
-
-export const resolveMiss = (values: RemoteValueState[]): null | undefined => (
-    values.some(value => value === undefined) ? undefined : null
-);
+export const resolveMiss = (values: RemoteValueState[]): null | undefined =>
+    values.some((value) => value === undefined) ? undefined : null;
 
 export const mapResolvedCoverState = (
     url: RemoteValueState,
     isFallback: boolean,
     primaryMisses: RemoteValueState[],
 ): CoverState => {
-    if (hasUsableUrl(url) && isFallback && primaryMisses.some(value => value === undefined)) {
+    if (hasUsableUrl(url) && isFallback && primaryMisses.some((value) => value === undefined)) {
         return {
             url,
             nextRefetchAt: Date.now() + TRANSIENT_REMOTE_VALUE_RETRY_WINDOW_MS,
@@ -68,7 +65,11 @@ export const pickCachedPeerReleaseCover = (
     now: number,
 ): CoverState | undefined => {
     for (const [cachedReleaseId, state] of Object.entries(cache)) {
-        if (cachedReleaseId === releaseId || !shouldUseCachedState(state, now) || !hasUsableUrl(state.url)) {
+        if (
+            cachedReleaseId === releaseId ||
+            !shouldUseCachedState(state, now) ||
+            !hasUsableUrl(state.url)
+        ) {
             continue;
         }
 

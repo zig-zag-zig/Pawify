@@ -37,9 +37,7 @@ describe('releaseTaskPayloads', () => {
         it('collects artist IDs from artist-credit and track artist-credits', () => {
             const release = {
                 id: 'release-1',
-                'artist-credit': [
-                    { id: 'artist-1', name: 'Main Artist', joinphrase: null },
-                ],
+                'artist-credit': [{ id: 'artist-1', name: 'Main Artist', joinphrase: null }],
                 media: [
                     {
                         'track-count': 1,
@@ -78,7 +76,14 @@ describe('releaseTaskPayloads', () => {
                         'track-count': 2,
                         tracks: [
                             { id: 'track-1', title: 'Song 1', 'artist-credit': [], length: null },
-                            { id: 'track-2', title: 'Song 2', 'artist-credit': [{ id: 'artist-2', name: 'Feat', joinphrase: null }], length: null },
+                            {
+                                id: 'track-2',
+                                title: 'Song 2',
+                                'artist-credit': [
+                                    { id: 'artist-2', name: 'Feat', joinphrase: null },
+                                ],
+                                length: null,
+                            },
                         ],
                     },
                 ],
@@ -101,7 +106,12 @@ describe('releaseTaskPayloads', () => {
                         'track-count': 1,
                         tracks: [
                             { id: 'track-1', title: '', 'artist-credit': [], length: null },
-                            { id: 'track-2', title: 'Valid', 'artist-credit': [{ id: 'a', name: 'Band', joinphrase: null }], length: null },
+                            {
+                                id: 'track-2',
+                                title: 'Valid',
+                                'artist-credit': [{ id: 'a', name: 'Band', joinphrase: null }],
+                                length: null,
+                            },
                         ],
                     },
                 ],

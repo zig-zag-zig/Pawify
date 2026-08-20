@@ -1,6 +1,7 @@
 import type { ArtistSearchResult } from '../../modules/models/models.js';
-import { fetchMusicBrainz } from '../../services/musicApi/musicBrainzClient.js';
+import { fetchMusicBrainz } from '../musicApi/musicBrainzClient.js';
 import { createLogger } from '../../common/logging/logger.js';
+import { isPlainObject } from '../../common/utils/objectGuards.js';
 
 const logger = createLogger('helpers.artistSearch');
 const SEARCH_ATTEMPT_COUNT = 3;
@@ -10,12 +11,14 @@ type MusicBrainzArtistSearchResponse = {
     count: number;
 };
 
-const isRecord = (value: unknown): value is Record<string, unknown> => (
-    value !== null && typeof value === 'object' && !Array.isArray(value)
-);
-
-const parseMusicBrainzArtistSearchResponse = (response: unknown): MusicBrainzArtistSearchResponse => {
-    if (!isRecord(response) || !Array.isArray(response.artists) || typeof response.count !== 'number') {
+const parseMusicBrainzArtistSearchResponse = (
+    response: unknown,
+): MusicBrainzArtistSearchResponse => {
+    if (
+        !isPlainObject(response) ||
+        !Array.isArray(response.artists) ||
+        typeof response.count !== 'number'
+    ) {
         throw new Error('MusicBrainz returned an invalid artist search response');
     }
 
@@ -34,7 +37,9 @@ const fetchArtistSearchResponse = async (
 
     for (let attempt = 1; attempt <= SEARCH_ATTEMPT_COUNT; attempt += 1) {
         try {
-            const response = await fetchMusicBrainz(`/artist?query=${encodeURIComponent(query)}&fmt=json&limit=${limit}&offset=${offset}`);
+            const response = await fetchMusicBrainz(
+                `/artist?query=${encodeURIComponent(query)}&fmt=json&limit=${limit}&offset=${offset}`,
+            );
             return parseMusicBrainzArtistSearchResponse(response);
         } catch (error) {
             lastError = error;
@@ -50,13 +55,12 @@ const search = async (
     offset: number,
     limit: number,
 ): Promise<ArtistSearchResult> => {
-
     try {
         const response = await fetchArtistSearchResponse(query, offset, limit);
 
         const artists = response.artists
-            .filter((artist: unknown): artist is { id: string; name: string; } => {
-                if (!isRecord(artist)) {
+            .filter((artist: unknown): artist is { id: string; name: string } => {
+                if (!isPlainObject(artist)) {
                     return false;
                 }
 
@@ -73,7 +77,7 @@ const search = async (
         };
     } catch (error) {
         logger.error('artist search failed', { query, offset, limit, error });
-        throw new Error(`Failed to search for artists: ${error}`);
+        throw Object.assign(new Error('Failed to search for artists'), { cause: error });
     }
 };
 

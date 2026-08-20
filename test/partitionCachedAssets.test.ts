@@ -17,9 +17,11 @@ import type {
 
 type StubCache = Record<string, unknown>;
 
-const createStubReader = (cache: StubCache) => async <T>(key: string): Promise<T | null> => {
-    return (cache[key] as T | undefined) ?? null;
-};
+const createStubReader =
+    (cache: StubCache) =>
+    async <T>(key: string): Promise<T | null> => {
+        return (cache[key] as T | undefined) ?? null;
+    };
 
 const usableImage = (url: string): CachedArtistImage => ({
     url,
@@ -41,7 +43,8 @@ const transientImage = (): CachedArtistImage => ({
 
 const imageCacheKey = (artistId: string): string => `${artistId}_artistImages`;
 const lyricsCacheKey = (releaseId: string): string => `${releaseId}_releaseLyrics`;
-const releaseCoversCacheKey = (releaseGroupId: string): string => `${releaseGroupId}_releaseGroupReleaseCovers`;
+const releaseCoversCacheKey = (releaseGroupId: string): string =>
+    `${releaseGroupId}_releaseGroupReleaseCovers`;
 const artistCoverCacheKey = (artistId: string): string => `${artistId}_artistReleaseGroupCovers`;
 
 describe('partitionCachedAssets', () => {
@@ -145,15 +148,16 @@ describe('partitionCachedAssets', () => {
                 },
             };
 
-            const result = await partitionReleaseGroupReleaseCovers(entries, createStubReader(cache));
+            const result = await partitionReleaseGroupReleaseCovers(
+                entries,
+                createStubReader(cache),
+            );
 
             assert.deepEqual(result.resolved, {
                 'r-hit': 'https://cover.example/r-hit.jpg',
                 'r-null': null,
             });
-            assert.deepEqual(result.pending, [
-                { releaseGroupId: 'rg-1', releaseIds: ['r-miss'] },
-            ]);
+            assert.deepEqual(result.pending, [{ releaseGroupId: 'rg-1', releaseIds: ['r-miss'] }]);
         });
 
         it('treats cover cache read failures as pending (fail open)', async () => {
@@ -199,20 +203,26 @@ describe('partitionCachedAssets', () => {
                 },
             };
 
-            const result = await partitionArtistReleaseGroupCovers('artist-1', entries, createStubReader(cache));
+            const result = await partitionArtistReleaseGroupCovers(
+                'artist-1',
+                entries,
+                createStubReader(cache),
+            );
 
             assert.deepEqual(result.resolved, {
                 'rg-1': 'https://cover.example/rg-1.jpg',
             });
-            assert.deepEqual(result.pending, [
-                { releaseGroupId: 'rg-2', releaseIds: ['r3'] },
-            ]);
+            assert.deepEqual(result.pending, [{ releaseGroupId: 'rg-2', releaseIds: ['r3'] }]);
         });
 
         it('treats artist cover cache read failures as pending (fail open)', async () => {
-            const result = await partitionArtistReleaseGroupCovers('artist-1', entries, async () => {
-                throw new Error('cache unavailable');
-            });
+            const result = await partitionArtistReleaseGroupCovers(
+                'artist-1',
+                entries,
+                async () => {
+                    throw new Error('cache unavailable');
+                },
+            );
 
             assert.deepEqual(result.resolved, {});
             assert.equal(result.pending.length, 2);

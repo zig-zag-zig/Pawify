@@ -1,3 +1,5 @@
+import type { RequestDeduperPort } from '../../common/request/requestDeduper.js';
+
 interface AccountGateway {
     sendOtp(email: string): Promise<void>;
     verifyOtp(email: string, otp: string): Promise<string>;
@@ -6,11 +8,7 @@ interface AccountGateway {
     deleteUserAccount(userId: string): Promise<void>;
 }
 
-interface UserAccountCache {
-    deleteFollowingCache(userId: string): Promise<void>;
-}
-
 export type AuthUseCaseDependencies = {
     accountGateway: AccountGateway;
-    userAccountCache: UserAccountCache;
+    requestDeduper: RequestDeduperPort;
 };

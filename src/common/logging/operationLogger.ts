@@ -33,8 +33,7 @@ export const withOperationLogging = <TArgs extends unknown[], TResult>(
                 durationMs,
             };
 
-            const successLevel = options.successLevel
-                ?? (durationMs >= 1_000 ? 'info' : 'debug');
+            const successLevel = options.successLevel ?? (durationMs >= 1_000 ? 'info' : 'debug');
             if (successLevel !== 'silent') {
                 logger[successLevel](`${operation} completed`, metadata);
             }

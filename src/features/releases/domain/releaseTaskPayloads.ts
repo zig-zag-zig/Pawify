@@ -35,7 +35,8 @@ export const collectTrackLyricsRequests = (release: Release): TrackLyricsRequest
         }
 
         for (const track of media.tracks) {
-            const artistName = track['artist-credit']?.[0]?.name ?? release['artist-credit']?.[0]?.name;
+            const artistName =
+                track['artist-credit']?.[0]?.name ?? release['artist-credit']?.[0]?.name;
 
             if (!artistName?.trim() || !track.title?.trim()) {
                 continue;
@@ -54,9 +55,13 @@ export const collectTrackLyricsRequests = (release: Release): TrackLyricsRequest
 };
 
 export const getNewReleaseCoverDedupeKey = (entries: ReleaseGroupReleasesPageEntry[]): string => {
-    const releaseIds = Array.from(new Set(
-        entries.flatMap((entry) => entry.releaseIds.map((releaseId) => `${entry.releaseGroupId}:${releaseId}`)),
-    )).sort((left, right) => left.localeCompare(right));
+    const releaseIds = Array.from(
+        new Set(
+            entries.flatMap((entry) =>
+                entry.releaseIds.map((releaseId) => `${entry.releaseGroupId}:${releaseId}`),
+            ),
+        ),
+    ).sort((left, right) => left.localeCompare(right));
 
     return `new_release_covers:${releaseIds.join(',')}`;
 };

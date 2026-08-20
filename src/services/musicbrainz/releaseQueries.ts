@@ -26,13 +26,24 @@ export const fetchAllReleasesForArtist = async (
         : 'release-groups+artist-credits';
 
     while (true) {
-        const releasesPage = await fetchMusicBrainz(`/release?artist=${artistId}&fmt=json&inc=${include}&offset=${offset}&limit=${limit}`);
+        const releasesPage = await fetchMusicBrainz(
+            `/release?artist=${artistId}&fmt=json&inc=${include}&offset=${offset}&limit=${limit}`,
+        );
         const releasesData = mapToReleaseResult(releasesPage, artistId);
-        const pageReleases = releasesData.releases.filter(release => !isFutureDate(release.date));
+        const pageReleases = releasesData.releases.filter((release) => !isFutureDate(release.date));
 
         allReleases.push(...pageReleases);
         const nextOffset = offset + releasesData.releases.length;
-        const isLastPage = nextOffset >= releasesData['release-count'];
+        const releaseCount = getMusicBrainzReleaseCount(releasesPage);
+        // Defensive pagination guards: an empty page, a missing/non-finite
+        // release-count (fall back to "short page means last page"), or reaching
+        // the declared count all stop the loop so a malformed upstream response
+        // can never cause unbounded requests against the rate-limited API.
+        const isLastPage =
+            releasesData.releases.length === 0 ||
+            (releaseCount === null
+                ? releasesData.releases.length < limit
+                : nextOffset >= releaseCount);
         await onReleasesPage?.(pageReleases, isLastPage);
         offset = nextOffset;
 
@@ -45,9 +56,9 @@ export const fetchAllReleasesForArtist = async (
 };
 
 export const processAndGroupReleases = (allReleases: Release[]): Map<string, Release[]> => {
-    const filteredReleases = allReleases.filter(release => !isFutureDate(release.date));
+    const filteredReleases = allReleases.filter((release) => !isFutureDate(release.date));
     const releaseGroupsMap = groupByReleaseGroup(filteredReleases);
-    releaseGroupsMap.forEach(releasesInGroup => sortReleasesByDate(releasesInGroup));
+    releaseGroupsMap.forEach((releasesInGroup) => sortReleasesByDate(releasesInGroup));
     return releaseGroupsMap;
 };
 
@@ -57,7 +68,9 @@ export const fetchAllReleaseIdsForArtist = async (artistId: string): Promise<str
     const releaseIds: string[] = [];
 
     while (true) {
-        const releasesPage = await fetchMusicBrainz(`/release?artist=${artistId}&fmt=json&inc=release-groups&offset=${offset}&limit=${limit}`);
+        const releasesPage = await fetchMusicBrainz(
+            `/release?artist=${artistId}&fmt=json&inc=release-groups&offset=${offset}&limit=${limit}`,
+        );
         const releases = getMusicBrainzReleaseEntries(releasesPage);
 
         releaseIds.push(...releases.flatMap(getMusicBrainzReleaseId));
@@ -65,7 +78,10 @@ export const fetchAllReleaseIdsForArtist = async (artistId: string): Promise<str
         const releaseCount = getMusicBrainzReleaseCount(releasesPage);
         offset = nextOffset;
 
-        if (releases.length === 0 || (releaseCount === null ? releases.length < limit : nextOffset >= releaseCount)) {
+        if (
+            releases.length === 0 ||
+            (releaseCount === null ? releases.length < limit : nextOffset >= releaseCount)
+        ) {
             break;
         }
     }
@@ -73,13 +89,11 @@ export const fetchAllReleaseIdsForArtist = async (artistId: string): Promise<str
     return Array.from(new Set(releaseIds));
 };
 
-const getMusicBrainzReleaseEntries = (releasesPage: any): any[] => (
-    Array.isArray(releasesPage?.releases) ? releasesPage.releases : []
-);
+const getMusicBrainzReleaseEntries = (releasesPage: any): any[] =>
+    Array.isArray(releasesPage?.releases) ? releasesPage.releases : [];
 
-const getMusicBrainzReleaseId = (release: any): string[] => (
-    typeof release?.id === 'string' && release.id.trim() ? [release.id] : []
-);
+const getMusicBrainzReleaseId = (release: any): string[] =>
+    typeof release?.id === 'string' && release.id.trim() ? [release.id] : [];
 
 const getMusicBrainzReleaseCount = (releasesPage: any): number | null => {
     const releaseCount = Number(releasesPage?.['release-count']);
@@ -87,7 +101,7 @@ const getMusicBrainzReleaseCount = (releasesPage: any): number | null => {
 };
 
 export const mapReleaseGroupReleasesList = (releases: Release[]): ReleaseGroupReleaseListItem[] => {
-    return releases.map(release => ({
+    return releases.map((release) => ({
         id: release.id,
         title: nameWithDisambiguation(release.disambiguation, release.title),
     }));
@@ -101,17 +115,27 @@ export const fetchAllReleasesForReleaseGroup = async (
     const allReleases: Release[] = [];
 
     while (true) {
-        const releasesPage = await fetchMusicBrainz(`/release?release-group=${releaseGroupId}&fmt=json&inc=recordings+url-rels&offset=${offset}&limit=${limit}`);
+        const releasesPage = await fetchMusicBrainz(
+            `/release?release-group=${releaseGroupId}&fmt=json&inc=recordings+url-rels&offset=${offset}&limit=${limit}`,
+        );
         const releasesData = mapToReleaseResult(releasesPage);
         const pageReleases = releasesData.releases
-            .filter(release => !isFutureDate(release.date))
-            .map(release => ensureReleaseGroupLink(release, releaseGroupId));
+            .filter((release) => !isFutureDate(release.date))
+            .map((release) => ensureReleaseGroupLink(release, releaseGroupId));
 
         allReleases.push(...pageReleases);
         const nextOffset = offset + releasesData.releases.length;
+        const releaseCount = getMusicBrainzReleaseCount(releasesPage);
         offset = nextOffset;
 
-        if (nextOffset >= releasesData['release-count']) {
+        // Same defensive guards as fetchAllReleasesForArtist: stop on an empty
+        // page or when release-count is missing/non-finite (short page = last).
+        if (
+            releasesData.releases.length === 0 ||
+            (releaseCount === null
+                ? releasesData.releases.length < limit
+                : nextOffset >= releaseCount)
+        ) {
             break;
         }
     }
@@ -120,10 +144,7 @@ export const fetchAllReleasesForReleaseGroup = async (
     return allReleases;
 };
 
-export const dedupeAndSortReleaseGroupReleases = (
-    releaseGroupId: string,
-    releases: Release[],
-) => {
+export const dedupeAndSortReleaseGroupReleases = (releaseGroupId: string, releases: Release[]) => {
     const result = dedupeReleaseGroupReleases(releaseGroupId, releases);
     sortReleasesByDate(result.releases);
     return result;
@@ -145,9 +166,4 @@ const ensureReleaseGroupLink = (release: Release, releaseGroupId: string): Relea
             'primary-type': null,
         },
     };
-};
-
-export const getPrimaryArtistId = (musicbrainzRelease: any): string => {
-    const artistId = musicbrainzRelease?.['artist-credit']?.[0]?.artist?.id;
-    return typeof artistId === 'string' ? artistId : '';
 };

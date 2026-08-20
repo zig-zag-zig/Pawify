@@ -12,12 +12,8 @@ const readExpoData = async <T>(response: Response, context: string): Promise<T> 
         throw new Error(`${context}: HTTP ${response.status} ${bodyText}`);
     }
 
-    const body = bodyText ? JSON.parse(bodyText) as unknown : undefined;
-    if (
-        body
-        && typeof body === 'object'
-        && 'data' in body
-    ) {
+    const body = bodyText ? (JSON.parse(bodyText) as unknown) : undefined;
+    if (body && typeof body === 'object' && 'data' in body) {
         return (body as { data: T }).data;
     }
 
@@ -49,5 +45,8 @@ export const getExpoPushReceipts = async (
         body: JSON.stringify({ ids }),
     });
 
-    return await readExpoData<Record<ExpoPushReceiptId, ExpoPushReceipt>>(response, 'get Expo push receipts');
+    return await readExpoData<Record<ExpoPushReceiptId, ExpoPushReceipt>>(
+        response,
+        'get Expo push receipts',
+    );
 };

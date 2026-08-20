@@ -7,10 +7,7 @@ import {
     releaseNotifyNewReleasesLock,
 } from '../firebase/notificationRunLockStore.js';
 import { getNewReleases } from '../musicbrainz/newReleaseDetection.js';
-import {
-    getValidPushTokens,
-    sendPushNotificationToTokens,
-} from './pushNotificationDelivery.js';
+import { getValidPushTokens, sendPushNotificationToTokens } from './pushNotificationDelivery.js';
 import { notificationEvents } from './notificationEvents.js';
 
 const logger = createLogger('services.notifications');
@@ -22,13 +19,18 @@ type NotificationDelivery = {
     userHasNewReleases: boolean;
 };
 
-const buildReleaseNotifications = (notificationsData: Awaited<ReturnType<typeof getNewReleases>>) => {
-    const releaseMap = new Map<string, {
-        title: string;
-        artistNames: Set<string>;
-        disambiguation: string | null;
-        date_for_display: string;
-    }>();
+const buildReleaseNotifications = (
+    notificationsData: Awaited<ReturnType<typeof getNewReleases>>,
+) => {
+    const releaseMap = new Map<
+        string,
+        {
+            title: string;
+            artistNames: Set<string>;
+            disambiguation: string | null;
+            date_for_display: string;
+        }
+    >();
 
     for (const release of notificationsData) {
         const artistNames = Object.values(release.artists)
@@ -88,9 +90,14 @@ const notifyUserAboutNewReleases = async (userId: string): Promise<NotificationD
                     await sendPushNotificationToTokens(userId, validPushTokens, notification);
                 },
             );
-            await sendPushNotificationToTokens(userId, validPushTokens, {
-                eventName: notificationEvents.releases,
-            }, 'data');
+            await sendPushNotificationToTokens(
+                userId,
+                validPushTokens,
+                {
+                    eventName: notificationEvents.releases,
+                },
+                'data',
+            );
         }
 
         const visibleNotificationsSent = validPushTokens.length > 0 ? notifications.length : 0;
@@ -137,7 +144,9 @@ export const notifyNewReleases = async (): Promise<void> => {
             async (user) => await notifyUserAboutNewReleases(user.uid),
         );
 
-        const usersWithNewReleases = deliveries.filter((delivery) => delivery.userHasNewReleases).length;
+        const usersWithNewReleases = deliveries.filter(
+            (delivery) => delivery.userHasNewReleases,
+        ).length;
         const visibleNotificationsSent = deliveries.reduce(
             (total, delivery) => total + delivery.visibleNotificationsSent,
             0,

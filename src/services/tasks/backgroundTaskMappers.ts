@@ -1,9 +1,6 @@
 import { dedupeStrings } from '../../common/utils/array.js';
-import type {
-    CachedArtistImage,
-    CoverState,
-    LyricsState,
-} from '../../utils/types/cacheTypes.js';
+import { isRemoteValueState } from '../../common/utils/objectGuards.js';
+import type { CachedArtistImage, CoverState, LyricsState } from '../../utils/types/cacheTypes.js';
 import type { TrackLyricsRequest } from '../../utils/types/taskTypes.js';
 import {
     mapLyricsState,
@@ -11,11 +8,10 @@ import {
     TRANSIENT_REMOTE_VALUE_RETRY_WINDOW_MS,
 } from '../../utils/helpers/remoteStateHelpers.js';
 
-const isRemoteValueState = (value: unknown): value is string | null | undefined => {
-    return value === undefined || value === null || typeof value === 'string';
-};
-
-export const shouldRefetchState = (state: CoverState | LyricsState | undefined, now: number = Date.now()): boolean => {
+export const shouldRefetchState = (
+    state: CoverState | LyricsState | undefined,
+    now: number = Date.now(),
+): boolean => {
     if (state && !isRemoteValueState(state.url)) {
         return true;
     }
@@ -69,9 +65,8 @@ export const normalizeDiscogsUrls = (urls: unknown): string[] => {
     );
 };
 
-export const canonicalDiscogsUrls = (urls: string[]): string => (
-    [...urls].sort((left, right) => left.localeCompare(right)).join('|')
-);
+export const canonicalDiscogsUrls = (urls: string[]): string =>
+    [...urls].sort((left, right) => left.localeCompare(right)).join('|');
 
 export const shouldRefetchArtistImageState = (
     state: CoverState | undefined,
@@ -88,7 +83,9 @@ export const shouldRefetchArtistImageState = (
     return shouldRefetchRemoteState(state, now);
 };
 
-export const normalizeArtistImageState = (state: CoverState & { refreshedAt?: number; url?: unknown }): CachedArtistImage => {
+export const normalizeArtistImageState = (
+    state: CoverState & { refreshedAt?: number; url?: unknown },
+): CachedArtistImage => {
     return {
         url: isRemoteValueState(state.url) ? state.url : undefined,
         nextRefetchAt: state.nextRefetchAt,
@@ -99,14 +96,16 @@ export const normalizeArtistImageState = (state: CoverState & { refreshedAt?: nu
 
 export const hasLegacyArtistImageFields = (state: CachedArtistImage): boolean => {
     const legacyState = state as CachedArtistImage & {
-        artistName?: unknown;
-        discogsUrls?: unknown;
+        artistName?: string;
+        discogsUrls?: string[];
     };
 
-    return legacyState.refreshedAt === undefined
-        || !isRemoteValueState(legacyState.url)
-        || legacyState.artistName !== undefined
-        || legacyState.discogsUrls !== undefined;
+    return (
+        legacyState.refreshedAt === undefined ||
+        !isRemoteValueState(legacyState.url) ||
+        legacyState.artistName !== undefined ||
+        legacyState.discogsUrls !== undefined
+    );
 };
 
 export const dedupeTracks = (tracks: TrackLyricsRequest[]): TrackLyricsRequest[] => {

@@ -62,11 +62,15 @@ export interface ArtistProfileImagesPlanner {
 }
 
 export interface ArtistReleaseGroupCoversPlanner {
-    planArtistReleaseGroupCovers(input: ArtistReleaseGroupCoversPlanInput): Promise<AssetPlanResult>;
+    planArtistReleaseGroupCovers(
+        input: ArtistReleaseGroupCoversPlanInput,
+    ): Promise<AssetPlanResult>;
 }
 
 export interface ReleaseGroupReleaseCoversPlanner {
-    planReleaseGroupReleaseCovers(input: ReleaseGroupReleaseCoversPlanInput): Promise<AssetPlanResult>;
+    planReleaseGroupReleaseCovers(
+        input: ReleaseGroupReleaseCoversPlanInput,
+    ): Promise<AssetPlanResult>;
 }
 
 export interface NewReleaseCoversPlanner {
@@ -78,7 +82,9 @@ export interface ReleaseTrackLyricsPlanner {
 }
 
 export interface ReleaseArtistProfileImagesPlanner {
-    planReleaseArtistProfileImages(input: ReleaseArtistProfileImagesPlanInput): Promise<AssetPlanResult>;
+    planReleaseArtistProfileImages(
+        input: ReleaseArtistProfileImagesPlanInput,
+    ): Promise<AssetPlanResult>;
 }
 
 /**
@@ -86,13 +92,14 @@ export interface ReleaseArtistProfileImagesPlanner {
  * cases; a legacy (v1) or cache-first (v2) implementation is chosen at the
  * composition root.
  */
-export interface BackgroundAssetPlanner extends
-    ArtistProfileImagesPlanner,
-    ArtistReleaseGroupCoversPlanner,
-    ReleaseGroupReleaseCoversPlanner,
-    NewReleaseCoversPlanner,
-    ReleaseTrackLyricsPlanner,
-    ReleaseArtistProfileImagesPlanner {}
+export interface BackgroundAssetPlanner
+    extends
+        ArtistProfileImagesPlanner,
+        ArtistReleaseGroupCoversPlanner,
+        ReleaseGroupReleaseCoversPlanner,
+        NewReleaseCoversPlanner,
+        ReleaseTrackLyricsPlanner,
+        ReleaseArtistProfileImagesPlanner {}
 
 /** Structural queue ports so planners stay decoupled from feature modules. */
 export interface ArtistProfileImageQueuePort {

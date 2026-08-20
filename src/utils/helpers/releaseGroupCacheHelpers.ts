@@ -1,12 +1,7 @@
 import type { ArtistReleaseGroup, Release } from '../../modules/models/models.js';
 import { deleteCachedData, getCachedData, replaceCachedData } from '../../services/cacheService.js';
-import type {
-    CachedArtistReleases,
-    CachedReleaseGroupReleases,
-} from '../types/cacheTypes.js';
-import {
-    createCachedReleaseGroupReleases,
-} from './artistReleaseCacheHelpers.js';
+import type { CachedArtistReleases, CachedReleaseGroupReleases } from '../types/cacheTypes.js';
+import { createCachedReleaseGroupReleases } from './artistReleaseCacheHelpers.js';
 import { getCacheKey } from './cacheHelpers.js';
 import {
     groupByReleaseGroup,
@@ -31,7 +26,7 @@ export const collectChangedReleaseGroupIds = (
     const changedGroupIds = new Set<string>();
 
     for (const releaseGroup of artistReleasesCache) {
-        if (releaseGroup.releaseIds.some(releaseId => deletedReleaseIdsSet.has(releaseId))) {
+        if (releaseGroup.releaseIds.some((releaseId) => deletedReleaseIdsSet.has(releaseId))) {
             changedGroupIds.add(releaseGroup.id);
         }
     }
@@ -57,11 +52,16 @@ export const rebuildReleaseGroupCache = async ({
     const cachedReleases = await getCachedData<CachedReleaseGroupReleases>(groupCacheKey);
 
     if (!cachedReleases && fallbackGroup) {
-        const releaseIds = fallbackGroup.releaseIds.filter(id => !deletedReleaseIds.includes(id));
+        const releaseIds = fallbackGroup.releaseIds.filter((id) => !deletedReleaseIds.includes(id));
         return releaseIds.length > 0 ? { ...fallbackGroup, releaseIds } : null;
     }
 
-    const releasesForGroup = mergeGroupReleases(cachedReleases, deletedReleaseIds, artistNewReleases, groupId);
+    const releasesForGroup = mergeGroupReleases(
+        cachedReleases,
+        deletedReleaseIds,
+        artistNewReleases,
+        groupId,
+    );
 
     if (releasesForGroup.length === 0) {
         await deleteCachedData(groupCacheKey);
@@ -71,13 +71,13 @@ export const rebuildReleaseGroupCache = async ({
     const releaseGroupsMap = groupByReleaseGroup(releasesForGroup);
     normalizeReleaseGroups(releaseGroupsMap);
 
-    const normalizedReleases = releaseGroupsMap.get(groupId) ?? Array.from(releaseGroupsMap.values())[0] ?? [];
-    const cachedGroupReleases = createCachedReleaseGroupReleases(normalizedReleases, cachedReleases);
-    await replaceCachedData(
-        groupCacheKey,
-        cachedGroupReleases,
-        ttl,
+    const normalizedReleases =
+        releaseGroupsMap.get(groupId) ?? Array.from(releaseGroupsMap.values())[0] ?? [];
+    const cachedGroupReleases = createCachedReleaseGroupReleases(
+        normalizedReleases,
+        cachedReleases,
     );
+    await replaceCachedData(groupCacheKey, cachedGroupReleases, ttl);
 
     return mapReleaseGroupsToArtistReleases(releaseGroupsMap)[0] ?? null;
 };

@@ -6,13 +6,10 @@ import type {
     CachedReleaseGroupReleases,
 } from '../../utils/types/cacheTypes.js';
 import {
-    groupByReleaseGroup,
     mapReleaseGroupsToArtistReleases,
     normalizeReleaseGroups,
 } from '../../utils/helpers/releaseGroupingHelpers.js';
-import {
-    getCacheKey,
-} from '../../utils/helpers/cacheHelpers.js';
+import { getCacheKey } from '../../utils/helpers/cacheHelpers.js';
 import { mapWithConcurrency } from '../../utils/helpers/promisePool.js';
 import {
     createCachedArtistReleaseGroups,
@@ -27,32 +24,26 @@ import {
     processAndGroupReleases,
 } from './releaseQueries.js';
 
-type GetArtistReleasesOptions = {
-    onReleaseGroupPage?: (releaseGroupEntries: { releaseGroupId: string; releaseIds: string[] }[], isLastPage: boolean) => Promise<void> | void;
-};
-
 type GetReleaseGroupReleasesOptions = {
-    onReleaseIdsPage?: (releaseGroupId: string, releaseIds: string[], isLastPage: boolean) => Promise<void> | void;
+    onReleaseIdsPage?: (
+        releaseGroupId: string,
+        releaseIds: string[],
+        isLastPage: boolean,
+    ) => Promise<void> | void;
 };
 
 export const getArtistReleases = async (
     artistId: string,
-    useCache: boolean,
     ttl: number | undefined,
-    options?: GetArtistReleasesOptions,
 ): Promise<CachedArtistReleases> => {
     const cacheKey = getCacheKey(artistId, 'artistReleases');
     const cached = await getCachedData<CachedArtistReleases>(cacheKey);
 
-    if (useCache && cached) {
-        await options?.onReleaseGroupPage?.(
-            cached.map(group => ({ releaseGroupId: group.id, releaseIds: group.releaseIds })),
-            true,
-        );
+    if (cached) {
         return cached;
     }
 
-    return await fetchAndCacheArtistReleases(artistId, cacheKey, cached, ttl, options);
+    return await fetchAndCacheArtistReleases(artistId, cacheKey, cached, ttl);
 };
 
 const fetchAndCacheArtistReleases = async (
@@ -60,12 +51,11 @@ const fetchAndCacheArtistReleases = async (
     cacheKey: string,
     cached: CachedArtistReleases | null,
     ttl: number | undefined,
-    options?: GetArtistReleasesOptions,
 ): Promise<CachedArtistReleases> => {
     try {
-        return await fetchAndCacheUncachedArtistReleases(artistId, cached, cacheKey, ttl, options);
+        return await fetchAndCacheUncachedArtistReleases(artistId, cached, cacheKey, ttl);
     } catch (error) {
-        throw new Error(`Failed to fetch releases: ${error}`);
+        throw Object.assign(new Error('Failed to fetch releases'), { cause: error });
     }
 };
 
@@ -74,17 +64,8 @@ const fetchAndCacheUncachedArtistReleases = async (
     cached: CachedArtistReleases | null,
     cacheKey: string,
     ttl: number | undefined,
-    options?: GetArtistReleasesOptions,
 ): Promise<CachedArtistReleases> => {
-    const allReleases = await fetchAllReleasesForArtist(artistId, false, async (pageReleases, isLastPage) => {
-        const grouped = groupByReleaseGroup(pageReleases);
-        const pageEntries = Array.from(grouped.entries()).map(([releaseGroupId, releases]) => ({
-            releaseGroupId,
-            releaseIds: releases.map(release => release.id),
-        }));
-
-        await options?.onReleaseGroupPage?.(pageEntries, isLastPage);
-    });
+    const allReleases = await fetchAllReleasesForArtist(artistId, false);
 
     const releaseGroupsMap = processAndGroupReleases(allReleases);
     normalizeReleaseGroups(releaseGroupsMap);
@@ -102,12 +83,16 @@ const cacheReleaseGroupReleasesByGroup = async (
     releaseGroupsMap: Map<string, Release[]>,
     ttl: number | undefined,
 ): Promise<void> => {
-    await mapWithConcurrency(Array.from(releaseGroupsMap.entries()), 10, async ([groupId, releases]) => {
-        const cacheKey = getCacheKey(groupId, 'releaseGroupReleases');
-        const cached = await getCachedData<CachedReleaseGroupReleases>(cacheKey);
-        const cachedReleases = createCachedReleaseGroupReleases(releases, cached);
-        await replaceCachedData(cacheKey, cachedReleases, ttl);
-    });
+    await mapWithConcurrency(
+        Array.from(releaseGroupsMap.entries()),
+        10,
+        async ([groupId, releases]) => {
+            const cacheKey = getCacheKey(groupId, 'releaseGroupReleases');
+            const cached = await getCachedData<CachedReleaseGroupReleases>(cacheKey);
+            const cachedReleases = createCachedReleaseGroupReleases(releases, cached);
+            await replaceCachedData(cacheKey, cachedReleases, ttl);
+        },
+    );
 };
 
 export const getReleaseGroupReleases = async (
@@ -120,12 +105,26 @@ export const getReleaseGroupReleases = async (
     const cached = await getCachedData<CachedReleaseGroupReleases>(cacheKey);
 
     if (useCache && cached && canUseCachedReleaseGroupReleases(cached)) {
-        const normalizedCached = await normalizeCachedReleaseGroupReleases(releaseGroupId, cacheKey, cached, ttl);
-        await options?.onReleaseIdsPage?.(releaseGroupId, normalizedCached.map(release => release.id), true);
+        const normalizedCached = await normalizeCachedReleaseGroupReleases(
+            releaseGroupId,
+            cacheKey,
+            cached,
+            ttl,
+        );
+        await options?.onReleaseIdsPage?.(
+            releaseGroupId,
+            normalizedCached.map((release) => release.id),
+            true,
+        );
         return mapReleaseGroupReleasesList(normalizedCached);
     }
 
-    const releases = await fetchAndCacheReleaseGroupReleases(releaseGroupId, cacheKey, ttl, options);
+    const releases = await fetchAndCacheReleaseGroupReleases(
+        releaseGroupId,
+        cacheKey,
+        ttl,
+        options,
+    );
     return mapReleaseGroupReleasesList(releases);
 };
 
@@ -142,20 +141,22 @@ export const getArtistKnownReleaseIds = async (
     return await fetchAllReleaseIdsForArtist(artistId);
 };
 
-const getCachedArtistReleaseGroups = async (artistId: string): Promise<CachedArtistReleases | null> => (
-    await getCachedData<CachedArtistReleases>(getCacheKey(artistId, 'artistReleases'))
-);
+const getCachedArtistReleaseGroups = async (
+    artistId: string,
+): Promise<CachedArtistReleases | null> =>
+    await getCachedData<CachedArtistReleases>(getCacheKey(artistId, 'artistReleases'));
 
-const getArtistReleaseIds = (artistReleases: CachedArtistReleases): string[] => (
-    Array.from(new Set(artistReleases.flatMap(group => group.releaseIds)))
-);
+const getArtistReleaseIds = (artistReleases: CachedArtistReleases): string[] =>
+    Array.from(new Set(artistReleases.flatMap((group) => group.releaseIds)));
 
 const canUseCachedReleaseGroupReleases = (releases: CachedReleaseGroupReleases): boolean => {
     if (releases.length <= 1) {
         return true;
     }
 
-    return releases.some(release => release.media.some(media => (media.tracks?.length ?? 0) > 0));
+    return releases.some((release) =>
+        release.media.some((media) => (media.tracks?.length ?? 0) > 0),
+    );
 };
 
 const fetchAndCacheReleaseGroupReleases = async (
@@ -165,12 +166,25 @@ const fetchAndCacheReleaseGroupReleases = async (
     options?: GetReleaseGroupReleasesOptions,
 ): Promise<Release[]> => {
     const allReleases = await fetchAllReleasesForReleaseGroup(releaseGroupId);
-    const { releases, prunedReleaseIds } = dedupeAndSortReleaseGroupReleases(releaseGroupId, allReleases);
+    const { releases, prunedReleaseIds } = dedupeAndSortReleaseGroupReleases(
+        releaseGroupId,
+        allReleases,
+    );
 
     const cachedReleases = createCachedReleaseGroupReleases(releases, null);
     await replaceCachedData(cacheKey, cachedReleases, ttl);
-    await pruneDuplicateReleaseIdsFromCaches(releaseGroupId, prunedReleaseIds, allReleases, cachedReleases, ttl);
-    await options?.onReleaseIdsPage?.(releaseGroupId, cachedReleases.map(release => release.id), true);
+    await pruneDuplicateReleaseIdsFromCaches(
+        releaseGroupId,
+        prunedReleaseIds,
+        allReleases,
+        cachedReleases,
+        ttl,
+    );
+    await options?.onReleaseIdsPage?.(
+        releaseGroupId,
+        cachedReleases.map((release) => release.id),
+        true,
+    );
 
     return cachedReleases;
 };
@@ -181,7 +195,10 @@ const normalizeCachedReleaseGroupReleases = async (
     cached: CachedReleaseGroupReleases,
     ttl: number | undefined,
 ): Promise<CachedReleaseGroupReleases> => {
-    const { releases, prunedReleaseIds } = dedupeAndSortReleaseGroupReleases(releaseGroupId, cached);
+    const { releases, prunedReleaseIds } = dedupeAndSortReleaseGroupReleases(
+        releaseGroupId,
+        cached,
+    );
 
     if (prunedReleaseIds.length === 0) {
         return cached;
@@ -189,7 +206,13 @@ const normalizeCachedReleaseGroupReleases = async (
 
     const cachedReleases = createCachedReleaseGroupReleases(releases, cached);
     await replaceCachedData(cacheKey, cachedReleases, ttl);
-    await pruneDuplicateReleaseIdsFromCaches(releaseGroupId, prunedReleaseIds, cached, cachedReleases, ttl);
+    await pruneDuplicateReleaseIdsFromCaches(
+        releaseGroupId,
+        prunedReleaseIds,
+        cached,
+        cachedReleases,
+        ttl,
+    );
 
     return cachedReleases;
 };
@@ -206,7 +229,13 @@ const pruneDuplicateReleaseIdsFromCaches = async (
     }
 
     await Promise.all([
-        pruneArtistReleaseGroupCaches(releaseGroupId, prunedReleaseIds, releases, dedupedReleases, ttl),
+        pruneArtistReleaseGroupCaches(
+            releaseGroupId,
+            prunedReleaseIds,
+            releases,
+            dedupedReleases,
+            ttl,
+        ),
         pruneReleaseGroupReleaseCoverCache(releaseGroupId, prunedReleaseIds, ttl),
     ]);
 };
@@ -230,18 +259,23 @@ const pruneArtistReleaseGroupCaches = async (
         }
 
         let changed = false;
-        const nextCache = cached.flatMap(releaseGroup => {
+        const nextCache = cached.flatMap((releaseGroup) => {
             if (releaseGroup.id !== releaseGroupId) {
                 return [releaseGroup];
             }
 
-            const prunedReleaseIdsForGroup = releaseGroup.releaseIds.filter(releaseId => !prunedReleaseIdSet.has(releaseId));
-            const releaseIds = prunedReleaseIdsForGroup.length > 0
-                ? prunedReleaseIdsForGroup
-                : getReleaseIdsForArtist(dedupedReleases, artistId);
+            const prunedReleaseIdsForGroup = releaseGroup.releaseIds.filter(
+                (releaseId) => !prunedReleaseIdSet.has(releaseId),
+            );
+            const releaseIds =
+                prunedReleaseIdsForGroup.length > 0
+                    ? prunedReleaseIdsForGroup
+                    : getReleaseIdsForArtist(dedupedReleases, artistId);
 
-            if (releaseIds.length !== releaseGroup.releaseIds.length ||
-                releaseIds.some((releaseId, index) => releaseId !== releaseGroup.releaseIds[index])) {
+            if (
+                releaseIds.length !== releaseGroup.releaseIds.length ||
+                releaseIds.some((releaseId, index) => releaseId !== releaseGroup.releaseIds[index])
+            ) {
                 changed = true;
             }
 
@@ -256,13 +290,15 @@ const pruneArtistReleaseGroupCaches = async (
 
 const getReleaseIdsForArtist = (releases: Release[], artistId: string): string[] => {
     return releases
-        .filter(release => releaseBelongsToArtist(release, artistId))
-        .map(release => release.id);
+        .filter((release) => releaseBelongsToArtist(release, artistId))
+        .map((release) => release.id);
 };
 
 const releaseBelongsToArtist = (release: Release, artistId: string): boolean => {
-    return release.artistId === artistId ||
-        (release['artist-credit'] ?? []).some(artist => artist.id === artistId);
+    return (
+        release.artistId === artistId ||
+        (release['artist-credit'] ?? []).some((artist) => artist.id === artistId)
+    );
 };
 
 const pruneReleaseGroupReleaseCoverCache = async (

@@ -20,9 +20,19 @@ export const monitorUserMapsDocSizes = async (userId: string): Promise<void> => 
         const size = Buffer.byteLength(JSON.stringify(followingSnap.data()), 'utf8');
         const level = checkMapsDocSizeThresholds(size);
         if (level === 'warn') {
-            logger.warn('maps doc size approaching limit', { userId, collection: 'followingArtists/maps', sizeBytes: size, threshold: 'warn' });
+            logger.warn('maps doc size approaching limit', {
+                userId,
+                collection: 'followingArtists/maps',
+                sizeBytes: size,
+                threshold: 'warn',
+            });
         } else if (level === 'critical') {
-            logger.error('maps doc size near critical limit', { userId, collection: 'followingArtists/maps', sizeBytes: size, threshold: 'critical' });
+            logger.error('maps doc size near critical limit', {
+                userId,
+                collection: 'followingArtists/maps',
+                sizeBytes: size,
+                threshold: 'critical',
+            });
         }
     }
 
@@ -30,9 +40,19 @@ export const monitorUserMapsDocSizes = async (userId: string): Promise<void> => 
         const size = Buffer.byteLength(JSON.stringify(newReleasesSnap.data()), 'utf8');
         const level = checkMapsDocSizeThresholds(size);
         if (level === 'warn') {
-            logger.warn('maps doc size approaching limit', { userId, collection: 'newReleases/maps', sizeBytes: size, threshold: 'warn' });
+            logger.warn('maps doc size approaching limit', {
+                userId,
+                collection: 'newReleases/maps',
+                sizeBytes: size,
+                threshold: 'warn',
+            });
         } else if (level === 'critical') {
-            logger.error('maps doc size near critical limit', { userId, collection: 'newReleases/maps', sizeBytes: size, threshold: 'critical' });
+            logger.error('maps doc size near critical limit', {
+                userId,
+                collection: 'newReleases/maps',
+                sizeBytes: size,
+                threshold: 'critical',
+            });
         }
     }
 };

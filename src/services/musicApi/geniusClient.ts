@@ -1,7 +1,4 @@
-import {
-    getGeniusAccessToken,
-    logMissingOptionalCredentialOnce,
-} from './credentials.js';
+import { getGeniusAccessToken, logMissingOptionalCredentialOnce } from './credentials.js';
 import { fetchDaprProvider, isAbortError } from './httpClient.js';
 import { isFetchFailureResult } from './types.js';
 import type { HttpOptions } from './types.js';
@@ -21,12 +18,20 @@ export const fetchGeniusLyrics = async (
     const options: HttpOptions = {
         method: 'GET',
         headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
         },
     };
 
     try {
-        const response = await fetchDaprProvider('genius', `/search?q=${queryEncoded}`, options, false, false, 'status', signal);
+        const response = await fetchDaprProvider(
+            'genius',
+            `/search?q=${queryEncoded}`,
+            options,
+            false,
+            false,
+            'status',
+            signal,
+        );
         if (!response || isFetchFailureResult(response)) {
             return undefined;
         }

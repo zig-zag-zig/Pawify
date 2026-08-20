@@ -23,10 +23,7 @@ import {
     type CoverLookupResult,
 } from './coverArt/coverArtLookup.js';
 
-export {
-    createArtistReleaseGroupCoverCacheContext,
-    flushArtistReleaseGroupCoverCacheContext,
-};
+export { createArtistReleaseGroupCoverCacheContext, flushArtistReleaseGroupCoverCacheContext };
 
 export const getReleaseGroupCover = async (
     artistId: string | undefined,
@@ -37,7 +34,7 @@ export const getReleaseGroupCover = async (
     artistCoverCacheContext?: ArtistReleaseGroupCoverCacheContext,
 ): Promise<CoverLookupResult> => {
     const artistCoverCache = artistId
-        ? (artistCoverCacheContext?.cache ?? await readArtistReleaseGroupCoverCache(artistId))
+        ? (artistCoverCacheContext?.cache ?? (await readArtistReleaseGroupCoverCache(artistId)))
         : undefined;
     const current = artistCoverCache?.[releaseGroupId];
     const now = Date.now();
@@ -45,11 +42,14 @@ export const getReleaseGroupCover = async (
     if (shouldUseCachedState(current, now)) {
         if (!hasUsableUrl(current.url)) {
             const releaseCache = await readReleaseCoverCache(releaseGroupId);
-            const cachedFallback = pickCachedReleaseCoverFromIds(releaseCache, fallbackReleaseIds, now)
-                ?? pickAnyCachedReleaseCover(releaseCache, now);
+            const cachedFallback =
+                pickCachedReleaseCoverFromIds(releaseCache, fallbackReleaseIds, now) ??
+                pickAnyCachedReleaseCover(releaseCache, now);
 
             if (cachedFallback) {
-                const upgradedState = mapResolvedCoverState(cachedFallback.url, true, [current.url]);
+                const upgradedState = mapResolvedCoverState(cachedFallback.url, true, [
+                    current.url,
+                ]);
                 await upsertArtistReleaseGroupCoverState(
                     artistId,
                     artistCoverCache,
@@ -110,11 +110,20 @@ export const getReleaseGroupCover = async (
             isFallback: false,
         };
     } else {
-        const fallback = await getFallbackReleaseCover(releaseGroupId, fallbackReleaseIds, ttl, signal, [directGroupCover]);
+        const fallback = await getFallbackReleaseCover(
+            releaseGroupId,
+            fallbackReleaseIds,
+            ttl,
+            signal,
+            [directGroupCover],
+        );
         const url = fallback.state.url;
 
         result = {
-            state: mapResolvedCoverState(url, hasUsableUrl(url), [directGroupCover, fallback.state.url]),
+            state: mapResolvedCoverState(url, hasUsableUrl(url), [
+                directGroupCover,
+                fallback.state.url,
+            ]),
             isFallback: hasUsableUrl(url),
         };
     }
@@ -186,7 +195,10 @@ export const getReleaseCover = async (
     const url = hasUsableUrl(directGroupCover)
         ? directGroupCover
         : resolveMiss([directReleaseState.url, directGroupCover]);
-    const state = mapResolvedCoverState(url, hasUsableUrl(url), [directReleaseState.url, directGroupCover]);
+    const state = mapResolvedCoverState(url, hasUsableUrl(url), [
+        directReleaseState.url,
+        directGroupCover,
+    ]);
 
     cache[releaseId] = state;
     await writeReleaseCoverCache(releaseGroupId, cache, ttl);

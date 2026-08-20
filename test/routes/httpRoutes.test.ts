@@ -57,7 +57,7 @@ describe('HTTP route integration', () => {
                 body: JSON.stringify({ email: 'test@example.com' }),
             });
             assert.equal(response.status, 200);
-            const body = await response.json();
+            const body = await response.text();
             assert.equal(body, 'OTP sent successfully');
         });
 
@@ -197,10 +197,10 @@ describe('HTTP route integration', () => {
 
     describe('v2 routes', () => {
         it('GET /v2/health returns 200', async () => {
-            const { createApiV2Routes } = await import('../../src/api/v2Routes.js');
+            const { v2Routes } = await import('../../src/api/v2Routes.js');
             const app = express();
             app.use(express.json());
-            app.use('/v2', createApiV2Routes());
+            app.use(v2Routes);
             app.use(errorMiddleware);
             const v2Url = await startTestServer(app);
             try {
@@ -220,7 +220,9 @@ describe('HTTP route integration', () => {
         });
 
         it('returns 401 with structured error body for unauthenticated requests', async () => {
-            setFakeCheckAuth(async () => { throw new Error('Unauthorized'); });
+            setFakeCheckAuth(async () => {
+                throw new Error('Unauthorized');
+            });
             const response = await fetch(`${baseUrl}/v1/revokeToken`);
             assert.equal(response.status, 401);
             const body = await response.json();

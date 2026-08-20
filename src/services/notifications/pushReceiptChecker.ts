@@ -1,11 +1,7 @@
 import { createLogger } from '../../common/logging/logger.js';
 import { chunkArray } from '../../common/utils/array.js';
-import {
-    getExpoPushReceipts,
-} from './expoPushClient.js';
-import {
-    deletePushTokensFromStore,
-} from './pushTokenStoreAdapter.js';
+import { getExpoPushReceipts } from './expoPushClient.js';
+import { deletePushTokensFromStore } from './pushTokenStoreAdapter.js';
 import type {
     ExpoPushReceipt,
     ExpoPushReceiptId,
@@ -33,12 +29,11 @@ const getReceiptInvalidToken = (
 
     return typeof receipt.details.expoPushToken === 'string'
         ? receipt.details.expoPushToken
-        : fallbackPushToken ?? null;
+        : (fallbackPushToken ?? null);
 };
 
-const isDeviceNotRegisteredReceipt = (receipt: ExpoPushReceipt): boolean => (
-    receipt.status === 'error' && receipt.details?.error === 'DeviceNotRegistered'
-);
+const isDeviceNotRegisteredReceipt = (receipt: ExpoPushReceipt): boolean =>
+    receipt.status === 'error' && receipt.details?.error === 'DeviceNotRegistered';
 
 export const checkPushReceipts = async (
     userId: string,
@@ -53,34 +48,42 @@ export const checkPushReceipts = async (
         const chunks = chunkArray(receiptIds, pushReceiptChunkSize);
         const invalidTokens: string[] = [];
 
-        await Promise.all(chunks.map(async (chunk) => {
-            const receipts = await getExpoPushReceipts(chunk);
+        await Promise.all(
+            chunks.map(async (chunk) => {
+                const receipts = await getExpoPushReceipts(chunk);
 
-            Object.entries(receipts).forEach(([receiptId, receipt]) => {
-                if (receipt.status !== 'error') {
-                    return;
-                }
+                Object.entries(receipts).forEach(([receiptId, receipt]) => {
+                    if (receipt.status !== 'error') {
+                        return;
+                    }
 
-                const receiptMetadata = {
-                    userId,
-                    mode,
-                    eventName,
-                    receiptId,
-                    message: receipt.message,
-                    details: receipt.details,
-                };
-                if (isDeviceNotRegisteredReceipt(receipt)) {
-                    logger.info('expo push receipt rejected for unregistered device', receiptMetadata);
-                } else {
-                    logger.warn('expo push receipt rejected', receiptMetadata);
-                }
+                    const receiptMetadata = {
+                        userId,
+                        mode,
+                        eventName,
+                        receiptId,
+                        message: receipt.message,
+                        details: receipt.details,
+                    };
+                    if (isDeviceNotRegisteredReceipt(receipt)) {
+                        logger.info(
+                            'expo push receipt rejected for unregistered device',
+                            receiptMetadata,
+                        );
+                    } else {
+                        logger.warn('expo push receipt rejected', receiptMetadata);
+                    }
 
-                const invalidToken = getReceiptInvalidToken(receipt, receiptTokens.get(receiptId));
-                if (invalidToken) {
-                    invalidTokens.push(invalidToken);
-                }
-            });
-        }));
+                    const invalidToken = getReceiptInvalidToken(
+                        receipt,
+                        receiptTokens.get(receiptId),
+                    );
+                    if (invalidToken) {
+                        invalidTokens.push(invalidToken);
+                    }
+                });
+            }),
+        );
 
         if (invalidTokens.length > 0) {
             logger.info('removing receipt-rejected expo push tokens', {
@@ -89,7 +92,6 @@ export const checkPushReceipts = async (
             });
             await deletePushTokensFromStore(userId, invalidTokens);
         }
-
     } catch (error) {
         logger.error('push receipt check failed', {
             userId,

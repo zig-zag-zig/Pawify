@@ -18,31 +18,58 @@ export const createArtistUseCases = (assetPlanner: ArtistProfileImagesPlanner) =
     };
 
     return {
-        followArtist: withOperationLogging(logger, 'followArtist', createFollowArtistUseCase(dependencies), {
-            successLevel: 'info',
-            getMetadata: (_userId, artistId, _sourcePushToken) => ({ artistId }),
-        }),
-        getArtistDetails: withOperationLogging(logger, 'getArtistDetails', createGetArtistDetailsUseCase(dependencies), {
-            getMetadata: (_userId, artistId) => ({ artistId }),
-            getResultMetadata: (result) => ({
-                found: result !== null,
-                profileImageTaskId: result?.profileImageTaskId,
-            }),
-        }),
-        getFollowing: withOperationLogging(logger, 'getFollowing', createGetFollowingUseCase(dependencies), {
-            getResultMetadata: (result) => ({
-                artistCount: result.artists.length,
-                profileImageTaskId: result.profileImageTaskId,
-            }),
-        }),
-        searchArtists: withOperationLogging(logger, 'searchArtists', createSearchArtistsUseCase(dependencies), {
-            getMetadata: (_userId, query, offset, limit) => ({ query, offset, limit }),
-            getResultMetadata: (result) => ({ resultCount: result.artists.length }),
-        }),
-        unfollowArtists: withOperationLogging(logger, 'unfollowArtists', createUnfollowArtistsUseCase(dependencies), {
-            successLevel: 'info',
-            getMetadata: (_userId, artistIds, _sourcePushToken) => ({ artistCount: artistIds.length }),
-        }),
+        followArtist: withOperationLogging(
+            logger,
+            'followArtist',
+            createFollowArtistUseCase(dependencies),
+            {
+                successLevel: 'info',
+                getMetadata: (_userId, artistId, _sourcePushToken) => ({ artistId }),
+            },
+        ),
+        getArtistDetails: withOperationLogging(
+            logger,
+            'getArtistDetails',
+            createGetArtistDetailsUseCase(dependencies),
+            {
+                getMetadata: (_userId, artistId) => ({ artistId }),
+                getResultMetadata: (result) => ({
+                    found: result !== null,
+                    profileImageTaskId: result?.profileImageTaskId,
+                }),
+            },
+        ),
+        getFollowing: withOperationLogging(
+            logger,
+            'getFollowing',
+            createGetFollowingUseCase(dependencies),
+            {
+                getResultMetadata: (result) => ({
+                    artistCount: result.artists.length,
+                    profileImageTaskId: result.profileImageTaskId,
+                }),
+            },
+        ),
+        searchArtists: withOperationLogging(
+            logger,
+            'searchArtists',
+            createSearchArtistsUseCase(dependencies),
+            {
+                getMetadata: (_userId, query, offset, limit) => ({ query, offset, limit }),
+                getResultMetadata: (result) => ({ resultCount: result.artists.length }),
+            },
+        ),
+        unfollowArtists: withOperationLogging(
+            logger,
+            'unfollowArtists',
+            createUnfollowArtistsUseCase(dependencies),
+            {
+                successLevel: 'info',
+                getMetadata: (_userId, artistIds, _sourcePushToken) => ({
+                    artistCount: artistIds.length,
+                }),
+            },
+        ),
     };
 };
 

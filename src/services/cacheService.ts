@@ -27,9 +27,11 @@ const getSafeChunkSize = (key: string): number => {
 
 const getMetadataKey = (key: string): string => `${key}:metadata`;
 
-const getChunkKeys = (key: string, totalChunks: number): string[] => (
-    Array.from({ length: totalChunks }, (_, index) => `${key}:chunk${index.toString().padStart(4, '0')}`)
-);
+const getChunkKeys = (key: string, totalChunks: number): string[] =>
+    Array.from(
+        { length: totalChunks },
+        (_, index) => `${key}:chunk${index.toString().padStart(4, '0')}`,
+    );
 
 export const deleteCachedData = async (key: string): Promise<void> => {
     try {
@@ -60,11 +62,7 @@ const createStateSaveItem = (
     },
 });
 
-const setCachedData = async (
-    key: string,
-    data: unknown,
-    ttlInHours?: number,
-): Promise<void> => {
+const setCachedData = async (key: string, data: unknown, ttlInHours?: number): Promise<void> => {
     try {
         await deleteCachedData(key);
 
@@ -74,9 +72,7 @@ const setCachedData = async (
         const safeChunkSize = getSafeChunkSize(key);
 
         if (Buffer.byteLength(dataString, 'utf-8') <= safeChunkSize) {
-            await saveStateValues([
-                createStateSaveItem(key, dataString, ttlInSeconds),
-            ]);
+            await saveStateValues([createStateSaveItem(key, dataString, ttlInSeconds)]);
             return;
         }
 
@@ -89,13 +85,13 @@ const setCachedData = async (
                 JSON.stringify({ totalChunks: chunks.length }),
                 ttlInSeconds,
             ),
-            ...chunks.map((chunk, index) => (
+            ...chunks.map((chunk, index) =>
                 createStateSaveItem(
                     `${key}:chunk${index.toString().padStart(4, '0')}`,
                     chunk,
                     ttlInSeconds,
-                )
-            )),
+                ),
+            ),
         ]);
 
         logger.debug('chunked cache value saved', { key, chunkCount: chunks.length });
@@ -116,7 +112,9 @@ export const getCachedData = async <T>(key: string): Promise<T | null> => {
         }
 
         const chunkKeys = getChunkKeys(key, totalChunks);
-        const chunkResults = await Promise.all(chunkKeys.map((chunkKey) => getStateValue(chunkKey)));
+        const chunkResults = await Promise.all(
+            chunkKeys.map((chunkKey) => getStateValue(chunkKey)),
+        );
         const chunks: string[] = [];
         let missingChunkCount = 0;
 

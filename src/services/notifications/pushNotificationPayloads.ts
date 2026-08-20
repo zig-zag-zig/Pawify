@@ -4,9 +4,8 @@ import type {
     PushNotificationOptions,
 } from './pushNotificationTypes.js';
 
-export const isExpoPushToken = (token: string): boolean => (
-    /^(ExpoPushToken|ExponentPushToken)\[[A-Za-z0-9_-]+\]$/.test(token)
-);
+export const isExpoPushToken = (token: string): boolean =>
+    /^(ExpoPushToken|ExponentPushToken)\[[A-Za-z0-9_-]+\]$/.test(token);
 
 export const validateNotificationOptions = (options: PushNotificationOptions): NotificationMode => {
     const hasTitleOrBody = !!options.title?.trim() || !!options.body?.trim();
@@ -23,9 +22,7 @@ export const validateNotificationOptions = (options: PushNotificationOptions): N
     }
 
     if (!hasEventName) {
-        throw new Error(
-            'Data notifications require eventName (non-empty string).',
-        );
+        throw new Error('Data notifications require eventName (non-empty string).');
     }
 
     if (options.payload && typeof options.payload !== 'object') {
@@ -48,7 +45,7 @@ export const buildExpoPushMessages = (
         body: options.body,
         data: isDataOnly ? { eventName: options.eventName, payload: options.payload } : undefined,
         sound: isDataOnly ? undefined : 'default',
-        priority: isDataOnly ? 'high' as const : undefined,
+        priority: isDataOnly ? ('high' as const) : undefined,
         _contentAvailable: isDataOnly ? true : undefined,
     }));
 };

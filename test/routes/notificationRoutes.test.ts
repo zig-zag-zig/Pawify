@@ -13,7 +13,8 @@ installAllFakes();
 let baseUrl: string;
 
 beforeEach(async () => {
-    const { notificationRoutes } = await import('../../src/features/notifications/notificationRoutes.js');
+    const { notificationRoutes } =
+        await import('../../src/features/notifications/notificationRoutes.js');
     baseUrl = await createIntegrationTestApp(notificationRoutes);
 });
 

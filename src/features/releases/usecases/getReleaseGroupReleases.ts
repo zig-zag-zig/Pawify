@@ -8,52 +8,54 @@ type GetReleaseGroupReleasesResult = {
     releaseCovers: Record<string, string | null>;
 };
 
-export const createGetReleaseGroupReleasesUseCase = ({
-    releaseCatalogGateway,
-    releaseTaskQueue,
-    assetPlanner,
-    requestDeduper,
-}: Pick<
-    ReleaseReadUseCaseDependencies,
-    'releaseCatalogGateway' | 'releaseTaskQueue' | 'assetPlanner' | 'requestDeduper'
->) => async (
-    userId: string,
-    releaseGroupId: string,
-): Promise<GetReleaseGroupReleasesResult> => {
-    const payload = await requestDeduper.run(
-        `getReleaseGroupReleases:${userId}:${releaseGroupId}`,
-        async () => {
-            const ttl: number | undefined = undefined;
-            const coverPageEntries: ReleaseGroupReleasesPageEntry[] = [];
+export const createGetReleaseGroupReleasesUseCase =
+    ({
+        releaseCatalogGateway,
+        releaseTaskQueue,
+        assetPlanner,
+        requestDeduper,
+    }: Pick<
+        ReleaseReadUseCaseDependencies,
+        'releaseCatalogGateway' | 'releaseTaskQueue' | 'assetPlanner' | 'requestDeduper'
+    >) =>
+    async (userId: string, releaseGroupId: string): Promise<GetReleaseGroupReleasesResult> => {
+        const payload = await requestDeduper.run(
+            `getReleaseGroupReleases:${userId}:${releaseGroupId}`,
+            async () => {
+                const coverPageEntries: ReleaseGroupReleasesPageEntry[] = [];
 
-            const releases = await releaseCatalogGateway.getReleaseGroupReleases(releaseGroupId, ttl, async (groupId, releaseIds) => {
-                coverPageEntries.push({
-                    releaseGroupId: groupId,
-                    releaseIds,
-                });
-            });
+                const releases = await releaseCatalogGateway.getReleaseGroupReleases(
+                    releaseGroupId,
+                    undefined,
+                    async (groupId, releaseIds) => {
+                        coverPageEntries.push({
+                            releaseGroupId: groupId,
+                            releaseIds,
+                        });
+                    },
+                );
 
-            return {
-                releases,
-                coverPageEntries,
-            };
-        },
-    );
+                return {
+                    releases,
+                    coverPageEntries,
+                };
+            },
+        );
 
-    const plan = await assetPlanner.planReleaseGroupReleaseCovers({
-        userId,
-        releaseGroupId,
-        pageEntries: payload.coverPageEntries,
-        ttl: undefined,
-    });
+        const plan = await assetPlanner.planReleaseGroupReleaseCovers({
+            userId,
+            releaseGroupId,
+            pageEntries: payload.coverPageEntries,
+            ttl: undefined,
+        });
 
-    if (plan.taskId !== null) {
-        releaseTaskQueue.addTaskUser(plan.taskId, userId);
-    }
+        if (plan.taskId !== null) {
+            releaseTaskQueue.addTaskUser(plan.taskId, userId);
+        }
 
-    return {
-        releases: payload.releases,
-        releaseCovers: plan.resolved,
-        releaseCoverTaskId: plan.taskId,
+        return {
+            releases: payload.releases,
+            releaseCovers: plan.resolved,
+            releaseCoverTaskId: plan.taskId,
+        };
     };
-};

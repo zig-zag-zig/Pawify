@@ -2,11 +2,7 @@ import { invokeHttpEndpoint, type DaprEndpointName } from '../../infrastructure/
 import { getMusicBrainzUserAgent } from './credentials.js';
 import { createAbortError, delayWithAbort, isAbortError } from './abortableDelay.js';
 import { applyRateLimitHeaders, getRateLimiter, type ExternalService } from './rateLimiter.js';
-import type {
-    FetchFailureResult,
-    HttpOptions,
-    MusicBrainzPriority,
-} from './types.js';
+import type { FetchFailureResult, HttpOptions, MusicBrainzPriority } from './types.js';
 
 export { isAbortError } from './abortableDelay.js';
 
@@ -16,7 +12,7 @@ let activeForegroundMusicBrainzRequests = 0;
 const nonRetriableStatusCodes = new Set([400, 401, 403, 404, 405, 410, 422]);
 
 const waitForForegroundMusicBrainzDrain = async (signal?: AbortSignal): Promise<void> => {
-    while ((pendingForegroundMusicBrainzRequests > 0 || activeForegroundMusicBrainzRequests > 0)) {
+    while (pendingForegroundMusicBrainzRequests > 0 || activeForegroundMusicBrainzRequests > 0) {
         await delayWithAbort(50, signal);
     }
 };
@@ -57,6 +53,7 @@ export const fetchDaprProvider = async (
     let release: (() => void) | null = null;
     let isForegroundActive = false;
     let isForegroundPending = false;
+    let response: Response | null = null;
 
     try {
         if (waitForForegroundDrain) {
@@ -75,7 +72,10 @@ export const fetchDaprProvider = async (
         release = await rateLimiter.acquire();
         if (useForegroundTracking) {
             if (isForegroundPending) {
-                pendingForegroundMusicBrainzRequests = Math.max(0, pendingForegroundMusicBrainzRequests - 1);
+                pendingForegroundMusicBrainzRequests = Math.max(
+                    0,
+                    pendingForegroundMusicBrainzRequests - 1,
+                );
                 isForegroundPending = false;
             }
 
@@ -83,7 +83,7 @@ export const fetchDaprProvider = async (
             isForegroundActive = true;
         }
 
-        const response = await invokeHttpEndpoint(endpoint, methodPathAndQuery, {
+        response = await invokeHttpEndpoint(endpoint, methodPathAndQuery, {
             ...options,
             headers,
             signal,
@@ -92,6 +92,10 @@ export const fetchDaprProvider = async (
         applyRateLimitHeaders(response, rateLimiter, service);
 
         if (!response.ok) {
+            // Drop the unconsumed body so the undici socket is released instead of
+            // being pinned until GC (connection-pool exhaustion under sustained
+            // upstream errors). HEAD responses have no body and skip this branch.
+            await response.body?.cancel();
             if (failureMode === 'status') {
                 return createFetchFailureResult(
                     nonRetriableStatusCodes.has(response.status) || noRetry
@@ -113,15 +117,31 @@ export const fetchDaprProvider = async (
             throw error;
         }
 
-        return failureMode === 'status'
-            ? createFetchFailureResult(null)
-            : null;
+        // The response was obtained but its body was not (fully) consumed — e.g.
+        // response.json() failed on a non-JSON body. Cancel the stream best-effort:
+        // some implementations already consumed/locked it (undici reads the body
+        // before parsing), in which case cancel is a no-op and must not fail.
+        if (response?.body) {
+            try {
+                await response.body.cancel();
+            } catch {
+                // Nothing left to drain; keep the failure result behavior.
+            }
+        }
+
+        return failureMode === 'status' ? createFetchFailureResult(null) : null;
     } finally {
         if (isForegroundPending) {
-            pendingForegroundMusicBrainzRequests = Math.max(0, pendingForegroundMusicBrainzRequests - 1);
+            pendingForegroundMusicBrainzRequests = Math.max(
+                0,
+                pendingForegroundMusicBrainzRequests - 1,
+            );
         }
         if (isForegroundActive) {
-            activeForegroundMusicBrainzRequests = Math.max(0, activeForegroundMusicBrainzRequests - 1);
+            activeForegroundMusicBrainzRequests = Math.max(
+                0,
+                activeForegroundMusicBrainzRequests - 1,
+            );
         }
         if (release) {
             release();

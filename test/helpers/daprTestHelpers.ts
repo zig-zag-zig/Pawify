@@ -10,9 +10,8 @@ const originalFetch = globalThis.fetch;
 export const installFetch = (
     handler: (url: string, init: RequestInit) => Promise<Response> | Response,
 ): void => {
-    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => (
-        await handler(String(input), init ?? {})
-    )) as typeof fetch;
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
+        await handler(String(input), init ?? {})) as typeof fetch;
 };
 
 afterEach(() => {

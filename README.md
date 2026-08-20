@@ -6,7 +6,7 @@ For non-technical readers: this service does the heavy lifting behind the app. I
 
 ## Features
 
-- Firebase-authenticated REST API under `/v1`.
+- Firebase-authenticated REST API under `/v1` and `/v2` (see [API versions](#api-versions)).
 - Artist search, artist details, following, and unfollowing.
 - Release, release-group, and new-release lookup.
 - Background task results for heavier artwork/profile/lyrics work.
@@ -104,7 +104,7 @@ docker compose --env-file .env.local up -d --build --wait
 curl http://127.0.0.1:10000/v1/health
 ```
 
-For local development with hot reload, use the dev override instead. This mounts `src/` and runs `tsx watch` so code changes restart the server automatically:
+For local development with hot reload, use the dev override instead. This mounts `src/` and runs `npm run dev` (ts-node) so code changes restart the server automatically:
 
 ```bash
 docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.dev.yml up -d --build --wait
@@ -245,8 +245,8 @@ This compiles TypeScript via `tsconfig.test.json` (output to `lib-test/`) and ru
 | Cache serialization | `test/cacheSerialization.test.ts` |
 | Rate limiter | `test/rateLimiter.test.ts` |
 | Dapr infrastructure | `test/daprMigration.test.ts` |
-| Health routes | `test/healthRoutes.test.ts` |
-| HTTP route integration | `test/httpRoutes.test.ts` |
+| Health routes | `test/routes/healthRoutes.test.ts` |
+| HTTP route integration | `test/routes/httpRoutes.test.ts` |
 | Firebase emulator integration | `test/emulator/firebaseEmulator.test.ts` (requires `npm run test:emulator`) |
 
 ### Test helpers
@@ -263,9 +263,10 @@ This compiles TypeScript via `tsconfig.test.json` (output to `lib-test/`) and ru
 
 | Command | Purpose |
 |---|---|
-| `npm test` | Compile and run all unit + integration tests (emulator tests auto-skip when emulators are not running) |
-| `npm run test:emulator` | Compile and run Firebase emulator integration tests (requires `firebase-tools` installed) |
-| `npm run build` | Compile TypeScript to `lib/` |
+| `npm test` | Compile and run all unit + route tests (emulator tests auto-skip when emulators are not running) |
+| `npm run test:integration` | Compile and run the Firebase emulator integration suite via `firebase emulators:exec` (requires Java, see below) |
+| `npm run test:emulator` | Alias for `npm run test:integration` |
+| `npm run build` | Compile TypeScript to `lib/` (runs the full test suite first, including the Firebase emulator suite — requires Java, see below) |
 | `npm run dev` | Run dev server with `ts-node` |
 
 ### Firebase emulator tests
@@ -279,6 +280,8 @@ npm run test:emulator
 ```
 
 This requires `firebase-tools` (installed as a dev dependency) and will start the Auth, Firestore, and Database emulators automatically. The emulator configuration is in `firebase.json`.
+
+The Firebase emulators are JVM-based, so **Java is required** for anything that starts them: `npm run test:integration`/`npm run test:emulator` directly, and `npm run build` (it runs the full test suite before compiling).
 
 ### Writing new tests
 
@@ -353,6 +356,29 @@ Common authenticated routes:
 - Push tokens: `POST /v1/savePushToken`, `POST /v1/deletePushToken`
 - Tasks: `POST /v1/getTaskResult`
 
+### API versions
+
+All endpoints are mounted under both `/v1` and `/v2`; the versions differ only
+in how expensive background assets (artist profile images, release covers,
+track lyrics) are delivered:
+
+- **`/v1` (legacy contract):** responses always carry a task id
+  (`profileImageTaskId`, `releaseCoverTaskId`, `releaseGroupCoverTaskId`,
+  `lyricsTaskId`) and queue the full set of work in the background. They
+  contain **no immediate asset maps** — clients must poll
+  `POST /v1/getTaskResult` to collect the results.
+- **`/v2` (cache-first contract):** every asset resolvable from cache is
+  returned **immediately** in the response — `profileImages` on the artist
+  endpoints, `releaseCovers` on the release endpoints, `trackLyrics` on
+  `getRelease` — and only the pending subset is queued. Task ids are
+  **nullable**: when nothing is pending the task id is `null` and no polling
+  is needed. Clients that understand this contract get first paint without
+  a background round-trip.
+
+`PawifyApp` selects the prefix from its app major version. The unversioned
+paths (`/getFollowing`, …) are a deprecated compatibility alias for ancient
+builds and serve the v1 contract.
+
 ## Deployment
 
 - Pull requests into `main` run build, tests, and Docker image validation.
@@ -372,11 +398,16 @@ src/api/              Versioned route registration
 src/common/           HTTP, logging, request, and utility code
 src/config/           Runtime configuration and env parsing
 src/features/         Auth, artists, releases, notifications, push tokens, tasks
+src/features/releases/domain/  Release domain logic (sorting, filtering, processing)
 src/infrastructure/   Firebase, monitoring, and provider adapters
 src/services/         Music APIs, cache, email, tasks, notifications
-src/services/cache/   Cache serialization and chunking helpers
+src/services/cache/   Cache serialization, chunking, and TTL policy helpers
+src/services/musicbrainz/  MusicBrainz client, release queries, and artist search
 src/utils/            Helpers and shared types
-test/                 Unit and integration tests
+test/                 Test entry points and shared suites
+test/routes/          Offline HTTP route tests (fakes, no emulators)
+test/unit/            Unit tests for common, config, services, and domain modules
+test/emulator/        Integration tests against real Firebase emulators
 test/helpers/         Test fixtures, fakes, and module mocking utilities
 ```
 

@@ -24,17 +24,17 @@ const configuredLevel = (): LogLevel => {
     return loggingConfig.level;
 };
 
-const shouldLog = (scope: string, level: LogLevel): boolean => {
-    void scope;
-
+const shouldLog = (level: LogLevel): boolean => {
     if (levelPriority[level] < levelPriority[configuredLevel()]) {
         return false;
     }
     return true;
 };
 
-const redactedKeyPattern = /(?:authorization|cookie|token|password|secret|otp|email|userId|userIds|uid|firebaseUid|deviceId|ipAddress|clientIp|sessionId|sessionFamilyId)/i;
-const serviceName = process.env.LOG_SERVICE_NAME?.trim() || process.env.npm_package_name?.trim() || 'pawify-api';
+const redactedKeyPattern =
+    /(?:authorization|cookie|token|password|secret|otp|email|userId|userIds|uid|firebaseUid|deviceId|ipAddress|clientIp|sessionId|sessionFamilyId)/i;
+const serviceName =
+    process.env.LOG_SERVICE_NAME?.trim() || process.env.npm_package_name?.trim() || 'pawify-api';
 
 const redactValue = (key: string, value: unknown): unknown => {
     if (redactedKeyPattern.test(key)) {
@@ -68,9 +68,9 @@ const sanitizeMetadata = (metadata: LogMetadata): LogMetadata => {
 
 const safeStringify = (value: unknown): string => {
     try {
-        return JSON.stringify(value, (_key, item) => (
-            typeof item === 'bigint' ? item.toString() : item
-        ));
+        return JSON.stringify(value, (_key, item) =>
+            typeof item === 'bigint' ? item.toString() : item,
+        );
     } catch (error) {
         return JSON.stringify({
             timestamp: new Date().toISOString(),
@@ -100,7 +100,7 @@ const mergeRequestContext = (metadata?: LogMetadata): LogMetadata | undefined =>
 };
 
 const emit = (scope: string, level: LogLevel, message: string, metadata?: LogMetadata): void => {
-    if (!shouldLog(scope, level)) {
+    if (!shouldLog(level)) {
         return;
     }
 

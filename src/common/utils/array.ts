@@ -1,6 +1,10 @@
 export const chunkArray = <T>(items: T[], size: number): T[][] => {
-    if (size <= 0 || items.length === 0) {
-        return items.length === 0 ? [] : [items];
+    if (size < 1) {
+        throw new RangeError('chunkArray size must be at least 1');
+    }
+
+    if (items.length === 0) {
+        return [];
     }
 
     const chunked: T[][] = [];

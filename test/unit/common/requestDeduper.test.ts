@@ -127,15 +127,9 @@ describe('requestDeduper run()', () => {
             throw new Error('worker failed');
         };
 
-        await assert.rejects(
-            () => requestDeduper.run(key, worker),
-            /worker failed/,
-        );
+        await assert.rejects(() => requestDeduper.run(key, worker), /worker failed/);
 
-        await assert.rejects(
-            () => requestDeduper.run(key, worker),
-            /worker failed/,
-        );
+        await assert.rejects(() => requestDeduper.run(key, worker), /worker failed/);
         assert.equal(callCount, 2);
     });
 
@@ -156,6 +150,78 @@ describe('requestDeduper run()', () => {
 
         assert.equal(r1, 'result-1');
         assert.equal(r2, 'result-1');
+        assert.equal(callCount, 1);
+    });
+});
+
+describe('requestDeduper invalidate()', () => {
+    it('drops matching recent results so the next read hits the source', async () => {
+        const { requestDeduper } = await import('../../../src/common/request/requestDeduper.js');
+        let callCount = 0;
+
+        const suffix = `${Date.now()}:${Math.random()}`;
+        const keyA = `get:rd-inv-a:${suffix}`;
+        const keyB = `get:rd-inv-b:${suffix}`;
+        const worker = async () => {
+            callCount += 1;
+            return `result-${callCount}`;
+        };
+
+        assert.equal(await requestDeduper.run(keyA, worker), 'result-1');
+        assert.equal(await requestDeduper.run(keyB, worker), 'result-2');
+        assert.equal(await requestDeduper.run(keyA, worker), 'result-1'); // cached
+
+        requestDeduper.invalidate('get:rd-inv-a');
+
+        assert.equal(await requestDeduper.run(keyA, worker), 'result-3'); // fresh read
+        assert.equal(await requestDeduper.run(keyB, worker), 'result-2'); // untouched
+        assert.equal(callCount, 3);
+    });
+
+    it('drops in-flight expectations and does not cache their stale results', async () => {
+        const { requestDeduper } = await import('../../../src/common/request/requestDeduper.js');
+        const { setTimeout: delay } = await import('node:timers/promises');
+        let callCount = 0;
+
+        const key = `get:rd-inv-flight:${Date.now()}:${Math.random()}`;
+        const worker = async () => {
+            const current = ++callCount;
+            await delay(30);
+            return `result-${current}`;
+        };
+
+        const staleInFlight = requestDeduper.run(key, worker);
+        requestDeduper.invalidate(key);
+
+        // The in-flight expectation was dropped, so this starts a fresh source read
+        // instead of joining the (possibly stale) in-flight one.
+        const fresh = await requestDeduper.run(key, worker);
+        assert.equal(fresh, 'result-2');
+
+        const stale = await staleInFlight;
+        assert.equal(stale, 'result-1');
+
+        // The stale in-flight completion must not have been cached: the next read
+        // returns the fresh value from the post-invalidation read, never the stale
+        // one, and no extra source read is issued for it.
+        const after = await requestDeduper.run(key, worker);
+        assert.equal(after, 'result-2');
+        assert.equal(callCount, 2);
+    });
+
+    it('leaves unrelated keys untouched', async () => {
+        const { requestDeduper } = await import('../../../src/common/request/requestDeduper.js');
+        let callCount = 0;
+
+        const key = `get:rd-inv-other:${Date.now()}:${Math.random()}`;
+        const worker = async () => {
+            callCount += 1;
+            return `result-${callCount}`;
+        };
+
+        assert.equal(await requestDeduper.run(key, worker), 'result-1');
+        requestDeduper.invalidate('get:rd-inv-not-matching');
+        assert.equal(await requestDeduper.run(key, worker), 'result-1');
         assert.equal(callCount, 1);
     });
 });

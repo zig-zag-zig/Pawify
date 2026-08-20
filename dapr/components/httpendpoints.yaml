@@ -1,34 +1,34 @@
 apiVersion: dapr.io/v1alpha1
 kind: HTTPEndpoint
 metadata:
-  name: musicbrainz
+    name: musicbrainz
 spec:
-  baseUrl: https://musicbrainz.org
+    baseUrl: https://musicbrainz.org
 ---
 apiVersion: dapr.io/v1alpha1
 kind: HTTPEndpoint
 metadata:
-  name: coverartarchive
+    name: coverartarchive
 spec:
-  baseUrl: https://coverartarchive.org
+    baseUrl: https://coverartarchive.org
 ---
 apiVersion: dapr.io/v1alpha1
 kind: HTTPEndpoint
 metadata:
-  name: discogs
+    name: discogs
 spec:
-  baseUrl: https://api.discogs.com
+    baseUrl: https://api.discogs.com
 ---
 apiVersion: dapr.io/v1alpha1
 kind: HTTPEndpoint
 metadata:
-  name: genius
+    name: genius
 spec:
-  baseUrl: https://api.genius.com
+    baseUrl: https://api.genius.com
 ---
 apiVersion: dapr.io/v1alpha1
 kind: HTTPEndpoint
 metadata:
-  name: expo
+    name: expo
 spec:
-  baseUrl: https://exp.host
+    baseUrl: https://exp.host

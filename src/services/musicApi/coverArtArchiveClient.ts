@@ -5,9 +5,7 @@ import type { HttpOptions } from './types.js';
 const coverArtInFlight = new Map<string, Promise<string | null | undefined>>();
 type CoverProbeResult = 'found' | 'missing' | 'transient';
 
-const getPublicCoverArtUrl = (path: string): string => (
-    `https://${['coverartarchive', 'org'].join('.')}${path}`
-);
+const getPublicCoverArtUrl = (path: string): string => `https://coverartarchive.org${path}`;
 
 const normalizeCoverArtPath = (value: string): string => {
     try {
@@ -62,17 +60,22 @@ const fetchCoverArt = async (
     return null;
 };
 
-const probeCoverUrl = async (
-    path: string,
-    signal?: AbortSignal,
-): Promise<CoverProbeResult> => {
+const probeCoverUrl = async (path: string, signal?: AbortSignal): Promise<CoverProbeResult> => {
     const options: HttpOptions = {
         method: 'HEAD',
         headers: {},
     };
 
     try {
-        const result = await fetchDaprProvider('coverartarchive', path, options, true, true, 'status', signal);
+        const result = await fetchDaprProvider(
+            'coverartarchive',
+            path,
+            options,
+            true,
+            true,
+            'status',
+            signal,
+        );
         if (result === true) {
             return 'found';
         }

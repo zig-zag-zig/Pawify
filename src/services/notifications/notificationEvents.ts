@@ -5,4 +5,4 @@ export const notificationEvents = {
     taskCompleted: 'taskCompleted',
 } as const;
 
-export type NotificationEventName = typeof notificationEvents[keyof typeof notificationEvents];
+export type NotificationEventName = (typeof notificationEvents)[keyof typeof notificationEvents];

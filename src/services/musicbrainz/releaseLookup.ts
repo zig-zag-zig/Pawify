@@ -1,14 +1,16 @@
-import { mapToRelease } from '../../infrastructure/musicbrainz/musicbrainzMapper.js';
+import {
+    getPrimaryArtistId,
+    mapToRelease,
+} from '../../infrastructure/musicbrainz/musicbrainzMapper.js';
 import type { Release } from '../../modules/models/models.js';
 import { getReleaseCover } from '../coverArtService.js';
 import { fetchMusicBrainz } from '../musicApi/musicBrainzClient.js';
-import { getPrimaryArtistId } from './releaseQueries.js';
 
-export const getRelease = async (
-    releaseId: string,
-): Promise<Release | null> => {
+export const getRelease = async (releaseId: string): Promise<Release | null> => {
     try {
-        const musicbrainzResult = await fetchMusicBrainz(`/release/${releaseId}?fmt=json&inc=recordings+release-groups+artist-credits+url-rels`);
+        const musicbrainzResult = await fetchMusicBrainz(
+            `/release/${releaseId}?fmt=json&inc=recordings+release-groups+artist-credits+url-rels`,
+        );
 
         if (musicbrainzResult === null) {
             return null;
@@ -20,6 +22,6 @@ export const getRelease = async (
 
         return release;
     } catch (error) {
-        throw new Error(`Failed to fetch release: ${error}`);
+        throw Object.assign(new Error('Failed to fetch release'), { cause: error });
     }
 };

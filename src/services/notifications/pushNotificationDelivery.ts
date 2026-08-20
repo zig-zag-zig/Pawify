@@ -1,17 +1,12 @@
 import { chunkArray } from '../../common/utils/array.js';
 import { createLogger } from '../../common/logging/logger.js';
-import {
-    sendExpoPushNotifications,
-} from './expoPushClient.js';
+import { sendExpoPushNotifications } from './expoPushClient.js';
 import {
     buildExpoPushMessages,
     isExpoPushToken,
     validateNotificationOptions,
 } from './pushNotificationPayloads.js';
-import {
-    deletePushTokensFromStore,
-    getPushTokensFromStore,
-} from './pushTokenStoreAdapter.js';
+import { deletePushTokensFromStore, getPushTokensFromStore } from './pushTokenStoreAdapter.js';
 import type {
     ExpoPushReceiptId,
     ExpoPushTicket,
@@ -21,10 +16,7 @@ import type {
 } from './pushNotificationTypes.js';
 import { checkPushReceipts } from './pushReceiptChecker.js';
 
-export type {
-    PushDeliveryOptions,
-    PushNotificationOptions,
-} from './pushNotificationTypes.js';
+export type { PushDeliveryOptions, PushNotificationOptions } from './pushNotificationTypes.js';
 
 const logger = createLogger('services.notifications.pushDelivery');
 const pushSendChunkSize = 100;
@@ -59,13 +51,16 @@ export const getValidPushTokens = async (
     const excludedPushRecipientCount = validPushTokens.length - recipientPushTokens.length;
 
     if (invalidPushTokens.length > 0) {
-        logger.warn('removing invalid expo push tokens', { userId, invalidPushRecipientCount: invalidPushTokens.length });
+        logger.warn('removing invalid expo push tokens', {
+            userId,
+            invalidPushRecipientCount: invalidPushTokens.length,
+        });
         await deletePushTokensFromStore(userId, invalidPushTokens);
     }
 
     if (recipientPushTokens.length === 0) {
-        const allValidRecipientsExcluded = validPushTokens.length > 0
-            && excludedPushRecipientCount === validPushTokens.length;
+        const allValidRecipientsExcluded =
+            validPushTokens.length > 0 && excludedPushRecipientCount === validPushTokens.length;
         if (allValidRecipientsExcluded) {
             logger.debug('push notification recipients excluded', {
                 userId,
@@ -126,21 +121,23 @@ export const sendPushNotificationToTokens = async (
         pushRecipientCount: validPushTokens.length,
         chunkCount: chunks.length,
     });
-    const chunkTicketGroups = await Promise.all(chunks.map(async (chunk, chunkIndex) => {
-        const chunkStartedAt = Date.now();
-        const tickets = await sendExpoPushNotifications(chunk);
+    const chunkTicketGroups = await Promise.all(
+        chunks.map(async (chunk, chunkIndex) => {
+            const chunkStartedAt = Date.now();
+            const tickets = await sendExpoPushNotifications(chunk);
 
-        logger.debug('push notification chunk completed', {
-            userId,
-            mode: notificationMode,
-            chunkIndex: chunkIndex + 1,
-            chunkCount: chunks.length,
-            chunkSize: chunk.length,
-            durationMs: Date.now() - chunkStartedAt,
-        });
+            logger.debug('push notification chunk completed', {
+                userId,
+                mode: notificationMode,
+                chunkIndex: chunkIndex + 1,
+                chunkCount: chunks.length,
+                chunkSize: chunk.length,
+                durationMs: Date.now() - chunkStartedAt,
+            });
 
-        return tickets;
-    }));
+            return tickets;
+        }),
+    );
     const tickets = chunkTicketGroups.flat();
     const invalidTokens: string[] = [];
     const receiptTokens = new Map<ExpoPushReceiptId, string>();
@@ -156,9 +153,10 @@ export const sendPushNotificationToTokens = async (
                 details: errorDetails,
             });
             if (errorDetails && 'expoPushToken' in errorDetails) {
-                const invalidToken = typeof errorDetails.expoPushToken === 'string'
-                    ? errorDetails.expoPushToken
-                    : validPushTokens[index];
+                const invalidToken =
+                    typeof errorDetails.expoPushToken === 'string'
+                        ? errorDetails.expoPushToken
+                        : validPushTokens[index];
                 invalidTokens.push(invalidToken);
             }
             return;
@@ -172,7 +170,10 @@ export const sendPushNotificationToTokens = async (
     }
 
     if (invalidTokens.length > 0) {
-        logger.warn('removing rejected expo push tokens', { userId, rejectedPushRecipientCount: invalidTokens.length });
+        logger.warn('removing rejected expo push tokens', {
+            userId,
+            rejectedPushRecipientCount: invalidTokens.length,
+        });
         await deletePushTokensFromStore(userId, invalidTokens);
     }
 

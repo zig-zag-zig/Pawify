@@ -43,7 +43,11 @@ export const requireBoolean = (body: unknown, property: string): boolean => {
     return value;
 };
 
-export const requireStringArray = (body: unknown, property: string): string[] => {
+export const requireStringArray = (
+    body: unknown,
+    property: string,
+    maxItems?: number,
+): string[] => {
     const value = requireBodyObject(body)[property];
 
     if (!Array.isArray(value) || value.length === 0) {
@@ -58,7 +62,15 @@ export const requireStringArray = (body: unknown, property: string): string[] =>
         return item.trim();
     });
 
-    return Array.from(new Set(values));
+    const uniqueValues = Array.from(new Set(values));
+
+    if (maxItems !== undefined && uniqueValues.length > maxItems) {
+        throw new BadRequestError(
+            `The ${property} property in the body must contain at most ${maxItems} items`,
+        );
+    }
+
+    return uniqueValues;
 };
 
 const parseIntegerValue = (value: unknown): number => {
@@ -87,13 +99,15 @@ export const requireNullablePositiveInteger = (
     const parsed = parseIntegerValue(value);
 
     if (!Number.isInteger(parsed) || parsed < 1 || (max !== undefined && parsed > max)) {
-        throw new BadRequestError(`The ${property} property in the body must be a positive integer or null`);
+        throw new BadRequestError(
+            `The ${property} property in the body must be a positive integer or null`,
+        );
     }
 
     return parsed;
 };
 
-export const optionalPositiveInteger = (
+export const optionalNonNegativeInteger = (
     body: unknown,
     property: string,
     fallback: number,
@@ -107,7 +121,9 @@ export const optionalPositiveInteger = (
     const parsed = parseIntegerValue(value);
 
     if (!Number.isInteger(parsed) || parsed < 0) {
-        throw new BadRequestError(`The ${property} property in the body must be a non-negative integer`);
+        throw new BadRequestError(
+            `The ${property} property in the body must be a non-negative integer`,
+        );
     }
 
     return parsed;
@@ -129,7 +145,9 @@ export const optionalIntegerInRange = (
     const parsed = parseIntegerValue(value);
 
     if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
-        throw new BadRequestError(`The ${property} property in the body must be an integer between ${min} and ${max}`);
+        throw new BadRequestError(
+            `The ${property} property in the body must be an integer between ${min} and ${max}`,
+        );
     }
 
     return parsed;

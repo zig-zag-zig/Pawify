@@ -25,12 +25,13 @@ export const tryAcquireDaprLock = async (
     });
 
     if (response.status === 409) {
+        await response.body?.cancel();
         return false;
     }
 
     await assertOk(response, `acquire Dapr lock ${resourceId}`);
 
-    const body = await response.json().catch(() => ({})) as LockResponse;
+    const body = (await response.json().catch(() => ({}))) as LockResponse;
     return body.success !== false;
 };
 
@@ -51,6 +52,7 @@ export const releaseDaprLock = async (
     });
 
     if (response.status === 404 || response.status === 409) {
+        await response.body?.cancel();
         return;
     }
 

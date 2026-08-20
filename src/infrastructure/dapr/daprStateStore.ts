@@ -29,11 +29,10 @@ export const getStateValue = async (
     key: string,
     storeName = DEFAULT_STATE_STORE_NAME,
 ): Promise<string | null> => {
-    const response = await daprFetch(
-        `/v1.0/state/${storeName}/${encodeURIComponent(key)}`,
-    );
+    const response = await daprFetch(`/v1.0/state/${storeName}/${encodeURIComponent(key)}`);
 
     if (response.status === 204 || response.status === 404) {
+        await response.body?.cancel();
         return null;
     }
 
@@ -64,12 +63,12 @@ const deleteStateValue = async (
     key: string,
     storeName = DEFAULT_STATE_STORE_NAME,
 ): Promise<void> => {
-    const response = await daprFetch(
-        `/v1.0/state/${storeName}/${encodeURIComponent(key)}`,
-        { method: 'DELETE' },
-    );
+    const response = await daprFetch(`/v1.0/state/${storeName}/${encodeURIComponent(key)}`, {
+        method: 'DELETE',
+    });
 
     if (response.status === 404) {
+        await response.body?.cancel();
         return;
     }
 

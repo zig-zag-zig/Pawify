@@ -1,8 +1,5 @@
 import express from 'express';
-import {
-    deletePushTokenHandler,
-    savePushTokenHandler,
-} from './pushTokenHandlers.js';
+import { deletePushTokenHandler, savePushTokenHandler } from './pushTokenHandlers.js';
 
 export const pushTokenRoutes = express.Router();
 

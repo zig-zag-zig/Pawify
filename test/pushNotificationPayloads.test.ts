@@ -31,24 +31,15 @@ describe('isExpoPushToken', () => {
 
 describe('validateNotificationOptions', () => {
     it('returns visible mode for title + body', () => {
-        assert.equal(
-            validateNotificationOptions({ title: 'Hello', body: 'World' }),
-            'visible',
-        );
+        assert.equal(validateNotificationOptions({ title: 'Hello', body: 'World' }), 'visible');
     });
 
     it('returns visible mode for title only', () => {
-        assert.equal(
-            validateNotificationOptions({ title: 'Hello' }),
-            'visible',
-        );
+        assert.equal(validateNotificationOptions({ title: 'Hello' }), 'visible');
     });
 
     it('returns data mode for eventName only', () => {
-        assert.equal(
-            validateNotificationOptions({ eventName: 'releases' }),
-            'data',
-        );
+        assert.equal(validateNotificationOptions({ eventName: 'releases' }), 'data');
     });
 
     it('throws when title and eventName are both provided', () => {

@@ -14,15 +14,30 @@ export const createLegacyAssetPlanner = (deps: {
     releaseTaskQueue: ReleaseTaskQueuePort;
 }): BackgroundAssetPlanner => ({
     planArtistProfileImages: async ({ userId, scope, lookups, ttl }) => ({
-        taskId: deps.artistProfileImageQueue.queueArtistProfileImagesWithLookups(userId, scope, lookups, ttl),
+        taskId: deps.artistProfileImageQueue.queueArtistProfileImagesWithLookups(
+            userId,
+            scope,
+            lookups,
+            ttl,
+        ),
         resolved: {},
     }),
     planArtistReleaseGroupCovers: async ({ userId, artistId, pageEntries, ttl }) => ({
-        taskId: deps.releaseTaskQueue.queueArtistReleaseGroupCovers(userId, artistId, pageEntries, ttl),
+        taskId: deps.releaseTaskQueue.queueArtistReleaseGroupCovers(
+            userId,
+            artistId,
+            pageEntries,
+            ttl,
+        ),
         resolved: {},
     }),
     planReleaseGroupReleaseCovers: async ({ userId, releaseGroupId, pageEntries, ttl }) => ({
-        taskId: deps.releaseTaskQueue.queueReleaseGroupReleaseCovers(userId, releaseGroupId, pageEntries, ttl),
+        taskId: deps.releaseTaskQueue.queueReleaseGroupReleaseCovers(
+            userId,
+            releaseGroupId,
+            pageEntries,
+            ttl,
+        ),
         resolved: {},
     }),
     planNewReleaseCovers: async ({ userId, pageEntries }) => ({

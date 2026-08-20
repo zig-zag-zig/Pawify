@@ -12,8 +12,8 @@ describe('asyncHandler', () => {
         });
 
         const req = {} as Request;
-        const res = { status: () => res, send: () => { } } as any;
-        const next = () => { };
+        const res = { status: () => res, send: () => {} } as any;
+        const next = () => {};
 
         await handler(req, res, next);
         assert.equal(handlerCalled, true);
@@ -25,9 +25,13 @@ describe('asyncHandler', () => {
             throw new Error('async failure');
         });
 
-        await handler({} as Request, {} as Response, ((error: any) => {
-            nextErrors.push(error);
-        }) as NextFunction);
+        await handler(
+            {} as Request,
+            {} as Response,
+            ((error: any) => {
+                nextErrors.push(error);
+            }) as NextFunction,
+        );
 
         assert.equal(nextErrors.length, 1);
         assert.equal(nextErrors[0]!.message, 'async failure');
@@ -39,7 +43,7 @@ describe('asyncHandler', () => {
             called = true;
         });
 
-        handler({} as Request, {} as Response, () => { });
+        handler({} as Request, {} as Response, () => {});
         assert.equal(called, true);
     });
 });
@@ -61,13 +65,18 @@ describe('publicHandler', () => {
 
         const res = {
             statusCode: 200,
-            setHeader: (name: string, value: string) => { setHeaderCalls.push([name, value]); },
-            status: function () { return this; },
-            send: () => { },
-            json: () => { },
+            locals: {},
+            setHeader: (name: string, value: string) => {
+                setHeaderCalls.push([name, value]);
+            },
+            status: function () {
+                return this;
+            },
+            send: () => {},
+            json: () => {},
         } as unknown as Response;
 
-        await handler(req, res, () => { });
+        await handler(req, res, () => {});
 
         assert.equal(handlerCalled, true);
         const requestIdHeader = setHeaderCalls.find(([name]) => name === 'x-request-id');

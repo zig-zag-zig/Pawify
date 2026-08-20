@@ -6,7 +6,10 @@ import {
     getFollowingStateFromDb,
     saveFollowingArtistSummariesToDb,
 } from '../../../services/firebase/followingStore.js';
-import { saveArtistAndKnownReleasesToDb } from '../../../services/firebase/artistStore.js';
+import {
+    deleteArtistFromDb,
+    saveArtistAndKnownReleasesToDb,
+} from '../../../services/firebase/artistStore.js';
 import {
     getArtistDetails as getArtistDetailsFromService,
     getFollowedArtistSummary as getFollowedArtistSummaryFromService,
@@ -14,33 +17,27 @@ import {
 import { getArtistKnownReleaseIds } from '../../../services/musicbrainz/cachedReleaseCatalog.js';
 import { sendDataOnlyNotification } from '../../../services/notifications/dataNotificationPublisher.js';
 import { notificationEvents } from '../../../services/notifications/notificationEvents.js';
-import { deleteArtist } from '../../../utils/helpers/cacheManagementHelpers.js';
-import {
-    getArtistTtl,
-    invalidateFollowingArtistIdsCache,
-    syncFollowingArtistIds,
-} from '../../../utils/helpers/followingHelper.js';
-import { searchForArtist } from '../../../utils/helpers/artistSearchHelpers.js';
+import { searchForArtist } from '../../../services/musicbrainz/artistSearch.js';
 import type { ArtistUseCaseDependencies } from '../ports.js';
 
 const logger = createLogger('features.artists.dependencies');
 
 export const artistDependencies: Omit<ArtistUseCaseDependencies, 'assetPlanner'> = {
     artistDetailsGateway: {
-        getArtistDetails: async (userId, artistId, options) => {
-            const artist = await getArtistDetailsFromService(userId, artistId, options);
+        getArtistDetails: async (userId, artistId) => {
+            const artist = await getArtistDetailsFromService(userId, artistId);
 
             if (artist === null) {
-                await deleteArtist(userId, artistId);
+                await deleteArtistFromDb(userId, artistId);
             }
 
             return artist;
         },
-        getFollowedArtistSummary: async (userId, artistId, options) => {
-            const summary = await getFollowedArtistSummaryFromService(userId, artistId, options);
+        getFollowedArtistSummary: async (userId, artistId) => {
+            const summary = await getFollowedArtistSummaryFromService(userId, artistId);
 
             if (summary === null) {
-                await deleteArtist(userId, artistId);
+                await deleteArtistFromDb(userId, artistId);
             }
 
             return summary;
@@ -48,29 +45,19 @@ export const artistDependencies: Omit<ArtistUseCaseDependencies, 'assetPlanner'>
     },
     artistFollowingRepository: {
         getFollowingArtistIds: async (userId) => {
-            const artistIds = await getFollowingFromDb(userId);
-            await syncFollowingArtistIds(userId, artistIds);
-            return artistIds;
+            return await getFollowingFromDb(userId);
         },
         getFollowingState: async (userId) => {
-            const state = await getFollowingStateFromDb(userId);
-            await syncFollowingArtistIds(userId, state.artistIds);
-            return state;
+            return await getFollowingStateFromDb(userId);
         },
         saveFollowedArtist: async (userId, artistId, releaseIds, artistSummary) => {
             await saveArtistAndKnownReleasesToDb(userId, artistId, releaseIds, [], artistSummary);
-            invalidateFollowingArtistIdsCache(userId);
-            try {
-                await syncFollowingArtistIds(userId, await getFollowingFromDb(userId));
-            } catch (error) {
-                logger.warn('failed to refresh followed artist cache membership', { artistId, error });
-            }
         },
         saveFollowingArtistSummaries: async (userId, artistSummaries) => {
             await saveFollowingArtistSummariesToDb(userId, artistSummaries);
         },
         deleteFollowedArtist: async (userId, artistId) => {
-            await deleteArtist(userId, artistId);
+            await deleteArtistFromDb(userId, artistId);
         },
     },
     artistReleaseCatalogGateway: {
@@ -78,16 +65,20 @@ export const artistDependencies: Omit<ArtistUseCaseDependencies, 'assetPlanner'>
     },
     artistProfileImageQueue: artistProfileImageTaskQueue,
     artistSearchGateway: {
-        searchArtists: async (userId, query, offset, limit) => await searchForArtist(userId, query, offset, limit),
-    },
-    cacheTtlGateway: {
-        getArtistTtl: async (userId, artistId) => await getArtistTtl(userId, artistId),
+        searchArtists: async (userId, query, offset, limit) =>
+            await searchForArtist(userId, query, offset, limit),
     },
     followingNotifier: {
         notifyFollowingChanged: async (userId, sourcePushToken) => {
-            await sendDataOnlyNotification(userId, notificationEvents.following, undefined, {
-                excludePushToken: sourcePushToken,
-            });
+            try {
+                await sendDataOnlyNotification(userId, notificationEvents.following, undefined, {
+                    excludePushToken: sourcePushToken,
+                });
+            } catch (error) {
+                // Best-effort: the follow/unfollow write already committed; a push
+                // notification failure must not fail the request.
+                logger.warn('failed to send following-changed notification', { userId, error });
+            }
         },
     },
     requestDeduper,

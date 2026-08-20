@@ -11,7 +11,16 @@ export const fetchMusicBrainzWithStatus = async (
         method,
         headers: {},
     };
-    return await fetchDaprProvider('musicbrainz', `/ws/2${endpoint}`, options, true, false, 'status', signal, priority);
+    return await fetchDaprProvider(
+        'musicbrainz',
+        `/ws/2${endpoint}`,
+        options,
+        true,
+        false,
+        'status',
+        signal,
+        priority,
+    );
 };
 
 export const fetchMusicBrainz = async (
@@ -24,5 +33,14 @@ export const fetchMusicBrainz = async (
         method,
         headers: {},
     };
-    return await fetchDaprProvider('musicbrainz', `/ws/2${endpoint}`, options, true, false, 'null', signal, priority);
+    return await fetchDaprProvider(
+        'musicbrainz',
+        `/ws/2${endpoint}`,
+        options,
+        true,
+        false,
+        'null',
+        signal,
+        priority,
+    );
 };

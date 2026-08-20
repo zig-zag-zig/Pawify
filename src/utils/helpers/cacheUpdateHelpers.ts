@@ -1,23 +1,14 @@
 import { ArtistReleaseGroup, Release } from '../../modules/models/models.js';
 import { dateToTimestamp } from '../../modules/utils/dateUtil.js';
 import { getCachedData, replaceCachedData } from '../../services/cacheService.js';
-import type {
-    CachedArtistReleases,
-    CachedReleaseGroupReleaseCovers,
-} from '../types/cacheTypes.js';
-import {
-    createCachedArtistReleaseGroups,
-} from './artistReleaseCacheHelpers.js';
+import type { CachedArtistReleases, CachedReleaseGroupReleaseCovers } from '../types/cacheTypes.js';
+import { createCachedArtistReleaseGroups } from './artistReleaseCacheHelpers.js';
 import { getCacheKey } from './cacheHelpers.js';
 import {
     collectChangedReleaseGroupIds,
     rebuildReleaseGroupCache,
 } from './releaseGroupCacheHelpers.js';
 import { mapWithConcurrency } from './promisePool.js';
-
-type UpdateArtistCacheOptions = {
-    deferNewReleaseImageFetch?: boolean;
-};
 
 const REBUILD_CHANGED_GROUPS_CONCURRENCY = 10;
 const PRUNE_RELEASE_COVER_CACHES_CONCURRENCY = 10;
@@ -27,12 +18,18 @@ export const updateArtistCacheIfExists = async (
     deletedReleaseIds: string[],
     artistNewReleases: Release[],
     ttl: number | undefined,
-    _options?: UpdateArtistCacheOptions,
 ): Promise<void> => {
     const cacheKey = getCacheKey(artistId, 'artistReleases');
     const artistReleasesCache = await getCachedData<CachedArtistReleases>(cacheKey);
-    const changedGroupIds = collectChangedReleaseGroupIds(artistReleasesCache ?? [], deletedReleaseIds, artistNewReleases);
-    const deletedReleaseIdsByGroupId = collectReleaseIdsByGroupId(artistReleasesCache ?? [], deletedReleaseIds);
+    const changedGroupIds = collectChangedReleaseGroupIds(
+        artistReleasesCache ?? [],
+        deletedReleaseIds,
+        artistNewReleases,
+    );
+    const deletedReleaseIdsByGroupId = collectReleaseIdsByGroupId(
+        artistReleasesCache ?? [],
+        deletedReleaseIds,
+    );
 
     if (changedGroupIds.size === 0) {
         return;
@@ -117,9 +114,12 @@ const updateArtistReleasesCache = async (
     changedGroupIds: Set<string>,
     rebuiltGroupsById: Map<string, ArtistReleaseGroup>,
 ): Promise<CachedArtistReleases> => {
-    const unchangedGroups = artistReleasesCache.filter(releaseGroup => !changedGroupIds.has(releaseGroup.id));
-    const mergedGroups = [...unchangedGroups, ...rebuiltGroupsById.values()]
-        .sort((left, right) => dateToTimestamp(right.date) - dateToTimestamp(left.date));
+    const unchangedGroups = artistReleasesCache.filter(
+        (releaseGroup) => !changedGroupIds.has(releaseGroup.id),
+    );
+    const mergedGroups = [...unchangedGroups, ...rebuiltGroupsById.values()].sort(
+        (left, right) => dateToTimestamp(right.date) - dateToTimestamp(left.date),
+    );
 
     return createCachedArtistReleaseGroups(mergedGroups, artistReleasesCache);
 };
@@ -140,14 +140,16 @@ const rebuildChangedGroups = async (
                 groupId,
                 deletedReleaseIds,
                 artistNewReleases,
-                artistReleasesCache.find(group => group.id === groupId),
+                artistReleasesCache.find((group) => group.id === groupId),
                 ttl,
             ),
         }),
     );
 
     return new Map(
-        rebuiltGroups.flatMap(({ groupId, rebuiltGroup }) => rebuiltGroup ? [[groupId, rebuiltGroup] as const] : []),
+        rebuiltGroups.flatMap(({ groupId, rebuiltGroup }) =>
+            rebuiltGroup ? [[groupId, rebuiltGroup] as const] : [],
+        ),
     );
 };
 

@@ -1,29 +1,12 @@
-import type {
-    Artist,
-    ExternalLink,
-} from '../../../modules/models/models.js';
-import { dedupeStrings } from '../../../common/utils/array.js';
+import type { Artist, ExternalLink } from '../../../modules/models/models.js';
 import type { ArtistProfileImageLookup } from '../../../utils/types/taskTypes.js';
 import { getExternalLinkUrlsByService } from '../../../utils/helpers/externalLinks.js';
+import { normalizeDiscogsUrls } from '../../../services/tasks/backgroundTaskMappers.js';
 
 type ArtistSummaryWithOptionalDiscogsUrls = {
     id: string;
     name?: string;
-    discogsUrls?: unknown;
-};
-
-const normalizeDiscogsUrls = (discogsUrls: unknown): string[] | undefined => {
-    if (!Array.isArray(discogsUrls)) {
-        return undefined;
-    }
-
-    const normalized = dedupeStrings(
-        discogsUrls
-            .filter((url): url is string => typeof url === 'string' && url.trim().length > 0)
-            .map((url) => url.trim()),
-    );
-
-    return normalized.length > 0 ? normalized : undefined;
+    discogsUrls?: string[];
 };
 
 const getDiscogsUrlsFromExternalLinks = (externalLinks: ExternalLink[] | undefined): string[] => {
@@ -32,11 +15,15 @@ const getDiscogsUrlsFromExternalLinks = (externalLinks: ExternalLink[] | undefin
 
 export const mapArtistSummaryToProfileImageLookup = (
     summary: ArtistSummaryWithOptionalDiscogsUrls,
-): ArtistProfileImageLookup => ({
-    artistId: summary.id,
-    artistName: summary.name,
-    discogsUrls: normalizeDiscogsUrls(summary.discogsUrls),
-});
+): ArtistProfileImageLookup => {
+    const normalizedDiscogsUrls = normalizeDiscogsUrls(summary.discogsUrls);
+
+    return {
+        artistId: summary.id,
+        artistName: summary.name,
+        discogsUrls: normalizedDiscogsUrls.length > 0 ? normalizedDiscogsUrls : undefined,
+    };
+};
 
 export const mapArtistToProfileImageLookup = (
     artistId: string,

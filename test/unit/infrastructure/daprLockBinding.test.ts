@@ -11,10 +11,8 @@ describe('Dapr lock, binding, and secret migration', () => {
             return new Response(JSON.stringify({ success: true }), { status: 200 });
         });
 
-        const {
-            acquireNotifyNewReleasesLock,
-            releaseNotifyNewReleasesLock,
-        } = await import('../../../src/services/firebase/notificationRunLockStore.js');
+        const { acquireNotifyNewReleasesLock, releaseNotifyNewReleasesLock } =
+            await import('../../../src/services/firebase/notificationRunLockStore.js');
 
         const lock = await acquireNotifyNewReleasesLock();
         assert.ok(lock);
@@ -30,7 +28,8 @@ describe('Dapr lock, binding, and secret migration', () => {
     it('returns null when Dapr reports a lock conflict', async () => {
         installFetch(() => new Response(null, { status: 409 }));
 
-        const { acquireNotifyNewReleasesLock } = await import('../../../src/services/firebase/notificationRunLockStore.js');
+        const { acquireNotifyNewReleasesLock } =
+            await import('../../../src/services/firebase/notificationRunLockStore.js');
 
         assert.equal(await acquireNotifyNewReleasesLock(), null);
     });
@@ -57,10 +56,13 @@ describe('Dapr lock, binding, and secret migration', () => {
         const calls: string[] = [];
         installFetch((url) => {
             calls.push(url);
-            return new Response(JSON.stringify({ 'discogs-token': 'discogs-secret' }), { status: 200 });
+            return new Response(JSON.stringify({ 'discogs-token': 'discogs-secret' }), {
+                status: 200,
+            });
         });
 
-        const { clearDaprSecretCache, getDaprSecret } = await import('../../../src/infrastructure/dapr/daprSecrets.js');
+        const { clearDaprSecretCache, getDaprSecret } =
+            await import('../../../src/infrastructure/dapr/daprSecrets.js');
         clearDaprSecretCache();
 
         assert.equal(await getDaprSecret('discogs-token'), 'discogs-secret');

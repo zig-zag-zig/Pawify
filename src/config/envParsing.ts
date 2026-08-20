@@ -19,7 +19,12 @@ export const parseBooleanEnv = (value: string | undefined, fallback = false): bo
     return fallback;
 };
 
-export const parseFloatEnv = (value: string | undefined, fallback: number, min = 0, max = 1): number => {
+export const parseFloatEnv = (
+    value: string | undefined,
+    fallback: number,
+    min = 0,
+    max = 1,
+): number => {
     const parsed = Number.parseFloat(value ?? '');
     return Number.isFinite(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
 };

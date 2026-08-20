@@ -1,28 +1,16 @@
-import express, { type Router } from 'express';
-import { healthRoutes } from '../features/health/healthRoutes.js';
-import { authRoutes } from '../features/auth/authRoutes.js';
-import { pushTokenRoutes } from '../features/pushTokens/pushTokenRoutes.js';
-import { createArtistRoutes } from '../features/artists/artistRoutes.js';
-import { createReleaseRoutes } from '../features/releases/releaseRoutes.js';
-import { userSettingsRoutes } from '../features/userSettings/userSettingsRoutes.js';
-import { notificationRoutes } from '../features/notifications/notificationRoutes.js';
-import { taskRoutes } from '../features/tasks/taskRoutes.js';
-import { artistPresentersV1, artistUseCasesV1 } from './useCaseVariants.js';
-import { releasePresentersV1, releaseUseCasesV1 } from './useCaseVariants.js';
+import { createApiRoutes } from './apiRoutes.js';
+import {
+    artistPresentersV1,
+    artistUseCasesV1,
+    releasePresentersV1,
+    releaseUseCasesV1,
+} from './useCaseVariants.js';
 
 export const API_V1_PREFIX = '/v1';
 
-export const createApiV1Routes = (): Router => {
-    const router = express.Router();
-
-    router.use(healthRoutes);
-    router.use(authRoutes);
-    router.use(pushTokenRoutes);
-    router.use(createArtistRoutes(artistUseCasesV1, artistPresentersV1));
-    router.use(createReleaseRoutes(releaseUseCasesV1, releasePresentersV1));
-    router.use(userSettingsRoutes);
-    router.use(notificationRoutes);
-    router.use(taskRoutes);
-
-    return router;
-};
+export const v1Routes = createApiRoutes(API_V1_PREFIX, {
+    artistUseCases: artistUseCasesV1,
+    artistPresenters: artistPresentersV1,
+    releaseUseCases: releaseUseCasesV1,
+    releasePresenters: releasePresentersV1,
+});

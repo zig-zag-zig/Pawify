@@ -3,9 +3,7 @@ import { asyncHandler } from '../../common/http/handlers.js';
 import { UnauthorizedError } from '../../common/http/errors.js';
 import { runHttpRequestScope } from '../../common/http/requestScope.js';
 import { createLogger } from '../../common/logging/logger.js';
-import {
-    setRequestContextFields,
-} from '../../common/logging/requestContext.js';
+import { setRequestContextFields } from '../../common/logging/requestContext.js';
 import { checkAuth } from '../../services/firebase/userStore.js';
 
 type AuthenticatedHandler = (context: {

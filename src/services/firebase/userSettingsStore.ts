@@ -1,54 +1,59 @@
-import { DEFAULT_RELEASE_NOTIFICATION_SETTINGS, ReleaseNotificationSettings } from '../../modules/models/models.js';
 import {
-  coerceReleaseNotificationLookbackMonths,
-} from '../../utils/types/releaseNotificationSettings.js';
+    DEFAULT_RELEASE_NOTIFICATION_SETTINGS,
+    ReleaseNotificationSettings,
+} from '../../modules/models/models.js';
+import { coerceReleaseNotificationLookbackMonths } from '../../utils/types/releaseNotificationSettings.js';
 import { getUserRef } from './refs.js';
 import { getDocumentRefAndSnapshot } from './userStore.js';
-import { isPlainObject } from './utils.js';
+import { isPlainObject } from '../../common/utils/objectGuards.js';
 
 const RELEASE_NOTIFICATION_SETTINGS_FIELD = 'releaseNotificationSettings';
 
 const normalizeOldestReleaseDateMonths = (value: unknown): number | null => {
-  const normalized = coerceReleaseNotificationLookbackMonths(value);
-  return normalized === undefined
-    ? DEFAULT_RELEASE_NOTIFICATION_SETTINGS.oldestReleaseDateMonths
-    : normalized;
+    const normalized = coerceReleaseNotificationLookbackMonths(value);
+    return normalized === undefined
+        ? DEFAULT_RELEASE_NOTIFICATION_SETTINGS.oldestReleaseDateMonths
+        : normalized;
 };
 
 export const normalizeReleaseNotificationSettings = (
-  value: unknown,
+    value: unknown,
 ): ReleaseNotificationSettings => {
-  if (!isPlainObject(value)) {
-    return DEFAULT_RELEASE_NOTIFICATION_SETTINGS;
-  }
+    if (!isPlainObject(value)) {
+        return DEFAULT_RELEASE_NOTIFICATION_SETTINGS;
+    }
 
-  return {
-    oldestReleaseDateMonths: normalizeOldestReleaseDateMonths(value.oldestReleaseDateMonths),
-    includeReleasesWithoutDate: typeof value.includeReleasesWithoutDate === 'boolean'
-      ? value.includeReleasesWithoutDate
-      : DEFAULT_RELEASE_NOTIFICATION_SETTINGS.includeReleasesWithoutDate,
-  };
+    return {
+        oldestReleaseDateMonths: normalizeOldestReleaseDateMonths(value.oldestReleaseDateMonths),
+        includeReleasesWithoutDate:
+            typeof value.includeReleasesWithoutDate === 'boolean'
+                ? value.includeReleasesWithoutDate
+                : DEFAULT_RELEASE_NOTIFICATION_SETTINGS.includeReleasesWithoutDate,
+    };
 };
 
 export const getReleaseNotificationSettingsFromDb = async (
-  userId: string,
+    userId: string,
 ): Promise<ReleaseNotificationSettings> => {
-  const { snapShot } = await getDocumentRefAndSnapshot(userId);
-  return normalizeReleaseNotificationSettings(snapShot[RELEASE_NOTIFICATION_SETTINGS_FIELD]);
+    const { snapShot } = await getDocumentRefAndSnapshot(userId);
+    return normalizeReleaseNotificationSettings(snapShot[RELEASE_NOTIFICATION_SETTINGS_FIELD]);
 };
 
 export const saveReleaseNotificationSettingsToDb = async (
-  userId: string,
-  settings: ReleaseNotificationSettings,
+    userId: string,
+    settings: ReleaseNotificationSettings,
 ): Promise<ReleaseNotificationSettings> => {
-  const normalized = normalizeReleaseNotificationSettings(settings);
+    const normalized = normalizeReleaseNotificationSettings(settings);
 
-  await getUserRef(userId).set({
-    [RELEASE_NOTIFICATION_SETTINGS_FIELD]: {
-      ...normalized,
-      updatedAt: Date.now(),
-    },
-  }, { merge: true });
+    await getUserRef(userId).set(
+        {
+            [RELEASE_NOTIFICATION_SETTINGS_FIELD]: {
+                ...normalized,
+                updatedAt: Date.now(),
+            },
+        },
+        { merge: true },
+    );
 
-  return normalized;
+    return normalized;
 };

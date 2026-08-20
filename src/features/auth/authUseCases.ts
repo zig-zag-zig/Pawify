@@ -12,15 +12,30 @@ import {
 const logger = createLogger('features.auth');
 
 export const authUseCases = {
-    changeEmail: withOperationLogging(logger, 'changeEmail', createChangeEmailUseCase(authDependencies), {
-        successLevel: 'info',
-    }),
-    deleteUserAccount: withOperationLogging(logger, 'deleteUserAccount', createDeleteUserAccountUseCase(authDependencies), {
-        successLevel: 'info',
-    }),
-    revokeToken: withOperationLogging(logger, 'revokeToken', createRevokeTokenUseCase(authDependencies), {
-        successLevel: 'info',
-    }),
+    changeEmail: withOperationLogging(
+        logger,
+        'changeEmail',
+        createChangeEmailUseCase(authDependencies),
+        {
+            successLevel: 'info',
+        },
+    ),
+    deleteUserAccount: withOperationLogging(
+        logger,
+        'deleteUserAccount',
+        createDeleteUserAccountUseCase(authDependencies),
+        {
+            successLevel: 'info',
+        },
+    ),
+    revokeToken: withOperationLogging(
+        logger,
+        'revokeToken',
+        createRevokeTokenUseCase(authDependencies),
+        {
+            successLevel: 'info',
+        },
+    ),
     sendOtp: withOperationLogging(logger, 'sendOtp', createSendOtpUseCase(authDependencies), {
         successLevel: 'info',
     }),

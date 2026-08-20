@@ -7,7 +7,10 @@ import { createRemoveNewReleasesUseCase } from '../src/features/releases/usecase
 import { createDefaultAssetPlanner } from './helpers/assetPlannerFakes.js';
 import { createGetNewReleasesDependencies } from './helpers/releaseUseCaseFakes.js';
 import { createNewRelease, createRelease } from './helpers/releaseFixtures.js';
-import type { ReleaseReadUseCaseDependencies, ReleaseWriteUseCaseDependencies } from '../src/features/releases/ports.js';
+import type {
+    ReleaseReadUseCaseDependencies,
+    ReleaseWriteUseCaseDependencies,
+} from '../src/features/releases/ports.js';
 
 describe('release use cases', () => {
     it('sorts new releases by date before queueing cover tasks', async () => {
@@ -31,9 +34,7 @@ describe('release use cases', () => {
                         date_for_display: 'Unknown date',
                     }),
                 },
-                coverPageEntries: [
-                    { releaseGroupId: 'group-1', releaseIds: ['exact', 'older'] },
-                ],
+                coverPageEntries: [{ releaseGroupId: 'group-1', releaseIds: ['exact', 'older'] }],
             },
             createDefaultAssetPlanner({
                 planNewReleaseCovers: async ({ pageEntries }) => {
@@ -46,11 +47,10 @@ describe('release use cases', () => {
 
         const result = await useCase('user-1');
 
-        assert.deepEqual(result.releases.map(release => release.id), [
-            'exact',
-            'older',
-            'unknown',
-        ]);
+        assert.deepEqual(
+            result.releases.map((release) => release.id),
+            ['exact', 'older', 'unknown'],
+        );
         assert.equal(result.releaseCoverTaskId, 'cover-task-1');
         assert.deepEqual(plannedEntries, [
             { releaseGroupId: 'group-1', releaseIds: ['exact', 'older'] },
@@ -66,16 +66,17 @@ describe('release use cases', () => {
                     date_for_display: '10.02.2026',
                 }),
             },
-            coverPageEntries: [
-                { releaseGroupId: 'group-1', releaseIds: ['exact'] },
-            ],
+            coverPageEntries: [{ releaseGroupId: 'group-1', releaseIds: ['exact'] }],
         };
-        const state = createGetNewReleasesDependencies(snapshot, createDefaultAssetPlanner({
-            planNewReleaseCovers: async () => ({
-                taskId: null,
-                resolved: { exact: 'https://cover.example/exact.jpg' },
+        const state = createGetNewReleasesDependencies(
+            snapshot,
+            createDefaultAssetPlanner({
+                planNewReleaseCovers: async () => ({
+                    taskId: null,
+                    resolved: { exact: 'https://cover.example/exact.jpg' },
+                }),
             }),
-        }));
+        );
         const useCase = createGetNewReleasesUseCase(state.dependencies);
 
         const result = await useCase('user-1');
@@ -98,16 +99,17 @@ describe('release use cases', () => {
                     date_for_display: '11.02.2026',
                 }),
             },
-            coverPageEntries: [
-                { releaseGroupId: 'group-1', releaseIds: ['exact', 'pending'] },
-            ],
+            coverPageEntries: [{ releaseGroupId: 'group-1', releaseIds: ['exact', 'pending'] }],
         };
-        const state = createGetNewReleasesDependencies(snapshot, createDefaultAssetPlanner({
-            planNewReleaseCovers: async () => ({
-                taskId: 'cover-task-1',
-                resolved: { exact: 'https://cover.example/exact.jpg' },
+        const state = createGetNewReleasesDependencies(
+            snapshot,
+            createDefaultAssetPlanner({
+                planNewReleaseCovers: async () => ({
+                    taskId: 'cover-task-1',
+                    resolved: { exact: 'https://cover.example/exact.jpg' },
+                }),
             }),
-        }));
+        );
         const useCase = createGetNewReleasesUseCase(state.dependencies);
 
         const result = await useCase('user-1');
@@ -118,12 +120,15 @@ describe('release use cases', () => {
 
     it('fetches artist releases, queues cover tasks, and adds task user', async () => {
         const fakeRequestDeduper = {
-            async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
+            async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
+                return worker();
+            },
+            invalidate(): void {},
         };
         let addedTaskUser: { taskId: string; userId: string } | undefined;
         const deps: Pick<
             ReleaseReadUseCaseDependencies,
-            'artistReleaseContextGateway' | 'releaseCatalogGateway' | 'releaseTaskQueue' | 'assetPlanner' | 'requestDeduper'
+            'releaseCatalogGateway' | 'releaseTaskQueue' | 'assetPlanner' | 'requestDeduper'
         > = {
             assetPlanner: createDefaultAssetPlanner({
                 planArtistReleaseGroupCovers: async () => ({
@@ -131,26 +136,48 @@ describe('release use cases', () => {
                     resolved: {},
                 }),
             }),
-            artistReleaseContextGateway: {
-                async getArtistTtl() { return 500; },
-            },
             releaseCatalogGateway: {
-                async getArtistReleases(_artistId, _ttl, _onPage) {
+                async getArtistReleases(_artistId, _ttl) {
                     return [
-                        { id: 'rg-1', title: 'Album', date: '2026-01-01', disambiguation: null, 'primary-type': 'Album', releaseIds: ['r1', 'r2'] },
+                        {
+                            id: 'rg-1',
+                            title: 'Album',
+                            date: '2026-01-01',
+                            disambiguation: null,
+                            'primary-type': 'Album',
+                            releaseIds: ['r1', 'r2'],
+                        },
                     ];
                 },
-                async getReleaseGroupReleases() { return []; },
-                async getRelease() { return null; },
-                async releaseExists() { return false; },
+                async getReleaseGroupReleases() {
+                    return [];
+                },
+                async getRelease() {
+                    return null;
+                },
+                async releaseExists() {
+                    return false;
+                },
             },
             releaseTaskQueue: {
-                addTaskUser(taskId, userId) { addedTaskUser = { taskId, userId }; },
-                queueArtistReleaseGroupCovers() { throw new Error('should not run'); },
-                queueReleaseGroupReleaseCovers() { return ''; },
-                queueNewReleaseCovers() { return ''; },
-                queueReleaseTrackLyrics() { return ''; },
-                queueReleaseArtistProfileImages() { return ''; },
+                addTaskUser(taskId, userId) {
+                    addedTaskUser = { taskId, userId };
+                },
+                queueArtistReleaseGroupCovers() {
+                    throw new Error('should not run');
+                },
+                queueReleaseGroupReleaseCovers() {
+                    return '';
+                },
+                queueNewReleaseCovers() {
+                    return '';
+                },
+                queueReleaseTrackLyrics() {
+                    return '';
+                },
+                queueReleaseArtistProfileImages() {
+                    return '';
+                },
             },
             requestDeduper: fakeRequestDeduper,
         };
@@ -166,13 +193,16 @@ describe('release use cases', () => {
 
     it('returns cached release-group covers immediately with no task or task user when all are cached', async () => {
         const fakeRequestDeduper = {
-            async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
+            async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
+                return worker();
+            },
+            invalidate(): void {},
         };
         let addedTaskUser: { taskId: string; userId: string } | undefined;
         let queueCalled = false;
         const deps: Pick<
             ReleaseReadUseCaseDependencies,
-            'artistReleaseContextGateway' | 'releaseCatalogGateway' | 'releaseTaskQueue' | 'assetPlanner' | 'requestDeduper'
+            'releaseCatalogGateway' | 'releaseTaskQueue' | 'assetPlanner' | 'requestDeduper'
         > = {
             assetPlanner: createDefaultAssetPlanner({
                 planArtistReleaseGroupCovers: async () => ({
@@ -180,26 +210,49 @@ describe('release use cases', () => {
                     resolved: { 'rg-1': 'https://cover.example/rg-1.jpg' },
                 }),
             }),
-            artistReleaseContextGateway: {
-                async getArtistTtl() { return 500; },
-            },
             releaseCatalogGateway: {
-                async getArtistReleases(_artistId, _ttl, _onPage) {
+                async getArtistReleases(_artistId, _ttl) {
                     return [
-                        { id: 'rg-1', title: 'Album', date: '2026-01-01', disambiguation: null, 'primary-type': 'Album', releaseIds: ['r1', 'r2'] },
+                        {
+                            id: 'rg-1',
+                            title: 'Album',
+                            date: '2026-01-01',
+                            disambiguation: null,
+                            'primary-type': 'Album',
+                            releaseIds: ['r1', 'r2'],
+                        },
                     ];
                 },
-                async getReleaseGroupReleases() { return []; },
-                async getRelease() { return null; },
-                async releaseExists() { return false; },
+                async getReleaseGroupReleases() {
+                    return [];
+                },
+                async getRelease() {
+                    return null;
+                },
+                async releaseExists() {
+                    return false;
+                },
             },
             releaseTaskQueue: {
-                addTaskUser(taskId, userId) { addedTaskUser = { taskId, userId }; },
-                queueArtistReleaseGroupCovers() { queueCalled = true; return 'cover-task-1'; },
-                queueReleaseGroupReleaseCovers() { return ''; },
-                queueNewReleaseCovers() { return ''; },
-                queueReleaseTrackLyrics() { return ''; },
-                queueReleaseArtistProfileImages() { return ''; },
+                addTaskUser(taskId, userId) {
+                    addedTaskUser = { taskId, userId };
+                },
+                queueArtistReleaseGroupCovers() {
+                    queueCalled = true;
+                    return 'cover-task-1';
+                },
+                queueReleaseGroupReleaseCovers() {
+                    return '';
+                },
+                queueNewReleaseCovers() {
+                    return '';
+                },
+                queueReleaseTrackLyrics() {
+                    return '';
+                },
+                queueReleaseArtistProfileImages() {
+                    return '';
+                },
             },
             requestDeduper: fakeRequestDeduper,
         };
@@ -217,9 +270,14 @@ describe('release use cases', () => {
     it('deletes releases and notifies clients', async () => {
         const deleteCalls: Array<{ userId: string; releaseIds: string[] }> = [];
         let notifyCalledWith: { userId: string; sourcePushToken?: string } | undefined;
-        const deps: Pick<ReleaseWriteUseCaseDependencies, 'newReleasesRepository' | 'releaseNotifier'> = {
+        const deps: Pick<
+            ReleaseWriteUseCaseDependencies,
+            'newReleasesRepository' | 'releaseNotifier'
+        > = {
             newReleasesRepository: {
-                async getNewReleasesSnapshot() { throw new Error('should not run'); },
+                async getNewReleasesSnapshot() {
+                    throw new Error('should not run');
+                },
                 async deleteNewReleases(userId, releaseIds) {
                     deleteCalls.push({ userId, releaseIds });
                 },
@@ -243,21 +301,31 @@ describe('release use cases', () => {
             id: 'release-1',
             title: 'Test Release',
             'artist-credit': [{ id: 'artist-1', name: 'Artist One', joinphrase: null }],
-            media: [{
-                'track-count': 1,
-                tracks: [{
-                    id: 'track-1',
-                    title: 'Song One',
-                    'artist-credit': [{ id: 'artist-1', name: 'Artist One', joinphrase: null }],
-                    length: 100,
-                }],
-            }],
+            media: [
+                {
+                    'track-count': 1,
+                    tracks: [
+                        {
+                            id: 'track-1',
+                            title: 'Song One',
+                            'artist-credit': [
+                                { id: 'artist-1', name: 'Artist One', joinphrase: null },
+                            ],
+                            length: 100,
+                        },
+                    ],
+                },
+            ],
         });
 
         it('returns release with lyrics and profile image task IDs', async () => {
-            const { createGetReleaseUseCase } = await import('../src/features/releases/usecases/getRelease.js');
+            const { createGetReleaseUseCase } =
+                await import('../src/features/releases/usecases/getRelease.js');
             const fakeRequestDeduper = {
-                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
+                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
+                    return worker();
+                },
+                invalidate(): void {},
             };
             const release = releaseWithTracks;
 
@@ -267,21 +335,42 @@ describe('release use cases', () => {
             > = {
                 assetPlanner: createDefaultAssetPlanner({
                     planReleaseTrackLyrics: async () => ({ taskId: 'lyrics-task-1', resolved: {} }),
-                    planReleaseArtistProfileImages: async () => ({ taskId: 'profile-task-1', resolved: {} }),
+                    planReleaseArtistProfileImages: async () => ({
+                        taskId: 'profile-task-1',
+                        resolved: {},
+                    }),
                 }),
                 releaseCatalogGateway: {
-                    async getArtistReleases() { throw new Error('should not run'); },
-                    async getReleaseGroupReleases() { throw new Error('should not run'); },
-                    async getRelease(_releaseId) { return release; },
-                    async releaseExists() { throw new Error('should not run'); },
+                    async getArtistReleases() {
+                        throw new Error('should not run');
+                    },
+                    async getReleaseGroupReleases() {
+                        throw new Error('should not run');
+                    },
+                    async getRelease(_releaseId) {
+                        return release;
+                    },
+                    async releaseExists() {
+                        throw new Error('should not run');
+                    },
                 },
                 releaseTaskQueue: {
-                    addTaskUser() { },
-                    queueArtistReleaseGroupCovers() { return ''; },
-                    queueReleaseGroupReleaseCovers() { return ''; },
-                    queueNewReleaseCovers() { return ''; },
-                    queueReleaseTrackLyrics() { throw new Error('should not run'); },
-                    queueReleaseArtistProfileImages() { throw new Error('should not run'); },
+                    addTaskUser() {},
+                    queueArtistReleaseGroupCovers() {
+                        return '';
+                    },
+                    queueReleaseGroupReleaseCovers() {
+                        return '';
+                    },
+                    queueNewReleaseCovers() {
+                        return '';
+                    },
+                    queueReleaseTrackLyrics() {
+                        throw new Error('should not run');
+                    },
+                    queueReleaseArtistProfileImages() {
+                        throw new Error('should not run');
+                    },
                 },
                 requestDeduper: fakeRequestDeduper,
             };
@@ -298,9 +387,13 @@ describe('release use cases', () => {
         });
 
         it('returns null task IDs and immediate maps when everything is cached', async () => {
-            const { createGetReleaseUseCase } = await import('../src/features/releases/usecases/getRelease.js');
+            const { createGetReleaseUseCase } =
+                await import('../src/features/releases/usecases/getRelease.js');
             const fakeRequestDeduper = {
-                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
+                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
+                    return worker();
+                },
+                invalidate(): void {},
             };
             const release = releaseWithTracks;
             let queueCalled = false;
@@ -320,18 +413,38 @@ describe('release use cases', () => {
                     }),
                 }),
                 releaseCatalogGateway: {
-                    async getArtistReleases() { throw new Error('should not run'); },
-                    async getReleaseGroupReleases() { throw new Error('should not run'); },
-                    async getRelease(_releaseId) { return release; },
-                    async releaseExists() { throw new Error('should not run'); },
+                    async getArtistReleases() {
+                        throw new Error('should not run');
+                    },
+                    async getReleaseGroupReleases() {
+                        throw new Error('should not run');
+                    },
+                    async getRelease(_releaseId) {
+                        return release;
+                    },
+                    async releaseExists() {
+                        throw new Error('should not run');
+                    },
                 },
                 releaseTaskQueue: {
-                    addTaskUser() { },
-                    queueArtistReleaseGroupCovers() { throw new Error('should not run'); },
-                    queueReleaseGroupReleaseCovers() { throw new Error('should not run'); },
-                    queueNewReleaseCovers() { throw new Error('should not run'); },
-                    queueReleaseTrackLyrics() { queueCalled = true; return ''; },
-                    queueReleaseArtistProfileImages() { queueCalled = true; return ''; },
+                    addTaskUser() {},
+                    queueArtistReleaseGroupCovers() {
+                        throw new Error('should not run');
+                    },
+                    queueReleaseGroupReleaseCovers() {
+                        throw new Error('should not run');
+                    },
+                    queueNewReleaseCovers() {
+                        throw new Error('should not run');
+                    },
+                    queueReleaseTrackLyrics() {
+                        queueCalled = true;
+                        return '';
+                    },
+                    queueReleaseArtistProfileImages() {
+                        queueCalled = true;
+                        return '';
+                    },
                 },
                 requestDeduper: fakeRequestDeduper,
             };
@@ -348,9 +461,13 @@ describe('release use cases', () => {
         });
 
         it('returns null when release is not found', async () => {
-            const { createGetReleaseUseCase } = await import('../src/features/releases/usecases/getRelease.js');
+            const { createGetReleaseUseCase } =
+                await import('../src/features/releases/usecases/getRelease.js');
             const fakeRequestDeduper = {
-                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
+                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
+                    return worker();
+                },
+                invalidate(): void {},
             };
 
             const deps: Pick<
@@ -359,18 +476,36 @@ describe('release use cases', () => {
             > = {
                 assetPlanner: createDefaultAssetPlanner(),
                 releaseCatalogGateway: {
-                    async getArtistReleases() { throw new Error('should not run'); },
-                    async getReleaseGroupReleases() { throw new Error('should not run'); },
-                    async getRelease() { return null; },
-                    async releaseExists() { throw new Error('should not run'); },
+                    async getArtistReleases() {
+                        throw new Error('should not run');
+                    },
+                    async getReleaseGroupReleases() {
+                        throw new Error('should not run');
+                    },
+                    async getRelease() {
+                        return null;
+                    },
+                    async releaseExists() {
+                        throw new Error('should not run');
+                    },
                 },
                 releaseTaskQueue: {
-                    addTaskUser() { },
-                    queueArtistReleaseGroupCovers() { throw new Error('should not run'); },
-                    queueReleaseGroupReleaseCovers() { throw new Error('should not run'); },
-                    queueNewReleaseCovers() { throw new Error('should not run'); },
-                    queueReleaseTrackLyrics() { throw new Error('should not run'); },
-                    queueReleaseArtistProfileImages() { throw new Error('should not run'); },
+                    addTaskUser() {},
+                    queueArtistReleaseGroupCovers() {
+                        throw new Error('should not run');
+                    },
+                    queueReleaseGroupReleaseCovers() {
+                        throw new Error('should not run');
+                    },
+                    queueNewReleaseCovers() {
+                        throw new Error('should not run');
+                    },
+                    queueReleaseTrackLyrics() {
+                        throw new Error('should not run');
+                    },
+                    queueReleaseArtistProfileImages() {
+                        throw new Error('should not run');
+                    },
                 },
                 requestDeduper: fakeRequestDeduper,
             };
@@ -384,9 +519,13 @@ describe('release use cases', () => {
 
     describe('getReleaseGroupReleases', () => {
         it('returns releases, queues cover tasks, and registers task user', async () => {
-            const { createGetReleaseGroupReleasesUseCase } = await import('../src/features/releases/usecases/getReleaseGroupReleases.js');
+            const { createGetReleaseGroupReleasesUseCase } =
+                await import('../src/features/releases/usecases/getReleaseGroupReleases.js');
             const fakeRequestDeduper = {
-                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
+                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
+                    return worker();
+                },
+                invalidate(): void {},
             };
             let plannedEntries: Array<{ releaseGroupId: string; releaseIds: string[] }> = [];
             let addedTaskUser: { taskId: string; userId: string } | undefined;
@@ -402,21 +541,60 @@ describe('release use cases', () => {
                     },
                 }),
                 releaseCatalogGateway: {
-                    async getArtistReleases() { throw new Error('should not run'); },
+                    async getArtistReleases() {
+                        throw new Error('should not run');
+                    },
                     async getReleaseGroupReleases(_releaseGroupId, _ttl, onReleaseIdsPage) {
                         await onReleaseIdsPage('rg-1', ['r1', 'r2'], true);
-                        return [{ id: 'r1', title: 'Release 1', date: '2026-01-01', disambiguation: null, 'release-group': { id: 'rg-1', title: 'Group', date: null, disambiguation: null, 'primary-type': 'Album' }, 'artist-credit': [], media: [], artistId: 'artist-1', date_for_display: '01.01.2026', releaseGroupId: 'rg-1', cover_url: null, externalLinks: [] }];
+                        return [
+                            {
+                                id: 'r1',
+                                title: 'Release 1',
+                                date: '2026-01-01',
+                                disambiguation: null,
+                                'release-group': {
+                                    id: 'rg-1',
+                                    title: 'Group',
+                                    date: null,
+                                    disambiguation: null,
+                                    'primary-type': 'Album',
+                                },
+                                'artist-credit': [],
+                                media: [],
+                                artistId: 'artist-1',
+                                date_for_display: '01.01.2026',
+                                releaseGroupId: 'rg-1',
+                                cover_url: null,
+                                externalLinks: [],
+                            },
+                        ];
                     },
-                    async getRelease() { throw new Error('should not run'); },
-                    async releaseExists() { throw new Error('should not run'); },
+                    async getRelease() {
+                        throw new Error('should not run');
+                    },
+                    async releaseExists() {
+                        throw new Error('should not run');
+                    },
                 },
                 releaseTaskQueue: {
-                    addTaskUser(taskId, userId) { addedTaskUser = { taskId, userId }; },
-                    queueArtistReleaseGroupCovers() { return ''; },
-                    queueReleaseGroupReleaseCovers() { throw new Error('should not run'); },
-                    queueNewReleaseCovers() { return ''; },
-                    queueReleaseTrackLyrics() { return ''; },
-                    queueReleaseArtistProfileImages() { return ''; },
+                    addTaskUser(taskId, userId) {
+                        addedTaskUser = { taskId, userId };
+                    },
+                    queueArtistReleaseGroupCovers() {
+                        return '';
+                    },
+                    queueReleaseGroupReleaseCovers() {
+                        throw new Error('should not run');
+                    },
+                    queueNewReleaseCovers() {
+                        return '';
+                    },
+                    queueReleaseTrackLyrics() {
+                        return '';
+                    },
+                    queueReleaseArtistProfileImages() {
+                        return '';
+                    },
                 },
                 requestDeduper: fakeRequestDeduper,
             };
@@ -427,14 +605,20 @@ describe('release use cases', () => {
             assert.equal(result.releases.length, 1);
             assert.equal(result.releases[0]!.id, 'r1');
             assert.equal(result.releaseCoverTaskId, 'cover-task-rg-1');
-            assert.deepEqual(plannedEntries, [{ releaseGroupId: 'rg-1', releaseIds: ['r1', 'r2'] }]);
+            assert.deepEqual(plannedEntries, [
+                { releaseGroupId: 'rg-1', releaseIds: ['r1', 'r2'] },
+            ]);
             assert.deepEqual(addedTaskUser, { taskId: 'cover-task-rg-1', userId: 'user-1' });
         });
 
         it('returns cached covers immediately with no task or task user when all are cached', async () => {
-            const { createGetReleaseGroupReleasesUseCase } = await import('../src/features/releases/usecases/getReleaseGroupReleases.js');
+            const { createGetReleaseGroupReleasesUseCase } =
+                await import('../src/features/releases/usecases/getReleaseGroupReleases.js');
             const fakeRequestDeduper = {
-                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
+                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
+                    return worker();
+                },
+                invalidate(): void {},
             };
             let addedTaskUser: { taskId: string; userId: string } | undefined;
             let queueCalled = false;
@@ -446,25 +630,68 @@ describe('release use cases', () => {
                 assetPlanner: createDefaultAssetPlanner({
                     planReleaseGroupReleaseCovers: async () => ({
                         taskId: null,
-                        resolved: { r1: 'https://cover.example/r1.jpg', r2: 'https://cover.example/r2.jpg' },
+                        resolved: {
+                            r1: 'https://cover.example/r1.jpg',
+                            r2: 'https://cover.example/r2.jpg',
+                        },
                     }),
                 }),
                 releaseCatalogGateway: {
-                    async getArtistReleases() { throw new Error('should not run'); },
+                    async getArtistReleases() {
+                        throw new Error('should not run');
+                    },
                     async getReleaseGroupReleases(_releaseGroupId, _ttl, onReleaseIdsPage) {
                         await onReleaseIdsPage('rg-1', ['r1', 'r2'], true);
-                        return [{ id: 'r1', title: 'Release 1', date: '2026-01-01', disambiguation: null, 'release-group': { id: 'rg-1', title: 'Group', date: null, disambiguation: null, 'primary-type': 'Album' }, 'artist-credit': [], media: [], artistId: 'artist-1', date_for_display: '01.01.2026', releaseGroupId: 'rg-1', cover_url: null, externalLinks: [] }];
+                        return [
+                            {
+                                id: 'r1',
+                                title: 'Release 1',
+                                date: '2026-01-01',
+                                disambiguation: null,
+                                'release-group': {
+                                    id: 'rg-1',
+                                    title: 'Group',
+                                    date: null,
+                                    disambiguation: null,
+                                    'primary-type': 'Album',
+                                },
+                                'artist-credit': [],
+                                media: [],
+                                artistId: 'artist-1',
+                                date_for_display: '01.01.2026',
+                                releaseGroupId: 'rg-1',
+                                cover_url: null,
+                                externalLinks: [],
+                            },
+                        ];
                     },
-                    async getRelease() { throw new Error('should not run'); },
-                    async releaseExists() { throw new Error('should not run'); },
+                    async getRelease() {
+                        throw new Error('should not run');
+                    },
+                    async releaseExists() {
+                        throw new Error('should not run');
+                    },
                 },
                 releaseTaskQueue: {
-                    addTaskUser(taskId, userId) { addedTaskUser = { taskId, userId }; },
-                    queueArtistReleaseGroupCovers() { return ''; },
-                    queueReleaseGroupReleaseCovers() { queueCalled = true; return 'cover-task-rg-1'; },
-                    queueNewReleaseCovers() { return ''; },
-                    queueReleaseTrackLyrics() { return ''; },
-                    queueReleaseArtistProfileImages() { return ''; },
+                    addTaskUser(taskId, userId) {
+                        addedTaskUser = { taskId, userId };
+                    },
+                    queueArtistReleaseGroupCovers() {
+                        return '';
+                    },
+                    queueReleaseGroupReleaseCovers() {
+                        queueCalled = true;
+                        return 'cover-task-rg-1';
+                    },
+                    queueNewReleaseCovers() {
+                        return '';
+                    },
+                    queueReleaseTrackLyrics() {
+                        return '';
+                    },
+                    queueReleaseArtistProfileImages() {
+                        return '';
+                    },
                 },
                 requestDeduper: fakeRequestDeduper,
             };

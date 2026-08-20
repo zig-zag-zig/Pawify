@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { describe, it } from 'node:test';
+import { describe, it, mock } from 'node:test';
 
 import { installFetch } from '../../helpers/daprTestHelpers.js';
 
@@ -12,7 +12,8 @@ describe('Dapr provider HTTP migration', () => {
             return new Response(JSON.stringify({ artist: 'Pawify' }), { status: 200 });
         });
 
-        const { fetchMusicBrainzWithStatus } = await import('../../../src/services/musicApi/musicBrainzClient.js');
+        const { fetchMusicBrainzWithStatus } =
+            await import('../../../src/services/musicApi/musicBrainzClient.js');
         const result = await fetchMusicBrainzWithStatus('/artist?query=test&fmt=json');
 
         assert.deepEqual(result, { artist: 'Pawify' });
@@ -21,7 +22,10 @@ describe('Dapr provider HTTP migration', () => {
             calls[0].url,
             'http://dapr.test/v1.0/invoke/musicbrainz/method/ws/2/artist?query=test&fmt=json',
         );
-        assert.equal(new Headers(calls[0].init.headers).get('User-Agent'), 'MusicReleaseNotifier/1.0');
+        assert.equal(
+            new Headers(calls[0].init.headers).get('User-Agent'),
+            'MusicReleaseNotifier/1.0',
+        );
     });
 
     it('does not retry transient final provider failures in app code', async () => {
@@ -45,6 +49,50 @@ describe('Dapr provider HTTP migration', () => {
         assert.deepEqual(result, { __fetchFailure: true, status: null });
     });
 
+    it('cancels the response body on non-OK responses so sockets are released', async () => {
+        let cancelMock: ReturnType<typeof mock.method> | undefined;
+        installFetch(() => {
+            const response = new Response('temporary upstream failure', { status: 503 });
+            cancelMock = mock.method(response.body!, 'cancel');
+            return response;
+        });
+
+        const { fetchDaprProvider } = await import('../../../src/services/musicApi/httpClient.js');
+        const result = await fetchDaprProvider(
+            'discogs',
+            '/artists/1',
+            { method: 'GET', headers: {} },
+            false,
+            false,
+            'null',
+        );
+
+        assert.equal(result, null);
+        assert.equal(cancelMock!.mock.callCount(), 1);
+    });
+
+    it('cancels the response body when an OK body is not valid JSON', async () => {
+        let cancelMock: ReturnType<typeof mock.method> | undefined;
+        installFetch(() => {
+            const response = new Response('<html>not json</html>', { status: 200 });
+            cancelMock = mock.method(response.body!, 'cancel');
+            return response;
+        });
+
+        const { fetchDaprProvider } = await import('../../../src/services/musicApi/httpClient.js');
+        const result = await fetchDaprProvider(
+            'discogs',
+            '/artists/1',
+            { method: 'GET', headers: {} },
+            false,
+            false,
+            'null',
+        );
+
+        assert.equal(result, null);
+        assert.equal(cancelMock!.mock.callCount(), 1);
+    });
+
     it('preserves HEAD success and abort behavior', async () => {
         const controller = new AbortController();
         controller.abort();
@@ -54,7 +102,8 @@ describe('Dapr provider HTTP migration', () => {
             return new Response(null, { status: 204 });
         });
 
-        const { fetchDaprProvider, isAbortError } = await import('../../../src/services/musicApi/httpClient.js');
+        const { fetchDaprProvider, isAbortError } =
+            await import('../../../src/services/musicApi/httpClient.js');
         const headResult = await fetchDaprProvider(
             'coverartarchive',
             '/release/abc/front',
@@ -65,15 +114,16 @@ describe('Dapr provider HTTP migration', () => {
         );
 
         await assert.rejects(
-            () => fetchDaprProvider(
-                'coverartarchive',
-                '/release/abc/front',
-                { method: 'HEAD', headers: {} },
-                true,
-                true,
-                'status',
-                controller.signal,
-            ),
+            () =>
+                fetchDaprProvider(
+                    'coverartarchive',
+                    '/release/abc/front',
+                    { method: 'HEAD', headers: {} },
+                    true,
+                    true,
+                    'status',
+                    controller.signal,
+                ),
             (error) => isAbortError(error),
         );
         assert.equal(headResult, true);
@@ -83,7 +133,7 @@ describe('Dapr provider HTTP migration', () => {
     it('keeps retry policy in Dapr resiliency configuration', async () => {
         const resiliency = await readFile('dapr/components/resiliency.yaml', 'utf8');
 
-        assert.match(resiliency, /httpStatusCodes: "429,500-599"/);
+        assert.match(resiliency, /httpStatusCodes: ["']429,500-599["']/);
         assert.match(resiliency, /coverartarchive:\n\s+retry: noRetry/);
         assert.match(resiliency, /musicbrainz:\n\s+retry: externalHttpRetry/);
         assert.match(resiliency, /musicbrainzTimeout: 30s/);

@@ -19,43 +19,75 @@ export const createReleaseUseCases = (assetPlanner: BackgroundAssetPlanner) => {
     };
 
     return {
-        getArtistReleases: withOperationLogging(logger, 'getArtistReleases', createGetArtistReleasesUseCase(dependencies), {
-            getMetadata: (_userId, artistId) => ({ artistId }),
-            getResultMetadata: (result) => ({
-                releaseGroupCount: result.releaseGroups.length,
-                releaseGroupCoverTaskId: result.releaseGroupCoverTaskId,
-            }),
-        }),
-        getNewReleases: withOperationLogging(logger, 'getNewReleases', createGetNewReleasesUseCase(dependencies), {
-            getResultMetadata: (result) => ({
-                releaseCount: result.releases.length,
-                releaseCoverTaskId: result.releaseCoverTaskId,
-            }),
-        }),
-        getRelease: withOperationLogging(logger, 'getRelease', createGetReleaseUseCase(dependencies), {
-            getMetadata: (_userId, releaseId) => ({ releaseId }),
-            getResultMetadata: (result) => ({
-                found: result !== null,
-                lyricsTaskId: result?.lyricsTaskId,
-                profileImageTaskId: result?.profileImageTaskId,
-            }),
-        }),
-        getReleaseGroupReleases: withOperationLogging(logger, 'getReleaseGroupReleases', createGetReleaseGroupReleasesUseCase(dependencies), {
-            getMetadata: (_userId, releaseGroupId) => ({ releaseGroupId }),
-            getResultMetadata: (result) => ({
-                releaseCount: result.releases.length,
-                releaseCoverTaskId: result.releaseCoverTaskId,
-            }),
-        }),
-        removeNewReleases: withOperationLogging(logger, 'removeNewReleases', createRemoveNewReleasesUseCase(dependencies), {
-            successLevel: 'info',
-            getMetadata: (_userId, releaseIds, _sourcePushToken) => ({ releaseCount: releaseIds.length }),
-        }),
-        verifyReleaseExistence: withOperationLogging(logger, 'verifyReleaseExistence', createVerifyReleaseExistenceUseCase(dependencies), {
-            successLevel: 'info',
-            getMetadata: (_userId, releaseId) => ({ releaseId }),
-            getResultMetadata: (result) => ({ exists: result.exists }),
-        }),
+        getArtistReleases: withOperationLogging(
+            logger,
+            'getArtistReleases',
+            createGetArtistReleasesUseCase(dependencies),
+            {
+                getMetadata: (_userId, artistId) => ({ artistId }),
+                getResultMetadata: (result) => ({
+                    releaseGroupCount: result.releaseGroups.length,
+                    releaseGroupCoverTaskId: result.releaseGroupCoverTaskId,
+                }),
+            },
+        ),
+        getNewReleases: withOperationLogging(
+            logger,
+            'getNewReleases',
+            createGetNewReleasesUseCase(dependencies),
+            {
+                getResultMetadata: (result) => ({
+                    releaseCount: result.releases.length,
+                    releaseCoverTaskId: result.releaseCoverTaskId,
+                }),
+            },
+        ),
+        getRelease: withOperationLogging(
+            logger,
+            'getRelease',
+            createGetReleaseUseCase(dependencies),
+            {
+                getMetadata: (_userId, releaseId) => ({ releaseId }),
+                getResultMetadata: (result) => ({
+                    found: result !== null,
+                    lyricsTaskId: result?.lyricsTaskId,
+                    profileImageTaskId: result?.profileImageTaskId,
+                }),
+            },
+        ),
+        getReleaseGroupReleases: withOperationLogging(
+            logger,
+            'getReleaseGroupReleases',
+            createGetReleaseGroupReleasesUseCase(dependencies),
+            {
+                getMetadata: (_userId, releaseGroupId) => ({ releaseGroupId }),
+                getResultMetadata: (result) => ({
+                    releaseCount: result.releases.length,
+                    releaseCoverTaskId: result.releaseCoverTaskId,
+                }),
+            },
+        ),
+        removeNewReleases: withOperationLogging(
+            logger,
+            'removeNewReleases',
+            createRemoveNewReleasesUseCase(dependencies),
+            {
+                successLevel: 'info',
+                getMetadata: (_userId, releaseIds, _sourcePushToken) => ({
+                    releaseCount: releaseIds.length,
+                }),
+            },
+        ),
+        verifyReleaseExistence: withOperationLogging(
+            logger,
+            'verifyReleaseExistence',
+            createVerifyReleaseExistenceUseCase(dependencies),
+            {
+                successLevel: 'info',
+                getMetadata: (_userId, releaseId) => ({ releaseId }),
+                getResultMetadata: (result) => ({ exists: result.exists }),
+            },
+        ),
     };
 };
 

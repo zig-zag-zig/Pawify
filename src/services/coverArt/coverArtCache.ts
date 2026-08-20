@@ -14,9 +14,11 @@ export type ArtistReleaseGroupCoverCacheContext = {
 export const readReleaseCoverCache = async (
     releaseGroupId: string,
 ): Promise<CachedReleaseGroupReleaseCovers> => {
-    return await getCachedData<CachedReleaseGroupReleaseCovers>(
-        getCacheKey(releaseGroupId, 'releaseGroupReleaseCovers'),
-    ) ?? {};
+    return (
+        (await getCachedData<CachedReleaseGroupReleaseCovers>(
+            getCacheKey(releaseGroupId, 'releaseGroupReleaseCovers'),
+        )) ?? {}
+    );
 };
 
 export const writeReleaseCoverCache = async (
@@ -24,19 +26,17 @@ export const writeReleaseCoverCache = async (
     cache: CachedReleaseGroupReleaseCovers,
     ttl: number | undefined,
 ): Promise<void> => {
-    await replaceCachedData(
-        getCacheKey(releaseGroupId, 'releaseGroupReleaseCovers'),
-        cache,
-        ttl,
-    );
+    await replaceCachedData(getCacheKey(releaseGroupId, 'releaseGroupReleaseCovers'), cache, ttl);
 };
 
 export const readArtistReleaseGroupCoverCache = async (
     artistId: string,
 ): Promise<CachedArtistReleaseGroupCovers> => {
-    return await getCachedData<CachedArtistReleaseGroupCovers>(
-        getCacheKey(artistId, 'artistReleaseGroupCovers'),
-    ) ?? {};
+    return (
+        (await getCachedData<CachedArtistReleaseGroupCovers>(
+            getCacheKey(artistId, 'artistReleaseGroupCovers'),
+        )) ?? {}
+    );
 };
 
 const writeArtistReleaseGroupCoverCache = async (
@@ -44,19 +44,14 @@ const writeArtistReleaseGroupCoverCache = async (
     cache: CachedArtistReleaseGroupCovers,
     ttl: number | undefined,
 ): Promise<void> => {
-    await replaceCachedData(
-        getCacheKey(artistId, 'artistReleaseGroupCovers'),
-        cache,
-        ttl,
-    );
+    await replaceCachedData(getCacheKey(artistId, 'artistReleaseGroupCovers'), cache, ttl);
 };
 
-const isSameCoverState = (left: CoverState | undefined, right: CoverState): boolean => (
-    !!left
-    && left.url === right.url
-    && left.nextRefetchAt === right.nextRefetchAt
-    && left.confirmedMiss === right.confirmedMiss
-);
+const isSameCoverState = (left: CoverState | undefined, right: CoverState): boolean =>
+    !!left &&
+    left.url === right.url &&
+    left.nextRefetchAt === right.nextRefetchAt &&
+    left.confirmedMiss === right.confirmedMiss;
 
 export const upsertArtistReleaseGroupCoverState = async (
     artistId: string | undefined,

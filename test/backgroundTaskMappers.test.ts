@@ -120,22 +120,27 @@ describe('hasLegacyArtistImageFields', () => {
     });
 
     it('returns true when url is not a valid RemoteValueState', () => {
-        assert.equal(
-            hasLegacyArtistImageFields({ url: 123, refreshedAt: 100 } as any),
-            true,
-        );
+        assert.equal(hasLegacyArtistImageFields({ url: 123, refreshedAt: 100 } as any), true);
     });
 
     it('returns true when artistName field is present', () => {
         assert.equal(
-            hasLegacyArtistImageFields({ url: undefined, refreshedAt: 100, artistName: 'x' } as any),
+            hasLegacyArtistImageFields({
+                url: undefined,
+                refreshedAt: 100,
+                artistName: 'x',
+            } as any),
             true,
         );
     });
 
     it('returns true when discogsUrls field is present', () => {
         assert.equal(
-            hasLegacyArtistImageFields({ url: undefined, refreshedAt: 100, discogsUrls: [] } as any),
+            hasLegacyArtistImageFields({
+                url: undefined,
+                refreshedAt: 100,
+                discogsUrls: [],
+            } as any),
             true,
         );
     });

@@ -59,8 +59,9 @@ describe('task use cases', () => {
         );
         assert.throws(
             () => forbiddenUseCase('user-1', 'task-1'),
-            (error) => error instanceof ForbiddenError
-                && error.message === 'Task does not belong to the authenticated user',
+            (error) =>
+                error instanceof ForbiddenError &&
+                error.message === 'Task does not belong to the authenticated user',
         );
     });
 });

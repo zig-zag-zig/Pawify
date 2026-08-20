@@ -4,7 +4,7 @@ import { describe, it } from 'node:test';
 import { BadRequestError } from '../src/common/http/errors.js';
 import {
     optionalIntegerInRange,
-    optionalPositiveInteger,
+    optionalNonNegativeInteger,
     optionalString,
     requireBoolean,
     requireNullablePositiveInteger,
@@ -30,10 +30,7 @@ describe('request validation helpers', () => {
     });
 
     it('throws clear 400 errors for malformed object and string inputs', () => {
-        assertBadRequest(
-            () => requireString(null, 'artistId'),
-            'Request body must be an object',
-        );
+        assertBadRequest(() => requireString(null, 'artistId'), 'Request body must be an object');
         assertBadRequest(
             () => requireString({ artistId: '   ' }, 'artistId'),
             'The artistId property in the body is required',
@@ -46,10 +43,13 @@ describe('request validation helpers', () => {
 
     it('validates booleans, string arrays, and integer ranges without coercing invalid values', () => {
         assert.equal(requireBoolean({ enabled: false }, 'enabled'), false);
-        assert.deepEqual(requireStringArray({ artistIds: [' a ', 'b', 'a'] }, 'artistIds'), ['a', 'b']);
+        assert.deepEqual(requireStringArray({ artistIds: [' a ', 'b', 'a'] }, 'artistIds'), [
+            'a',
+            'b',
+        ]);
         assert.equal(requireNullablePositiveInteger({ months: null }, 'months', 24), null);
         assert.equal(requireNullablePositiveInteger({ months: '12' }, 'months', 24), 12);
-        assert.equal(optionalPositiveInteger({ page: '' }, 'page', 0), 0);
+        assert.equal(optionalNonNegativeInteger({ page: '' }, 'page', 0), 0);
         assert.equal(optionalIntegerInRange({ limit: '25' }, 'limit', 10, 1, 50), 25);
 
         assertBadRequest(
@@ -73,8 +73,29 @@ describe('request validation helpers', () => {
         );
     });
 
-    it('optionalPositiveInteger returns fallback for undefined', () => {
-        assert.equal(optionalPositiveInteger({}, 'page', 0), 0);
+    it('requireStringArray enforces an optional maxItems cap', () => {
+        assert.deepEqual(requireStringArray({ artistIds: ['a', 'b', 'c'] }, 'artistIds', 3), [
+            'a',
+            'b',
+            'c',
+        ]);
+        assert.deepEqual(requireStringArray({ artistIds: ['a', 'a', 'b'] }, 'artistIds', 2), [
+            'a',
+            'b',
+        ]);
+        assertBadRequest(
+            () => requireStringArray({ artistIds: ['a', 'b', 'c', 'd'] }, 'artistIds', 3),
+            'The artistIds property in the body must contain at most 3 items',
+        );
+    });
+
+    it('requireStringArray is uncapped when maxItems is omitted', () => {
+        const large = Array.from({ length: 1000 }, (_, index) => `id-${index}`);
+        assert.equal(requireStringArray({ artistIds: large }, 'artistIds').length, 1000);
+    });
+
+    it('optionalNonNegativeInteger returns fallback for undefined', () => {
+        assert.equal(optionalNonNegativeInteger({}, 'page', 0), 0);
     });
 
     it('optionalString returns undefined for missing key', () => {

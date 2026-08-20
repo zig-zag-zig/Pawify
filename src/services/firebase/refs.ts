@@ -10,42 +10,38 @@ const BATCH_WRITE_LIMIT = 450;
 
 export const getUserRef = (userId: string): DocumentReference => db.collection('users').doc(userId);
 
-const getFollowingCollectionRef = (userId: string): CollectionReference => (
-  getUserRef(userId).collection(FOLLOWING_SUBCOLLECTION)
-);
+const getFollowingCollectionRef = (userId: string): CollectionReference =>
+    getUserRef(userId).collection(FOLLOWING_SUBCOLLECTION);
 
-export const getFollowingMapDocRef = (userId: string): DocumentReference => (
-  getFollowingCollectionRef(userId).doc(MAP_DOC_ID)
-);
+export const getFollowingMapDocRef = (userId: string): DocumentReference =>
+    getFollowingCollectionRef(userId).doc(MAP_DOC_ID);
 
-const getNewReleasesCollectionRef = (userId: string): CollectionReference => (
-  getUserRef(userId).collection(NEW_RELEASES_SUBCOLLECTION)
-);
+const getNewReleasesCollectionRef = (userId: string): CollectionReference =>
+    getUserRef(userId).collection(NEW_RELEASES_SUBCOLLECTION);
 
-export const getNewReleasesMapDocRef = (userId: string): DocumentReference => (
-  getNewReleasesCollectionRef(userId).doc(MAP_DOC_ID)
-);
+export const getNewReleasesMapDocRef = (userId: string): DocumentReference =>
+    getNewReleasesCollectionRef(userId).doc(MAP_DOC_ID);
 
 export const buildFollowingCollectionPayload = (
-  artistsMap: FollowingArtistsMap,
+    artistsMap: FollowingArtistsMap,
 ): FollowingArtistsMap => makeDeepCopy(artistsMap);
 
 export const buildNewReleasesCollectionPayload = (
-  newReleasesMap: StoredNewReleasesMap,
+    newReleasesMap: StoredNewReleasesMap,
 ): StoredNewReleasesMap => makeDeepCopy(newReleasesMap);
 
 export const commitBatchMutations = async (
-  mutations: Array<(batch: WriteBatch) => void>,
+    mutations: Array<(batch: WriteBatch) => void>,
 ): Promise<void> => {
-  if (mutations.length === 0) {
-    return;
-  }
-
-  for (let offset = 0; offset < mutations.length; offset += BATCH_WRITE_LIMIT) {
-    const batch = db.batch();
-    for (const mutation of mutations.slice(offset, offset + BATCH_WRITE_LIMIT)) {
-      mutation(batch);
+    if (mutations.length === 0) {
+        return;
     }
-    await batch.commit();
-  }
+
+    for (let offset = 0; offset < mutations.length; offset += BATCH_WRITE_LIMIT) {
+        const batch = db.batch();
+        for (const mutation of mutations.slice(offset, offset + BATCH_WRITE_LIMIT)) {
+            mutation(batch);
+        }
+        await batch.commit();
+    }
 };

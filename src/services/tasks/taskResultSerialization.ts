@@ -3,10 +3,7 @@ import type {
     BackgroundTaskResultPayload,
     TaskResultResponse,
 } from '../../utils/types/taskTypes.js';
-
-const isPlainObject = (value: unknown): value is Record<string, unknown> => {
-    return value !== null && typeof value === 'object' && !Array.isArray(value);
-};
+import { isPlainObject } from '../../common/utils/objectGuards.js';
 
 const toJsonSafeValue = (value: unknown): unknown => {
     if (value === undefined) {
@@ -14,7 +11,7 @@ const toJsonSafeValue = (value: unknown): unknown => {
     }
 
     if (Array.isArray(value)) {
-        return value.map(item => toJsonSafeValue(item));
+        return value.map((item) => toJsonSafeValue(item));
     }
 
     if (isPlainObject(value)) {
@@ -70,9 +67,10 @@ export const toTaskResponse = (
         status: task.status,
         createdAt: task.createdAt,
         completedAt: task.completedAt,
-        result: task.result === undefined
-            ? undefined
-            : toJsonSafeValue(task.result) as BackgroundTaskResultPayload,
+        result:
+            task.result === undefined
+                ? undefined
+                : (toJsonSafeValue(task.result) as BackgroundTaskResultPayload),
         error: task.error,
         parentTaskId: task.parentTaskId,
         subtaskIds: task.subtaskIds,
@@ -88,11 +86,11 @@ export const hasUndefinedValue = (value: unknown): boolean => {
     }
 
     if (Array.isArray(value)) {
-        return value.some(item => hasUndefinedValue(item));
+        return value.some((item) => hasUndefinedValue(item));
     }
 
     if (isPlainObject(value)) {
-        return Object.values(value).some(item => hasUndefinedValue(item));
+        return Object.values(value).some((item) => hasUndefinedValue(item));
     }
 
     return false;

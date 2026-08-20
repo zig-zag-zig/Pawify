@@ -6,7 +6,12 @@ import { createNotifyNewReleasesUseCase } from './usecases/notifyNewReleases.js'
 const logger = createLogger('features.notifications');
 
 export const notificationUseCases = {
-    notifyNewReleases: withOperationLogging(logger, 'notifyNewReleases', createNotifyNewReleasesUseCase(notificationDependencies), {
-        successLevel: 'info',
-    }),
+    notifyNewReleases: withOperationLogging(
+        logger,
+        'notifyNewReleases',
+        createNotifyNewReleasesUseCase(notificationDependencies),
+        {
+            successLevel: 'info',
+        },
+    ),
 };

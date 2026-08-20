@@ -24,10 +24,7 @@ export const getDaprApiToken = (): string | undefined => {
     return token ? token : undefined;
 };
 
-export const daprFetch = async (
-    path: string,
-    init: RequestInit = {},
-): Promise<Response> => {
+export const daprFetch = async (path: string, init: RequestInit = {}): Promise<Response> => {
     const headers = new Headers(init.headers);
     const token = getDaprApiToken();
 

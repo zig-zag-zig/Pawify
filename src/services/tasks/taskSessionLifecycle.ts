@@ -3,10 +3,7 @@ import { withTaskContext } from './taskContext.js';
 import { sendTaskCompletedNotification } from './taskCompletionNotifier.js';
 import { toTaskRequestContext } from './taskContext.js';
 import type { BackgroundTaskQueue } from './taskQueue.js';
-import type {
-    BackgroundTaskRegistry,
-    TaskSessionState,
-} from './backgroundTaskRegistry.js';
+import type { BackgroundTaskRegistry, TaskSessionState } from './backgroundTaskRegistry.js';
 import type {
     BackgroundTaskRecord,
     BackgroundTaskResultPayload,
@@ -58,14 +55,10 @@ const updateParentSubtaskCompletion = ({
 
     parentSession.tasksHandled += 1;
     parentSession.lastActivityAt = Date.now();
-    parentTask.subtaskCount = parentSession.totalPages > 0
-        ? parentSession.totalPages
-        : parentSession.pagesReceived;
+    parentTask.subtaskCount =
+        parentSession.totalPages > 0 ? parentSession.totalPages : parentSession.pagesReceived;
     parentTask.completedSubtaskCount = parentSession.tasksHandled;
-    parentTask.completedSubtaskIds = [
-        ...(parentTask.completedSubtaskIds ?? []),
-        taskId,
-    ];
+    parentTask.completedSubtaskIds = [...(parentTask.completedSubtaskIds ?? []), taskId];
     parentTask.result = mergeTaskResult(
         parentTask.result,
         task.result as Partial<BackgroundTaskResultPayload> | undefined,

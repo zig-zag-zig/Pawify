@@ -1,6 +1,4 @@
-import type {
-    Artist,
-} from '../../modules/models/models.js';
+import type { Artist } from '../../modules/models/models.js';
 import type { FollowedArtistSummary } from '../../utils/types/followedArtistTypes.js';
 
 export const mapArtistToFollowedArtistSummary = (

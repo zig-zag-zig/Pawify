@@ -13,15 +13,11 @@ type ErrorWithStatus = Error & {
     };
 };
 
-const sensitiveHeaders = new Set([
-    'authorization',
-    'cookie',
-    'x-api-key',
-    'x-firebase-appcheck',
-]);
+const sensitiveHeaders = new Set(['authorization', 'cookie', 'x-api-key', 'x-firebase-appcheck']);
 
 const parseStatusCode = (error: ErrorWithStatus): number => {
-    const rawStatus = error.statusCode ?? error.status ?? error.status_code ?? error.output?.statusCode;
+    const rawStatus =
+        error.statusCode ?? error.status ?? error.status_code ?? error.output?.statusCode;
     const parsed = Number.parseInt(String(rawStatus ?? 500), 10);
     return Number.isFinite(parsed) ? parsed : 500;
 };

@@ -37,9 +37,7 @@ const makeMbRelease = (overrides: Record<string, unknown> = {}) => ({
     title: 'Test Release',
     date: '2026-01-15',
     disambiguation: 'deluxe edition',
-    'artist-credit': [
-        { artist: { id: 'artist-1', name: 'Artist One' }, joinphrase: '' },
-    ],
+    'artist-credit': [{ artist: { id: 'artist-1', name: 'Artist One' }, joinphrase: '' }],
     media: [
         {
             'track-count': 2,
@@ -92,13 +90,15 @@ describe('mapToArtist', () => {
     });
 
     it('handles missing optional fields', () => {
-        const result = mapToArtist(makeMbArtist({
-            disambiguation: undefined,
-            aliases: undefined,
-            'life-span': undefined,
-            'begin-area': undefined,
-            relations: [],
-        }));
+        const result = mapToArtist(
+            makeMbArtist({
+                disambiguation: undefined,
+                aliases: undefined,
+                'life-span': undefined,
+                'begin-area': undefined,
+                relations: [],
+            }),
+        );
 
         assert.equal(result.disambiguation, null);
         assert.deepEqual(result.aliases, []);
@@ -131,25 +131,32 @@ describe('mapToRelease', () => {
     });
 
     it('filters out media with no tracks', () => {
-        const result = mapToRelease(makeMbRelease({
-            media: [
-                { 'track-count': 0, tracks: null },
-                { 'track-count': 2, tracks: [{ id: 't1', title: 'T1', 'artist-credit': [], length: null }] },
-            ],
-        }));
+        const result = mapToRelease(
+            makeMbRelease({
+                media: [
+                    { 'track-count': 0, tracks: null },
+                    {
+                        'track-count': 2,
+                        tracks: [{ id: 't1', title: 'T1', 'artist-credit': [], length: null }],
+                    },
+                ],
+            }),
+        );
 
         assert.equal(result.media.length, 1);
         assert.equal(result.media[0]!.tracks!.length, 1);
     });
 
     it('handles missing optional fields gracefully', () => {
-        const result = mapToRelease(makeMbRelease({
-            date: undefined,
-            disambiguation: undefined,
-            'release-group': undefined,
-            media: [],
-            relations: undefined,
-        }));
+        const result = mapToRelease(
+            makeMbRelease({
+                date: undefined,
+                disambiguation: undefined,
+                'release-group': undefined,
+                media: [],
+                relations: undefined,
+            }),
+        );
 
         assert.equal(result.date, null);
         assert.equal(result.disambiguation, null);

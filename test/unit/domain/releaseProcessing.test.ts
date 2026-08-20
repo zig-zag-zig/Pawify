@@ -1,16 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { installFirebaseServiceFake } from './helpers/moduleFakes.js';
-import { createRelease, createReleaseNotificationSettings } from './helpers/releaseFixtures.js';
+import { createRelease, createReleaseNotificationSettings } from '../../helpers/releaseFixtures.js';
 
-installFirebaseServiceFake();
-
-describe('release processing helpers', () => {
+describe('release processing', () => {
     it('getNotificationCandidateReleases deduplicates by release group', async () => {
-        const { getNotificationCandidateReleases } = await import(
-            '../src/utils/helpers/releaseProcessingHelpers.js'
-        );
+        const { getNotificationCandidateReleases } =
+            await import('../../../src/features/releases/domain/releaseProcessing.js');
         const settings = createReleaseNotificationSettings({ oldestReleaseDateMonths: null });
         const releases = [
             createRelease({ id: 'rg1-a', date: '2026-01-01', releaseGroupId: 'rg-1' }),
@@ -28,9 +24,8 @@ describe('release processing helpers', () => {
     });
 
     it('getNotificationCandidateReleases filters by notification settings', async () => {
-        const { getNotificationCandidateReleases } = await import(
-            '../src/utils/helpers/releaseProcessingHelpers.js'
-        );
+        const { getNotificationCandidateReleases } =
+            await import('../../../src/features/releases/domain/releaseProcessing.js');
         const settings = createReleaseNotificationSettings({
             oldestReleaseDateMonths: 12,
             includeReleasesWithoutDate: false,
@@ -50,9 +45,8 @@ describe('release processing helpers', () => {
     });
 
     it('analyzeReleaseChanges detects new and deleted releases', async () => {
-        const { analyzeReleaseChanges } = await import(
-            '../src/utils/helpers/releaseProcessingHelpers.js'
-        );
+        const { analyzeReleaseChanges } =
+            await import('../../../src/features/releases/domain/releaseProcessing.js');
         const settings = createReleaseNotificationSettings({ oldestReleaseDateMonths: null });
         const currentReleases = ['existing-1', 'deleted-1'];
         const allReleases = [
@@ -69,14 +63,11 @@ describe('release processing helpers', () => {
     });
 
     it('analyzeReleaseChanges returns no changes when everything is known', async () => {
-        const { analyzeReleaseChanges } = await import(
-            '../src/utils/helpers/releaseProcessingHelpers.js'
-        );
+        const { analyzeReleaseChanges } =
+            await import('../../../src/features/releases/domain/releaseProcessing.js');
         const settings = createReleaseNotificationSettings({ oldestReleaseDateMonths: null });
         const currentReleases = ['release-1'];
-        const allReleases = [
-            createRelease({ id: 'release-1', date: '2026-01-01' }),
-        ];
+        const allReleases = [createRelease({ id: 'release-1', date: '2026-01-01' })];
 
         const result = analyzeReleaseChanges(currentReleases, allReleases, settings);
 
