@@ -62,7 +62,7 @@ const mapToMedia = (data: any): Media => ({
     tracks: data.tracks?.map(mapToTrack) ?? [],
 });
 
-const getPrimaryArtistId = (data: any): string => {
+export const getPrimaryArtistId = (data: any): string => {
     const artistId = data?.['artist-credit']?.[0]?.artist?.id;
     return typeof artistId === 'string' ? artistId : '';
 };

@@ -100,6 +100,6 @@ export const getNewReleases = async (userId: string): Promise<NewRelease[]> => {
 
         return result;
     } catch (error) {
-        throw new Error(`Failed to fetch new releases: ${error}`);
+        throw Object.assign(new Error('Failed to fetch new releases'), { cause: error });
     }
 };

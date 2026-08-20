@@ -167,8 +167,3 @@ const ensureReleaseGroupLink = (release: Release, releaseGroupId: string): Relea
         },
     };
 };
-
-export const getPrimaryArtistId = (musicbrainzRelease: any): string => {
-    const artistId = musicbrainzRelease?.['artist-credit']?.[0]?.artist?.id;
-    return typeof artistId === 'string' ? artistId : '';
-};

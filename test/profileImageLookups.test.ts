@@ -40,7 +40,7 @@ describe('mapArtistSummaryToProfileImageLookup', () => {
     it('returns undefined discogsUrls when field is not an array', () => {
         const result = mapArtistSummaryToProfileImageLookup({
             id: 'artist-1',
-            discogsUrls: 'not-an-array',
+            discogsUrls: 'not-an-array' as unknown as string[],
         });
 
         assert.equal(result.discogsUrls, undefined);

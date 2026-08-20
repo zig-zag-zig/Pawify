@@ -3,7 +3,11 @@ import { createLogger } from '../../../common/logging/logger.js';
 import { getExternalLinkUrlsByService } from '../../../utils/helpers/externalLinks.js';
 import { getCacheKey } from '../../../utils/helpers/cacheHelpers.js';
 import { mapWithConcurrency } from '../../../utils/helpers/promisePool.js';
-import type { CachedArtistDetails, CachedArtistImage } from '../../../utils/types/cacheTypes.js';
+import type {
+    ArtistWithLegacyDiscogsUrls,
+    CachedArtistDetails,
+    CachedArtistImage,
+} from '../../../utils/types/cacheTypes.js';
 import type {
     ArtistProfileImageLookup,
     ArtistProfileImageTaskResult,
@@ -135,17 +139,16 @@ export const fetchAndUpsertArtistProfileImages = async (
                             }
                         }
 
-                        const legacyArtist =
-                            cachedArtistDetailsForSync.artist as typeof cachedArtistDetailsForSync.artist & {
-                                discogsUrls?: unknown;
-                            };
+                        const legacyDiscogsUrls = (
+                            cachedArtistDetailsForSync.artist as ArtistWithLegacyDiscogsUrls
+                        ).discogsUrls;
                         discogsUrlsForLookup = [
                             ...getExternalLinkUrlsByService(
                                 cachedArtistDetailsForSync.artist.externalLinks,
                                 'discogs',
                             ),
-                            ...(Array.isArray(legacyArtist.discogsUrls)
-                                ? legacyArtist.discogsUrls.filter(
+                            ...(Array.isArray(legacyDiscogsUrls)
+                                ? legacyDiscogsUrls.filter(
                                       (url): url is string =>
                                           typeof url === 'string' && url.trim().length > 0,
                                   )

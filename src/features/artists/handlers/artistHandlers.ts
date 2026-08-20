@@ -1,7 +1,7 @@
 import { authenticatedHandler } from '../../../infrastructure/http/authenticatedHandler.js';
 import {
     optionalIntegerInRange,
-    optionalPositiveInteger,
+    optionalNonNegativeInteger,
     optionalString,
     requireString,
     requireStringArray,
@@ -68,7 +68,7 @@ export const createArtistHandlers = (
         async ({ req, res, userId }) => {
             const query = requireString(req.body, 'query');
             const limit = optionalIntegerInRange(req.body, 'limit', 25, 1, 100);
-            const offset = optionalPositiveInteger(req.body, 'offset', 0);
+            const offset = optionalNonNegativeInteger(req.body, 'offset', 0);
 
             res.status(200).send(
                 presenters.searchArtists(

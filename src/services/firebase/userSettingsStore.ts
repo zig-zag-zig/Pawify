@@ -5,7 +5,7 @@ import {
 import { coerceReleaseNotificationLookbackMonths } from '../../utils/types/releaseNotificationSettings.js';
 import { getUserRef } from './refs.js';
 import { getDocumentRefAndSnapshot } from './userStore.js';
-import { isPlainObject } from './utils.js';
+import { isPlainObject } from '../../common/utils/objectGuards.js';
 
 const RELEASE_NOTIFICATION_SETTINGS_FIELD = 'releaseNotificationSettings';
 

@@ -3,10 +3,7 @@ import type {
     BackgroundTaskResultPayload,
     TaskResultResponse,
 } from '../../utils/types/taskTypes.js';
-
-const isPlainObject = (value: unknown): value is Record<string, unknown> => {
-    return value !== null && typeof value === 'object' && !Array.isArray(value);
-};
+import { isPlainObject } from '../../common/utils/objectGuards.js';
 
 const toJsonSafeValue = (value: unknown): unknown => {
     if (value === undefined) {

@@ -4,7 +4,7 @@ import { describe, it } from 'node:test';
 import { BadRequestError } from '../src/common/http/errors.js';
 import {
     optionalIntegerInRange,
-    optionalPositiveInteger,
+    optionalNonNegativeInteger,
     optionalString,
     requireBoolean,
     requireNullablePositiveInteger,
@@ -49,7 +49,7 @@ describe('request validation helpers', () => {
         ]);
         assert.equal(requireNullablePositiveInteger({ months: null }, 'months', 24), null);
         assert.equal(requireNullablePositiveInteger({ months: '12' }, 'months', 24), 12);
-        assert.equal(optionalPositiveInteger({ page: '' }, 'page', 0), 0);
+        assert.equal(optionalNonNegativeInteger({ page: '' }, 'page', 0), 0);
         assert.equal(optionalIntegerInRange({ limit: '25' }, 'limit', 10, 1, 50), 25);
 
         assertBadRequest(
@@ -94,8 +94,8 @@ describe('request validation helpers', () => {
         assert.equal(requireStringArray({ artistIds: large }, 'artistIds').length, 1000);
     });
 
-    it('optionalPositiveInteger returns fallback for undefined', () => {
-        assert.equal(optionalPositiveInteger({}, 'page', 0), 0);
+    it('optionalNonNegativeInteger returns fallback for undefined', () => {
+        assert.equal(optionalNonNegativeInteger({}, 'page', 0), 0);
     });
 
     it('optionalString returns undefined for missing key', () => {

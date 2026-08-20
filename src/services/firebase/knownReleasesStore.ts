@@ -1,6 +1,6 @@
 import { rtdb } from '../../infrastructure/firebase/firebaseInit.js';
 import type { ArtistsAndReleasesMap } from './types.js';
-import { isPlainObject } from './utils.js';
+import { isPlainObject } from '../../common/utils/objectGuards.js';
 import { assertRtdbKey } from './rtdbKeys.js';
 
 const KNOWN_RELEASES_ROOT = 'knownReleases';

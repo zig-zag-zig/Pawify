@@ -11,7 +11,6 @@ import {
     readNewReleasesState,
     writeNewReleasesState,
 } from './newReleasesStore.js';
-import { stripDiscogsUrls } from './utils.js';
 import { getDocumentRefAndSnapshot } from './userStore.js';
 
 const removeUnfollowedArtistNewReleases = async (
@@ -66,7 +65,7 @@ export const saveArtistAndKnownReleasesToDb = async (
 
     const followingArtistsMap = await readFollowingArtistsMap(userId);
     const existingFollowing = followingArtistsMap[artistId];
-    const summaryToSave = artistSummary ? stripDiscogsUrls(artistSummary) : existingFollowing;
+    const summaryToSave = artistSummary ?? existingFollowing;
 
     followingArtistsMap[artistId] = {
         id: artistId,

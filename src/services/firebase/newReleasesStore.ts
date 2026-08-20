@@ -6,7 +6,7 @@ import {
     StoredNewReleasesMap,
 } from './types.js';
 import { buildNewReleasesCollectionPayload, getNewReleasesMapDocRef } from './refs.js';
-import { isPlainObject } from './utils.js';
+import { isPlainObject } from '../../common/utils/objectGuards.js';
 import { monitorUserMapsDocSizes } from '../monitoring/mapsDocSizeMonitor.js';
 
 const normalizePrimaryType = (value: unknown): string | null =>

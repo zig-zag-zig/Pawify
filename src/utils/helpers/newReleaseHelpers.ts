@@ -23,6 +23,18 @@ type ProcessArtistResult = {
     deletedReleaseIds: string[];
 };
 
+type HandleReleaseChangesOptions = {
+    userId: string;
+    artistId: string;
+    deletedReleaseIds: string[];
+    duplicateReleaseIds: string[];
+    notificationCandidateReleases: Release[];
+    artistNewReleases: Release[];
+    sortedEligibleNewReleases: Release[];
+    mappedNewReleases: NewRelease[];
+    ttl: number | undefined;
+};
+
 const NEW_RELEASE_COVER_CACHE_CONCURRENCY = 10;
 
 const createStoredNewReleases = (
@@ -59,13 +71,12 @@ export const processArtistReleases = async (
         notificationCandidateReleases,
         releasesChanged,
     } = analyzeReleaseChanges(currentReleases, allReleasesFlat, releaseNotificationSettings);
-    const eligibleNewReleases = artistNewReleases;
-    const sortedEligibleNewReleases = [...eligibleNewReleases];
+    const sortedEligibleNewReleases = [...artistNewReleases];
     sortReleasesByDate(sortedEligibleNewReleases);
     const mappedNewReleases = sortedEligibleNewReleases.map(mapToNewRelease);
 
     if (releasesChanged) {
-        await handleReleaseChanges(
+        await handleReleaseChanges({
             userId,
             artistId,
             deletedReleaseIds,
@@ -75,7 +86,7 @@ export const processArtistReleases = async (
             sortedEligibleNewReleases,
             mappedNewReleases,
             ttl,
-        );
+        });
     }
 
     const anyPruned = await removePrunedNewReleases(userId, prunedReleaseIds);
@@ -86,27 +97,27 @@ export const processArtistReleases = async (
     };
 };
 
-const handleReleaseChanges = async (
-    userId: string,
-    artistId: string,
-    deletedReleaseIds: string[],
-    duplicateReleaseIds: string[],
-    notificationCandidateReleases: Release[],
-    artistNewReleases: Release[],
-    eligibleNewReleases: Release[],
-    mappedNewReleases: NewRelease[],
-    ttl: number | undefined,
-): Promise<void> => {
+const handleReleaseChanges = async ({
+    userId,
+    artistId,
+    deletedReleaseIds,
+    duplicateReleaseIds,
+    notificationCandidateReleases,
+    artistNewReleases,
+    sortedEligibleNewReleases,
+    mappedNewReleases,
+    ttl,
+}: HandleReleaseChangesOptions): Promise<void> => {
     const releaseIdsToSave = notificationCandidateReleases.map((release) => release.id);
 
     await saveArtistAndKnownReleasesToDb(
         userId,
         artistId,
         releaseIdsToSave,
-        createStoredNewReleases(mappedNewReleases, eligibleNewReleases),
+        createStoredNewReleases(mappedNewReleases, sortedEligibleNewReleases),
         undefined,
     );
-    await cacheNewReleaseCovers(eligibleNewReleases, ttl);
+    await cacheNewReleaseCovers(sortedEligibleNewReleases, ttl);
 
     await updateArtistCacheIfExists(
         artistId,

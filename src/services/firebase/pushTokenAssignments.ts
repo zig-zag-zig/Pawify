@@ -1,6 +1,6 @@
 import { rtdb } from '../../infrastructure/firebase/firebaseInit.js';
 import { assertRtdbKey, decodeRtdbKeySegment, encodeRtdbKeySegment } from './rtdbKeys.js';
-import { isPlainObject } from './utils.js';
+import { isPlainObject } from '../../common/utils/objectGuards.js';
 
 export const PUSH_TOKENS_ROOT = 'pushTokens';
 export const DEVICE_PUSH_TOKENS_ROOT = 'devicePushTokens';

@@ -7,6 +7,7 @@ import {
 import type { RemoteValueState } from '../../modules/models/models.js';
 import type { CachedReleaseGroupReleaseCovers, CoverState } from '../../utils/types/cacheTypes.js';
 import { dedupeStrings } from '../../common/utils/array.js';
+import { isRemoteValueState } from '../../common/utils/objectGuards.js';
 import { readReleaseCoverCache, writeReleaseCoverCache } from './coverArtCache.js';
 
 export type CoverLookupResult = {
@@ -16,9 +17,6 @@ export type CoverLookupResult = {
 
 export const hasUsableUrl = (url: RemoteValueState): url is string =>
     typeof url === 'string' && url.trim().length > 0;
-
-const isRemoteValueState = (value: unknown): value is RemoteValueState =>
-    value === undefined || value === null || typeof value === 'string';
 
 export const shouldUseCachedState = (
     state: CoverState | undefined,

@@ -1,4 +1,5 @@
 import { dedupeStrings } from '../../common/utils/array.js';
+import { isRemoteValueState } from '../../common/utils/objectGuards.js';
 import type { CachedArtistImage, CoverState, LyricsState } from '../../utils/types/cacheTypes.js';
 import type { TrackLyricsRequest } from '../../utils/types/taskTypes.js';
 import {
@@ -6,10 +7,6 @@ import {
     shouldRefetchRemoteState,
     TRANSIENT_REMOTE_VALUE_RETRY_WINDOW_MS,
 } from '../../utils/helpers/remoteStateHelpers.js';
-
-const isRemoteValueState = (value: unknown): value is string | null | undefined => {
-    return value === undefined || value === null || typeof value === 'string';
-};
 
 export const shouldRefetchState = (
     state: CoverState | LyricsState | undefined,
@@ -99,8 +96,8 @@ export const normalizeArtistImageState = (
 
 export const hasLegacyArtistImageFields = (state: CachedArtistImage): boolean => {
     const legacyState = state as CachedArtistImage & {
-        artistName?: unknown;
-        discogsUrls?: unknown;
+        artistName?: string;
+        discogsUrls?: string[];
     };
 
     return (

@@ -7,7 +7,11 @@ import {
     mapRelationsToExternalLinks,
 } from '../utils/helpers/externalLinks.js';
 import { replaceCachedData, getCachedData } from './cacheService.js';
-import type { CachedArtistDetails } from '../utils/types/cacheTypes.js';
+import type {
+    ArtistWithLegacyDiscogsUrls,
+    CachedArtistDetails,
+} from '../utils/types/cacheTypes.js';
+import { normalizeDiscogsUrls } from './tasks/backgroundTaskMappers.js';
 import { fetchMusicBrainzWithStatus } from './musicApi/musicBrainzClient.js';
 import { isConfirmedMissingFetchFailure, isFetchFailureResult } from './musicApi/types.js';
 import { artistCacheTtlHours } from '../utils/helpers/followingHelper.js';
@@ -25,12 +29,7 @@ const getArtistDiscogsUrls = (artist: Artist): string[] => {
         return discogsUrls;
     }
 
-    const legacyArtist = artist as Artist & { discogsUrls?: unknown };
-    return Array.isArray(legacyArtist.discogsUrls)
-        ? legacyArtist.discogsUrls.filter(
-              (url): url is string => typeof url === 'string' && url.trim().length > 0,
-          )
-        : [];
+    return normalizeDiscogsUrls((artist as ArtistWithLegacyDiscogsUrls).discogsUrls);
 };
 
 const hasExternalLinks = (artist: Artist): boolean =>
@@ -68,19 +67,17 @@ export const getFollowedArtistSummary = async (
 ): Promise<FollowedArtistSummary | null> => {
     const mapSummaryWithDiscogsUrls = (
         summary: FollowedArtistSummary,
-        discogsUrls: unknown,
+        discogsUrls: string[],
     ): FollowedArtistSummary => {
-        const summaryWithLookups = summary as FollowedArtistSummary & {
-            discogsUrls?: string[];
-        };
-
-        if (Array.isArray(discogsUrls)) {
-            summaryWithLookups.discogsUrls = discogsUrls.filter(
-                (url): url is string => typeof url === 'string' && url.trim().length > 0,
-            );
+        const normalized = normalizeDiscogsUrls(discogsUrls);
+        if (normalized.length === 0) {
+            return summary;
         }
 
-        return summaryWithLookups;
+        return {
+            ...summary,
+            discogsUrls: normalized,
+        };
     };
 
     const cached = await getCachedData<CachedArtistDetails>(getCacheKey(artistId, 'artistDetails'));

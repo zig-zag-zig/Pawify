@@ -23,8 +23,6 @@ export async function sendOtpEmail(
           </div>
           <p>This code will expire in ${otpExpiryMinutes} minutes.</p>
           <p>If you didn't request this, please ignore this email.</p>
-          <pre style="font-family: Arial, sans-serif; white-space: pre-wrap;">Your OTP is: ${escapedOtp}
-This code will expire in ${otpExpiryMinutes} minutes.</pre>
         </div>
       `;
 

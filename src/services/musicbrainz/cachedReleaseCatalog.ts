@@ -55,7 +55,7 @@ const fetchAndCacheArtistReleases = async (
     try {
         return await fetchAndCacheUncachedArtistReleases(artistId, cached, cacheKey, ttl);
     } catch (error) {
-        throw new Error(`Failed to fetch releases: ${error}`);
+        throw Object.assign(new Error('Failed to fetch releases'), { cause: error });
     }
 };
 

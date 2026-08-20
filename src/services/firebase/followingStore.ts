@@ -1,7 +1,7 @@
 import type { FollowedArtistSummary } from '../../utils/types/followedArtistTypes.js';
 import { FollowedArtistsMap, FollowingArtistDocument, FollowingArtistsMap } from './types.js';
 import { getFollowingMapDocRef, buildFollowingCollectionPayload } from './refs.js';
-import { isPlainObject, stripDiscogsUrls } from './utils.js';
+import { isPlainObject } from '../../common/utils/objectGuards.js';
 import { monitorUserMapsDocSizes } from '../monitoring/mapsDocSizeMonitor.js';
 import { getDocumentRefAndSnapshot } from './userStore.js';
 
@@ -134,7 +134,7 @@ export const saveFollowingArtistSummariesToDb = async (
     artistSummaries: FollowedArtistSummary[],
 ): Promise<void> => {
     const uniqueArtistSummaries = Array.from(
-        new Map(artistSummaries.map((artist) => [artist.id, stripDiscogsUrls(artist)])).values(),
+        new Map(artistSummaries.map((artist) => [artist.id, artist])).values(),
     );
 
     if (uniqueArtistSummaries.length === 0) {

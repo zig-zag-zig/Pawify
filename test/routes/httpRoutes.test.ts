@@ -197,10 +197,10 @@ describe('HTTP route integration', () => {
 
     describe('v2 routes', () => {
         it('GET /v2/health returns 200', async () => {
-            const { createApiV2Routes } = await import('../../src/api/v2Routes.js');
+            const { v2Routes } = await import('../../src/api/v2Routes.js');
             const app = express();
             app.use(express.json());
-            app.use('/v2', createApiV2Routes());
+            app.use(v2Routes);
             app.use(errorMiddleware);
             const v2Url = await startTestServer(app);
             try {

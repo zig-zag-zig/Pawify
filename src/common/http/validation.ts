@@ -107,7 +107,7 @@ export const requireNullablePositiveInteger = (
     return parsed;
 };
 
-export const optionalPositiveInteger = (
+export const optionalNonNegativeInteger = (
     body: unknown,
     property: string,
     fallback: number,

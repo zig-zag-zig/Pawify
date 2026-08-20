@@ -70,7 +70,7 @@ Severity legend: 🔴 bug (behavior wrong), 🟠 robustness/risk, 🟡 design/qu
 | D8 | 🔵 | `optionalPositiveInteger` accepts 0 → rename `optionalNonNegativeInteger` (it's used for `offset`). | `common/http/validation.ts` |
 | D9 | 🔵 | `processArtistReleases` → `handleReleaseChanges` passes 9 params, and `eligibleNewReleases` is a pure alias of `artistNewReleases`. Group into a result object, drop the alias. | `utils/helpers/newReleaseHelpers.ts` |
 | D10 | 🔵 | OTP email renders the code twice in one HTML body (styled block + `<pre>`); no plain-text part. Tidy. | `services/emailService.ts` |
-| D11 | 🔵 | Test taxonomy lies: `test/integration/**` are offline route tests with fakes; real integration tests live in `test/emulator/**`. `npm test` runs all of `lib-test/**` anyway. Rename to `test/routes/**` (or fold into `test/unit`), keep `test/emulator`, align `test:integration` name (`test:emulator` alias). | `test/`, `package.json` scripts |
+| D11 | ✅ **Done (Phase 3)** — `test/integration/**` were offline route tests with fakes; real integration tests live in `test/emulator/**`. Renamed to `test/routes/**`, kept `test/emulator`, added `test:emulator` as an alias of the existing `test:integration` script, updated README references. | `test/`, `package.json` scripts |
 
 ### 2.4 Architecture / structure
 
@@ -147,7 +147,7 @@ Each phase = one or more commits, each followed by `npm run verify` (typecheck +
 2. **D3** — declare `discogsUrls?: string[]` on the in-repo `FollowedArtistSummary` (or a dedicated lookup type), delete the `as … & { discogsUrls?: unknown }` casts and `stripDiscogsUrls` workaround (keep strip only if the DB write must exclude the field — verify against `followingStore`, then decide: likely keep one normalize-at-the-boundary function instead).
 3. **D5** — `createApiRoutes(prefix, variants)` factory; `v1Routes`/`v2Routes` become 3-liners.
 4. **D7/D8/D9/D10** — error-`cause` or unwrapping; rename validation helper; `handleReleaseChanges` parameter object + alias removal; email template tidy.
-5. **D11** — rename `test/integration` → `test/routes`, adjust `npm test` glob note, keep `test:emulator` semantics (script `test:integration` keeps its name or gains an alias), update README.
+5. **D11** — ✅ done: `test/integration` → `test/routes` (git mv), `test:integration` keeps its name, `test:emulator` alias added, README updated.
 
 ### Phase 4 — Structure moves (move-only, verified by typecheck + tests)
 1. **A1** — relocate: `artistSearchHelpers` → `services/musicbrainz/artistSearch.ts`; `cacheManagementHelpers` → `services/firebase/` (or fold into `followingStore`/adapters); `followingHelper` remnants (TTL constants + `getReleaseLyricsTtl`) → `services/cache/ttlPolicy.ts`; `releaseProcessingHelpers`' pure parts → `features/releases/domain`, DB-touching parts → adapters. Update importers + tests. No logic edits.

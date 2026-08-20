@@ -245,8 +245,8 @@ This compiles TypeScript via `tsconfig.test.json` (output to `lib-test/`) and ru
 | Cache serialization | `test/cacheSerialization.test.ts` |
 | Rate limiter | `test/rateLimiter.test.ts` |
 | Dapr infrastructure | `test/daprMigration.test.ts` |
-| Health routes | `test/healthRoutes.test.ts` |
-| HTTP route integration | `test/httpRoutes.test.ts` |
+| Health routes | `test/routes/healthRoutes.test.ts` |
+| HTTP route integration | `test/routes/httpRoutes.test.ts` |
 | Firebase emulator integration | `test/emulator/firebaseEmulator.test.ts` (requires `npm run test:emulator`) |
 
 ### Test helpers
@@ -263,8 +263,9 @@ This compiles TypeScript via `tsconfig.test.json` (output to `lib-test/`) and ru
 
 | Command | Purpose |
 |---|---|
-| `npm test` | Compile and run all unit + integration tests (emulator tests auto-skip when emulators are not running) |
-| `npm run test:emulator` | Compile and run Firebase emulator integration tests (requires `firebase-tools` installed) |
+| `npm test` | Compile and run all unit + route tests (emulator tests auto-skip when emulators are not running) |
+| `npm run test:integration` | Compile and run the Firebase emulator integration suite via `firebase emulators:exec` |
+| `npm run test:emulator` | Alias for `npm run test:integration` |
 | `npm run build` | Compile TypeScript to `lib/` |
 | `npm run dev` | Run dev server with `ts-node` |
 
@@ -376,7 +377,9 @@ src/infrastructure/   Firebase, monitoring, and provider adapters
 src/services/         Music APIs, cache, email, tasks, notifications
 src/services/cache/   Cache serialization and chunking helpers
 src/utils/            Helpers and shared types
-test/                 Unit and integration tests
+test/                 Unit and route tests
+test/routes/          Offline HTTP route tests (fakes, no emulators)
+test/emulator/        Integration tests against real Firebase emulators
 test/helpers/         Test fixtures, fakes, and module mocking utilities
 ```
 
