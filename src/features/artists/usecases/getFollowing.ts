@@ -2,7 +2,7 @@ import { isArtistMetadataStale } from '../artistMetadataRefresh.js';
 import { createLogger } from '../../../common/logging/logger.js';
 import type { ArtistMinimal } from '../../../modules/models/models.js';
 import { mapWithConcurrency } from '../../../utils/helpers/promisePool.js';
-import { artistCacheTtlHours } from '../../../utils/helpers/followingHelper.js';
+import { artistCacheTtlHours } from '../../../services/cache/ttlPolicy.js';
 import type { ArtistProfileImageLookup } from '../../../utils/types/taskTypes.js';
 import { mapArtistSummaryToProfileImageLookup } from '../domain/profileImageLookups.js';
 import type { ArtistReadUseCaseDependencies } from '../ports.js';
@@ -42,9 +42,7 @@ export const createGetFollowingUseCase =
                         staleOrMissingArtistIds,
                         4,
                         async (artistId) =>
-                            await artistDetailsGateway.getFollowedArtistSummary(userId, artistId, {
-                                skipTtlLookup: true,
-                            }),
+                            await artistDetailsGateway.getFollowedArtistSummary(userId, artistId),
                     )
                 ).filter(
                     (artistSummary): artistSummary is NonNullable<typeof artistSummary> =>

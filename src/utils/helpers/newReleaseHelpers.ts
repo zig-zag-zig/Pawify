@@ -9,13 +9,13 @@ import { sortReleasesByDate } from '../../modules/utils/dateUtil.js';
 import { getReleaseCover } from '../../services/coverArtService.js';
 import { saveArtistAndKnownReleasesToDb } from '../../services/firebase/artistStore.js';
 import type { StoredNewRelease } from '../../services/firebase/types.js';
+import { analyzeReleaseChanges } from '../../features/releases/domain/releaseProcessing.js';
 import {
     getCurrentReleases,
-    analyzeReleaseChanges,
     removePrunedNewReleases,
-} from './releaseProcessingHelpers.js';
+} from '../../services/firebase/newReleaseMaintenance.js';
 import { updateArtistCacheIfExists } from './cacheUpdateHelpers.js';
-import { artistCacheTtlHours } from './followingHelper.js';
+import { artistCacheTtlHours } from '../../services/cache/ttlPolicy.js';
 import { mapWithConcurrency } from './promisePool.js';
 
 type ProcessArtistResult = {

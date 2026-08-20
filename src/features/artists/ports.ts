@@ -6,21 +6,11 @@ import type { ArtistProfileImageQueueOptions } from '../../utils/types/taskTypes
 
 type FollowedArtistsById = { [artistId: string]: FollowedArtistSummary };
 
-type ArtistDetailsOptions = {
-    cacheTtlOverride?: number;
-    skipTtlLookup?: boolean;
-};
-
 interface ArtistDetailsGateway {
-    getArtistDetails(
-        userId: string,
-        artistId: string,
-        options?: ArtistDetailsOptions,
-    ): Promise<Artist | null>;
+    getArtistDetails(userId: string, artistId: string): Promise<Artist | null>;
     getFollowedArtistSummary(
         userId: string,
         artistId: string,
-        options?: ArtistDetailsOptions,
     ): Promise<FollowedArtistSummary | null>;
 }
 

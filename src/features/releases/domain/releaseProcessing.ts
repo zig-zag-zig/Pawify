@@ -2,17 +2,9 @@ import {
     Release,
     DEFAULT_RELEASE_NOTIFICATION_SETTINGS,
     ReleaseNotificationSettings,
-} from '../../modules/models/models.js';
-import {
-    getKnownArtistReleaseIdsFromDb,
-    getKnownReleasesFromDb,
-} from '../../services/firebase/knownReleasesStore.js';
-import {
-    getNewReleasesSnapshotFromDb,
-    removeNewReleasesFromDb,
-} from '../../services/firebase/newReleasesStore.js';
-import { releaseMatchesNotificationSettings } from './releaseNotificationFilter.js';
-import { groupByReleaseGroup } from './releaseGroupingHelpers.js';
+} from '../../../modules/models/models.js';
+import { releaseMatchesNotificationSettings } from '../../../utils/helpers/releaseNotificationFilter.js';
+import { groupByReleaseGroup } from '../../../utils/helpers/releaseGroupingHelpers.js';
 
 const dedupeReleasesById = (releases: Release[]): Release[] => {
     const releasesById = new Map<string, Release>();
@@ -72,10 +64,6 @@ export const getNotificationCandidateReleases = (
     ];
 };
 
-export const getCurrentReleases = async (userId: string, artistId: string): Promise<string[]> => {
-    return await getKnownArtistReleaseIdsFromDb(userId, artistId);
-};
-
 export const analyzeReleaseChanges = (
     currentReleases: string[],
     allReleasesFlat: Release[],
@@ -118,29 +106,4 @@ export const analyzeReleaseChanges = (
         notificationCandidateReleases,
         releasesChanged,
     };
-};
-
-export const removePrunedNewReleases = async (
-    userId: string,
-    releaseIds: string[],
-): Promise<boolean> => {
-    if (releaseIds.length === 0) return false;
-
-    const { newReleasesMap } = await getNewReleasesSnapshotFromDb(userId);
-    const knownReleasesByArtist = await getKnownReleasesFromDb(userId);
-    const releaseIdsToRemove = releaseIds.filter((releaseId) => {
-        if (!newReleasesMap[releaseId]) {
-            return false;
-        }
-
-        return !Object.values(knownReleasesByArtist).some((knownReleaseIds) =>
-            knownReleaseIds.includes(releaseId),
-        );
-    });
-
-    if (releaseIdsToRemove.length > 0) {
-        await removeNewReleasesFromDb(userId, releaseIdsToRemove);
-    }
-
-    return releaseIdsToRemove.length > 0;
 };

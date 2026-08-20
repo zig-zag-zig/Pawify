@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 
 import { installFirebaseServiceFake } from './helpers/moduleFakes.js';
 import { createDefaultAssetPlanner } from './helpers/assetPlannerFakes.js';
-import { artistCacheTtlHours } from '../src/utils/helpers/followingHelper.js';
+import { artistCacheTtlHours } from '../src/services/cache/ttlPolicy.js';
 import type {
     ArtistWriteUseCaseDependencies,
     ArtistReadUseCaseDependencies,
@@ -218,8 +218,7 @@ describe('artist use cases', () => {
                 planArtistProfileImages: async () => ({ taskId: 'task-1', resolved: {} }),
             }),
             artistDetailsGateway: {
-                async getArtistDetails(_userId, _artistId, options) {
-                    assert.equal(options?.skipTtlLookup, true);
+                async getArtistDetails(_userId, _artistId) {
                     return artist;
                 },
                 async getFollowedArtistSummary() {

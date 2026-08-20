@@ -1,6 +1,6 @@
 import { ReleaseNotificationSettings } from '../../../modules/models/models.js';
 import { mapWithConcurrency } from '../../../utils/helpers/promisePool.js';
-import { getNotificationCandidateReleases } from '../../../utils/helpers/releaseProcessingHelpers.js';
+import { getNotificationCandidateReleases } from '../../../features/releases/domain/releaseProcessing.js';
 import type { UserSettingsUseCaseDependencies } from '../ports.js';
 
 const KNOWN_RELEASE_REBUILD_CONCURRENCY = 3;

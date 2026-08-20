@@ -14,14 +14,9 @@ import type {
 import { normalizeDiscogsUrls } from './tasks/backgroundTaskMappers.js';
 import { fetchMusicBrainzWithStatus } from './musicApi/musicBrainzClient.js';
 import { isConfirmedMissingFetchFailure, isFetchFailureResult } from './musicApi/types.js';
-import { artistCacheTtlHours } from '../utils/helpers/followingHelper.js';
+import { artistCacheTtlHours } from './cache/ttlPolicy.js';
 import { getCacheKey } from '../utils/helpers/cacheHelpers.js';
 import type { FollowedArtistSummary } from '../utils/types/followedArtistTypes.js';
-
-type GetArtistDetailsOptions = {
-    cacheTtlOverride?: number;
-    skipTtlLookup?: boolean;
-};
 
 const getArtistDiscogsUrls = (artist: Artist): string[] => {
     const discogsUrls = getExternalLinkUrlsByService(artist.externalLinks, 'discogs');
@@ -54,16 +49,14 @@ const fetchArtistData = async (artistId: string, include: string): Promise<unkno
 export const getArtistDetails = async (
     userId: string,
     artistId: string,
-    options?: GetArtistDetailsOptions,
 ): Promise<Artist | null> => {
-    const result = await getArtistDetailsRecord(userId, artistId, options);
+    const result = await getArtistDetailsRecord(userId, artistId);
     return result?.artist ?? null;
 };
 
 export const getFollowedArtistSummary = async (
     _userId: string,
     artistId: string,
-    _options?: GetArtistDetailsOptions,
 ): Promise<FollowedArtistSummary | null> => {
     const mapSummaryWithDiscogsUrls = (
         summary: FollowedArtistSummary,
@@ -140,7 +133,6 @@ const writeArtistDetailsCache = async (
 const getArtistDetailsRecord = async (
     _userId: string,
     artistId: string,
-    options?: GetArtistDetailsOptions,
 ): Promise<CachedArtistDetails | null> => {
     const cacheKey = getCacheKey(artistId, 'artistDetails');
     const cached: CachedArtistDetails | null = await getCachedData<CachedArtistDetails>(cacheKey);
@@ -156,7 +148,7 @@ const getArtistDetailsRecord = async (
         return null;
     }
 
-    const ttl = options?.skipTtlLookup ? options.cacheTtlOverride : artistCacheTtlHours;
+    const ttl = artistCacheTtlHours;
     await writeArtistDetailsCache(artistId, result, ttl);
 
     return {

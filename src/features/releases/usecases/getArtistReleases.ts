@@ -1,5 +1,5 @@
 import type { CachedArtistReleases } from '../../../utils/types/cacheTypes.js';
-import { artistCacheTtlHours } from '../../../utils/helpers/followingHelper.js';
+import { artistCacheTtlHours } from '../../../services/cache/ttlPolicy.js';
 import type { ReleaseReadUseCaseDependencies } from '../ports.js';
 import type { ReleaseGroupPageEntry } from '../../../utils/types/taskTypes.js';
 

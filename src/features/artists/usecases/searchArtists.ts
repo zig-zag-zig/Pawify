@@ -1,5 +1,5 @@
 import type { ArtistSearchResult } from '../../../modules/models/models.js';
-import { transientArtistCacheTtlHours } from '../../../utils/helpers/followingHelper.js';
+import { transientArtistCacheTtlHours } from '../../../services/cache/ttlPolicy.js';
 import type { ArtistReadUseCaseDependencies } from '../ports.js';
 
 export type SearchArtistsResult = ArtistSearchResult & {

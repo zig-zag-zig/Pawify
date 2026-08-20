@@ -1,5 +1,5 @@
 import type { ArtistSearchResult } from '../../modules/models/models.js';
-import { fetchMusicBrainz } from '../../services/musicApi/musicBrainzClient.js';
+import { fetchMusicBrainz } from '../musicApi/musicBrainzClient.js';
 import { createLogger } from '../../common/logging/logger.js';
 import { isPlainObject } from '../../common/utils/objectGuards.js';
 

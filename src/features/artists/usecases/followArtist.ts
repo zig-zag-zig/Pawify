@@ -1,5 +1,5 @@
 import type { ArtistWriteUseCaseDependencies } from '../ports.js';
-import { artistCacheTtlHours } from '../../../utils/helpers/followingHelper.js';
+import { artistCacheTtlHours } from '../../../services/cache/ttlPolicy.js';
 import { mapArtistSummaryToProfileImageLookup } from '../domain/profileImageLookups.js';
 
 export const createFollowArtistUseCase =
@@ -20,13 +20,7 @@ export const createFollowArtistUseCase =
         | 'requestDeduper'
     >) =>
     async (userId: string, artistId: string, sourcePushToken?: string): Promise<void> => {
-        const artistSummary = await artistDetailsGateway.getFollowedArtistSummary(
-            userId,
-            artistId,
-            {
-                skipTtlLookup: true,
-            },
-        );
+        const artistSummary = await artistDetailsGateway.getFollowedArtistSummary(userId, artistId);
         const ttl = artistCacheTtlHours;
         const releaseIds = await artistReleaseCatalogGateway.getArtistReleaseIds(artistId, ttl);
 

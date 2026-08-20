@@ -1,6 +1,6 @@
 import type { Artist } from '../../../modules/models/models.js';
 import { mapArtistToProfileImageLookup } from '../domain/profileImageLookups.js';
-import { artistCacheTtlHours } from '../../../utils/helpers/followingHelper.js';
+import { artistCacheTtlHours } from '../../../services/cache/ttlPolicy.js';
 import type { ArtistReadUseCaseDependencies } from '../ports.js';
 
 type GetArtistDetailsResult = {
@@ -22,11 +22,7 @@ export const createGetArtistDetailsUseCase =
         const ttl = artistCacheTtlHours;
         const artist = await requestDeduper.run(
             `getArtistDetails:${userId}:${artistId}`,
-            async () =>
-                await artistDetailsGateway.getArtistDetails(userId, artistId, {
-                    skipTtlLookup: true,
-                    cacheTtlOverride: ttl,
-                }),
+            async () => await artistDetailsGateway.getArtistDetails(userId, artistId),
         );
 
         if (!artist) {

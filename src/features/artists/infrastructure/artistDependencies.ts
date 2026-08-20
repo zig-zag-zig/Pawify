@@ -6,7 +6,10 @@ import {
     getFollowingStateFromDb,
     saveFollowingArtistSummariesToDb,
 } from '../../../services/firebase/followingStore.js';
-import { saveArtistAndKnownReleasesToDb } from '../../../services/firebase/artistStore.js';
+import {
+    deleteArtistFromDb,
+    saveArtistAndKnownReleasesToDb,
+} from '../../../services/firebase/artistStore.js';
 import {
     getArtistDetails as getArtistDetailsFromService,
     getFollowedArtistSummary as getFollowedArtistSummaryFromService,
@@ -14,28 +17,27 @@ import {
 import { getArtistKnownReleaseIds } from '../../../services/musicbrainz/cachedReleaseCatalog.js';
 import { sendDataOnlyNotification } from '../../../services/notifications/dataNotificationPublisher.js';
 import { notificationEvents } from '../../../services/notifications/notificationEvents.js';
-import { deleteArtist } from '../../../utils/helpers/cacheManagementHelpers.js';
-import { searchForArtist } from '../../../utils/helpers/artistSearchHelpers.js';
+import { searchForArtist } from '../../../services/musicbrainz/artistSearch.js';
 import type { ArtistUseCaseDependencies } from '../ports.js';
 
 const logger = createLogger('features.artists.dependencies');
 
 export const artistDependencies: Omit<ArtistUseCaseDependencies, 'assetPlanner'> = {
     artistDetailsGateway: {
-        getArtistDetails: async (userId, artistId, options) => {
-            const artist = await getArtistDetailsFromService(userId, artistId, options);
+        getArtistDetails: async (userId, artistId) => {
+            const artist = await getArtistDetailsFromService(userId, artistId);
 
             if (artist === null) {
-                await deleteArtist(userId, artistId);
+                await deleteArtistFromDb(userId, artistId);
             }
 
             return artist;
         },
-        getFollowedArtistSummary: async (userId, artistId, options) => {
-            const summary = await getFollowedArtistSummaryFromService(userId, artistId, options);
+        getFollowedArtistSummary: async (userId, artistId) => {
+            const summary = await getFollowedArtistSummaryFromService(userId, artistId);
 
             if (summary === null) {
-                await deleteArtist(userId, artistId);
+                await deleteArtistFromDb(userId, artistId);
             }
 
             return summary;
@@ -55,7 +57,7 @@ export const artistDependencies: Omit<ArtistUseCaseDependencies, 'assetPlanner'>
             await saveFollowingArtistSummariesToDb(userId, artistSummaries);
         },
         deleteFollowedArtist: async (userId, artistId) => {
-            await deleteArtist(userId, artistId);
+            await deleteArtistFromDb(userId, artistId);
         },
     },
     artistReleaseCatalogGateway: {

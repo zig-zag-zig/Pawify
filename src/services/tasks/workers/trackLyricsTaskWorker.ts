@@ -3,7 +3,7 @@ import { createLogger } from '../../../common/logging/logger.js';
 import { getCachedData, replaceCachedData } from '../../cacheService.js';
 import { fetchGeniusLyrics } from '../../musicApi/geniusClient.js';
 import { getCacheKey } from '../../../utils/helpers/cacheHelpers.js';
-import { getReleaseLyricsTtl } from '../../../utils/helpers/followingHelper.js';
+import { getReleaseLyricsTtl } from '../../../services/cache/ttlPolicy.js';
 import { mapWithConcurrency } from '../../../utils/helpers/promisePool.js';
 import type { CachedReleaseLyricsByRelease } from '../../../utils/types/cacheTypes.js';
 import type { TrackLyricsRequest, TrackLyricsTaskResult } from '../../../utils/types/taskTypes.js';

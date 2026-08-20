@@ -3,7 +3,7 @@ import {
     withTaskKeyNamespace,
 } from '../../services/backgroundTaskWorkers.js';
 import { addTaskUser } from '../../services/taskService.js';
-import { transientArtistCacheTtlHours } from '../../utils/helpers/followingHelper.js';
+import { transientArtistCacheTtlHours } from '../../services/cache/ttlPolicy.js';
 import type {
     ArtistProfileImageLookup,
     ArtistProfileImageQueueOptions,
