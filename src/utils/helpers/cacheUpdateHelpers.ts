@@ -10,10 +10,6 @@ import {
 } from './releaseGroupCacheHelpers.js';
 import { mapWithConcurrency } from './promisePool.js';
 
-type UpdateArtistCacheOptions = {
-    deferNewReleaseImageFetch?: boolean;
-};
-
 const REBUILD_CHANGED_GROUPS_CONCURRENCY = 10;
 const PRUNE_RELEASE_COVER_CACHES_CONCURRENCY = 10;
 
@@ -22,7 +18,6 @@ export const updateArtistCacheIfExists = async (
     deletedReleaseIds: string[],
     artistNewReleases: Release[],
     ttl: number | undefined,
-    _options?: UpdateArtistCacheOptions,
 ): Promise<void> => {
     const cacheKey = getCacheKey(artistId, 'artistReleases');
     const artistReleasesCache = await getCachedData<CachedArtistReleases>(cacheKey);

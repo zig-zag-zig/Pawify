@@ -1,4 +1,5 @@
 import type { CachedArtistReleases } from '../../../utils/types/cacheTypes.js';
+import { artistCacheTtlHours } from '../../../utils/helpers/followingHelper.js';
 import type { ReleaseReadUseCaseDependencies } from '../ports.js';
 import type { ReleaseGroupPageEntry } from '../../../utils/types/taskTypes.js';
 
@@ -10,29 +11,20 @@ type GetArtistReleasesResult = {
 
 export const createGetArtistReleasesUseCase =
     ({
-        artistReleaseContextGateway,
         releaseCatalogGateway,
         releaseTaskQueue,
         assetPlanner,
         requestDeduper,
     }: Pick<
         ReleaseReadUseCaseDependencies,
-        | 'artistReleaseContextGateway'
-        | 'releaseCatalogGateway'
-        | 'releaseTaskQueue'
-        | 'assetPlanner'
-        | 'requestDeduper'
+        'releaseCatalogGateway' | 'releaseTaskQueue' | 'assetPlanner' | 'requestDeduper'
     >) =>
     async (userId: string, artistId: string): Promise<GetArtistReleasesResult> => {
         const payload = await requestDeduper.run(
             `getArtistReleases:${userId}:${artistId}`,
             async () => {
-                const ttl = await artistReleaseContextGateway.getArtistTtl(userId, artistId);
-                const releaseGroups = await releaseCatalogGateway.getArtistReleases(
-                    artistId,
-                    ttl,
-                    async () => {},
-                );
+                const ttl = artistCacheTtlHours;
+                const releaseGroups = await releaseCatalogGateway.getArtistReleases(artistId, ttl);
                 return {
                     releaseGroups,
                     ttl,

@@ -6,7 +6,6 @@ import type {
     CachedReleaseGroupReleases,
 } from '../../utils/types/cacheTypes.js';
 import {
-    groupByReleaseGroup,
     mapReleaseGroupsToArtistReleases,
     normalizeReleaseGroups,
 } from '../../utils/helpers/releaseGroupingHelpers.js';
@@ -25,13 +24,6 @@ import {
     processAndGroupReleases,
 } from './releaseQueries.js';
 
-type GetArtistReleasesOptions = {
-    onReleaseGroupPage?: (
-        releaseGroupEntries: { releaseGroupId: string; releaseIds: string[] }[],
-        isLastPage: boolean,
-    ) => Promise<void> | void;
-};
-
 type GetReleaseGroupReleasesOptions = {
     onReleaseIdsPage?: (
         releaseGroupId: string,
@@ -42,22 +34,16 @@ type GetReleaseGroupReleasesOptions = {
 
 export const getArtistReleases = async (
     artistId: string,
-    useCache: boolean,
     ttl: number | undefined,
-    options?: GetArtistReleasesOptions,
 ): Promise<CachedArtistReleases> => {
     const cacheKey = getCacheKey(artistId, 'artistReleases');
     const cached = await getCachedData<CachedArtistReleases>(cacheKey);
 
-    if (useCache && cached) {
-        await options?.onReleaseGroupPage?.(
-            cached.map((group) => ({ releaseGroupId: group.id, releaseIds: group.releaseIds })),
-            true,
-        );
+    if (cached) {
         return cached;
     }
 
-    return await fetchAndCacheArtistReleases(artistId, cacheKey, cached, ttl, options);
+    return await fetchAndCacheArtistReleases(artistId, cacheKey, cached, ttl);
 };
 
 const fetchAndCacheArtistReleases = async (
@@ -65,10 +51,9 @@ const fetchAndCacheArtistReleases = async (
     cacheKey: string,
     cached: CachedArtistReleases | null,
     ttl: number | undefined,
-    options?: GetArtistReleasesOptions,
 ): Promise<CachedArtistReleases> => {
     try {
-        return await fetchAndCacheUncachedArtistReleases(artistId, cached, cacheKey, ttl, options);
+        return await fetchAndCacheUncachedArtistReleases(artistId, cached, cacheKey, ttl);
     } catch (error) {
         throw new Error(`Failed to fetch releases: ${error}`);
     }
@@ -79,21 +64,8 @@ const fetchAndCacheUncachedArtistReleases = async (
     cached: CachedArtistReleases | null,
     cacheKey: string,
     ttl: number | undefined,
-    options?: GetArtistReleasesOptions,
 ): Promise<CachedArtistReleases> => {
-    const allReleases = await fetchAllReleasesForArtist(
-        artistId,
-        false,
-        async (pageReleases, isLastPage) => {
-            const grouped = groupByReleaseGroup(pageReleases);
-            const pageEntries = Array.from(grouped.entries()).map(([releaseGroupId, releases]) => ({
-                releaseGroupId,
-                releaseIds: releases.map((release) => release.id),
-            }));
-
-            await options?.onReleaseGroupPage?.(pageEntries, isLastPage);
-        },
-    );
+    const allReleases = await fetchAllReleasesForArtist(artistId, false);
 
     const releaseGroupsMap = processAndGroupReleases(allReleases);
     normalizeReleaseGroups(releaseGroupsMap);

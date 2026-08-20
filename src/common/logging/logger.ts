@@ -24,9 +24,7 @@ const configuredLevel = (): LogLevel => {
     return loggingConfig.level;
 };
 
-const shouldLog = (scope: string, level: LogLevel): boolean => {
-    void scope;
-
+const shouldLog = (level: LogLevel): boolean => {
     if (levelPriority[level] < levelPriority[configuredLevel()]) {
         return false;
     }
@@ -102,7 +100,7 @@ const mergeRequestContext = (metadata?: LogMetadata): LogMetadata | undefined =>
 };
 
 const emit = (scope: string, level: LogLevel, message: string, metadata?: LogMetadata): void => {
-    if (!shouldLog(scope, level)) {
+    if (!shouldLog(level)) {
         return;
     }
 

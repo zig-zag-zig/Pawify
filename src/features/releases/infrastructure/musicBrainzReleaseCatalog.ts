@@ -8,8 +8,8 @@ import { isConfirmedMissingFetchFailure } from '../../../services/musicApi/types
 import type { ReleaseCatalogGateway } from '../ports.js';
 
 export const musicBrainzReleaseCatalog: ReleaseCatalogGateway = {
-    getArtistReleases: async (artistId, ttl, onReleaseGroupPage) => {
-        return await getArtistReleasesFromService(artistId, true, ttl, { onReleaseGroupPage });
+    getArtistReleases: async (artistId, ttl) => {
+        return await getArtistReleasesFromService(artistId, ttl);
     },
     getReleaseGroupReleases: async (releaseGroupId, ttl, onReleaseIdsPage) => {
         return await getReleaseGroupReleasesFromService(releaseGroupId, true, ttl, {

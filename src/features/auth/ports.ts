@@ -8,12 +8,7 @@ interface AccountGateway {
     deleteUserAccount(userId: string): Promise<void>;
 }
 
-interface UserAccountCache {
-    deleteFollowingCache(userId: string): Promise<void>;
-}
-
 export type AuthUseCaseDependencies = {
     accountGateway: AccountGateway;
-    userAccountCache: UserAccountCache;
     requestDeduper: RequestDeduperPort;
 };

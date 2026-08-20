@@ -128,11 +128,7 @@ describe('release use cases', () => {
         let addedTaskUser: { taskId: string; userId: string } | undefined;
         const deps: Pick<
             ReleaseReadUseCaseDependencies,
-            | 'artistReleaseContextGateway'
-            | 'releaseCatalogGateway'
-            | 'releaseTaskQueue'
-            | 'assetPlanner'
-            | 'requestDeduper'
+            'releaseCatalogGateway' | 'releaseTaskQueue' | 'assetPlanner' | 'requestDeduper'
         > = {
             assetPlanner: createDefaultAssetPlanner({
                 planArtistReleaseGroupCovers: async () => ({
@@ -140,13 +136,8 @@ describe('release use cases', () => {
                     resolved: {},
                 }),
             }),
-            artistReleaseContextGateway: {
-                async getArtistTtl() {
-                    return 500;
-                },
-            },
             releaseCatalogGateway: {
-                async getArtistReleases(_artistId, _ttl, _onPage) {
+                async getArtistReleases(_artistId, _ttl) {
                     return [
                         {
                             id: 'rg-1',
@@ -211,11 +202,7 @@ describe('release use cases', () => {
         let queueCalled = false;
         const deps: Pick<
             ReleaseReadUseCaseDependencies,
-            | 'artistReleaseContextGateway'
-            | 'releaseCatalogGateway'
-            | 'releaseTaskQueue'
-            | 'assetPlanner'
-            | 'requestDeduper'
+            'releaseCatalogGateway' | 'releaseTaskQueue' | 'assetPlanner' | 'requestDeduper'
         > = {
             assetPlanner: createDefaultAssetPlanner({
                 planArtistReleaseGroupCovers: async () => ({
@@ -223,13 +210,8 @@ describe('release use cases', () => {
                     resolved: { 'rg-1': 'https://cover.example/rg-1.jpg' },
                 }),
             }),
-            artistReleaseContextGateway: {
-                async getArtistTtl() {
-                    return 500;
-                },
-            },
             releaseCatalogGateway: {
-                async getArtistReleases(_artistId, _ttl, _onPage) {
+                async getArtistReleases(_artistId, _ttl) {
                     return [
                         {
                             id: 'rg-1',

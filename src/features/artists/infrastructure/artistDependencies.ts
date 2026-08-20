@@ -15,11 +15,6 @@ import { getArtistKnownReleaseIds } from '../../../services/musicbrainz/cachedRe
 import { sendDataOnlyNotification } from '../../../services/notifications/dataNotificationPublisher.js';
 import { notificationEvents } from '../../../services/notifications/notificationEvents.js';
 import { deleteArtist } from '../../../utils/helpers/cacheManagementHelpers.js';
-import {
-    getArtistTtl,
-    invalidateFollowingArtistIdsCache,
-    syncFollowingArtistIds,
-} from '../../../utils/helpers/followingHelper.js';
 import { searchForArtist } from '../../../utils/helpers/artistSearchHelpers.js';
 import type { ArtistUseCaseDependencies } from '../ports.js';
 
@@ -48,26 +43,13 @@ export const artistDependencies: Omit<ArtistUseCaseDependencies, 'assetPlanner'>
     },
     artistFollowingRepository: {
         getFollowingArtistIds: async (userId) => {
-            const artistIds = await getFollowingFromDb(userId);
-            await syncFollowingArtistIds(userId, artistIds);
-            return artistIds;
+            return await getFollowingFromDb(userId);
         },
         getFollowingState: async (userId) => {
-            const state = await getFollowingStateFromDb(userId);
-            await syncFollowingArtistIds(userId, state.artistIds);
-            return state;
+            return await getFollowingStateFromDb(userId);
         },
         saveFollowedArtist: async (userId, artistId, releaseIds, artistSummary) => {
             await saveArtistAndKnownReleasesToDb(userId, artistId, releaseIds, [], artistSummary);
-            invalidateFollowingArtistIdsCache(userId);
-            try {
-                await syncFollowingArtistIds(userId, await getFollowingFromDb(userId));
-            } catch (error) {
-                logger.warn('failed to refresh followed artist cache membership', {
-                    artistId,
-                    error,
-                });
-            }
         },
         saveFollowingArtistSummaries: async (userId, artistSummaries) => {
             await saveFollowingArtistSummariesToDb(userId, artistSummaries);
@@ -83,9 +65,6 @@ export const artistDependencies: Omit<ArtistUseCaseDependencies, 'assetPlanner'>
     artistSearchGateway: {
         searchArtists: async (userId, query, offset, limit) =>
             await searchForArtist(userId, query, offset, limit),
-    },
-    cacheTtlGateway: {
-        getArtistTtl: async (userId, artistId) => await getArtistTtl(userId, artistId),
     },
     followingNotifier: {
         notifyFollowingChanged: async (userId, sourcePushToken) => {

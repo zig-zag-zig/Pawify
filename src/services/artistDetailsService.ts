@@ -10,7 +10,7 @@ import { replaceCachedData, getCachedData } from './cacheService.js';
 import type { CachedArtistDetails } from '../utils/types/cacheTypes.js';
 import { fetchMusicBrainzWithStatus } from './musicApi/musicBrainzClient.js';
 import { isConfirmedMissingFetchFailure, isFetchFailureResult } from './musicApi/types.js';
-import { getArtistTtl } from '../utils/helpers/followingHelper.js';
+import { artistCacheTtlHours } from '../utils/helpers/followingHelper.js';
 import { getCacheKey } from '../utils/helpers/cacheHelpers.js';
 import type { FollowedArtistSummary } from '../utils/types/followedArtistTypes.js';
 
@@ -141,7 +141,7 @@ const writeArtistDetailsCache = async (
 };
 
 const getArtistDetailsRecord = async (
-    userId: string,
+    _userId: string,
     artistId: string,
     options?: GetArtistDetailsOptions,
 ): Promise<CachedArtistDetails | null> => {
@@ -159,9 +159,7 @@ const getArtistDetailsRecord = async (
         return null;
     }
 
-    const ttl = options?.skipTtlLookup
-        ? options.cacheTtlOverride
-        : await getArtistTtl(userId, artistId);
+    const ttl = options?.skipTtlLookup ? options.cacheTtlOverride : artistCacheTtlHours;
     await writeArtistDetailsCache(artistId, result, ttl);
 
     return {

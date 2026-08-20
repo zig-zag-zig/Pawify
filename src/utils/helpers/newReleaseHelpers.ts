@@ -15,7 +15,7 @@ import {
     removePrunedNewReleases,
 } from './releaseProcessingHelpers.js';
 import { updateArtistCacheIfExists } from './cacheUpdateHelpers.js';
-import { getArtistTtl } from './followingHelper.js';
+import { artistCacheTtlHours } from './followingHelper.js';
 import { mapWithConcurrency } from './promisePool.js';
 
 type ProcessArtistResult = {
@@ -42,16 +42,12 @@ const createStoredNewReleases = (
 export const processArtistReleases = async (
     userId: string,
     artistId: string,
-    getArtistReleases: (
-        artistId: string,
-        useCache: boolean,
-        ttl: number | undefined,
-    ) => Promise<Release[]>,
+    getArtistReleases: (artistId: string) => Promise<Release[]>,
     currentReleasesByArtist?: { [artistId: string]: string[] },
     releaseNotificationSettings: ReleaseNotificationSettings = DEFAULT_RELEASE_NOTIFICATION_SETTINGS,
 ): Promise<ProcessArtistResult> => {
-    const ttl = await getArtistTtl(userId, artistId);
-    const allReleasesFlat = await getArtistReleases(artistId, false, ttl);
+    const ttl = artistCacheTtlHours;
+    const allReleasesFlat = await getArtistReleases(artistId);
 
     const currentReleases =
         currentReleasesByArtist?.[artistId] ?? (await getCurrentReleases(userId, artistId));

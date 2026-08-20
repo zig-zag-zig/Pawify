@@ -62,10 +62,9 @@ export const createChangeEmailUseCase =
     };
 
 export const createDeleteUserAccountUseCase =
-    ({ accountGateway, userAccountCache, requestDeduper }: AuthUseCaseDependencies) =>
+    ({ accountGateway, requestDeduper }: AuthUseCaseDependencies) =>
     async (userId: string): Promise<void> => {
         await accountGateway.deleteUserAccount(userId);
-        await userAccountCache.deleteFollowingCache(userId);
 
         // The account is gone; drop every per-user dedupe read key that exists so no
         // stale following/artist/release/search state can be served for this user.

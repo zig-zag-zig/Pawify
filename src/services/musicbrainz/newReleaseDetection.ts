@@ -18,11 +18,7 @@ type ArtistProcessResult = {
     newReleases: NewRelease[];
 };
 
-const getArtistReleasesForProcessing = async (
-    artistId: string,
-    _useCache: boolean,
-    _ttl: number | undefined,
-): Promise<Release[]> => {
+const getArtistReleasesForProcessing = async (artistId: string): Promise<Release[]> => {
     return await fetchAllReleasesForArtist(artistId, true);
 };
 

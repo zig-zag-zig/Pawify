@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 
 import { installFirebaseServiceFake } from './helpers/moduleFakes.js';
 import { createDefaultAssetPlanner } from './helpers/assetPlannerFakes.js';
+import { artistCacheTtlHours } from '../src/utils/helpers/followingHelper.js';
 import type {
     ArtistWriteUseCaseDependencies,
     ArtistReadUseCaseDependencies,
@@ -42,7 +43,6 @@ describe('artist use cases', () => {
             | 'artistFollowingRepository'
             | 'artistReleaseCatalogGateway'
             | 'artistProfileImageQueue'
-            | 'cacheTtlGateway'
             | 'followingNotifier'
             | 'requestDeduper'
         > = {
@@ -73,7 +73,7 @@ describe('artist use cases', () => {
             },
             artistReleaseCatalogGateway: {
                 async getArtistReleaseIds(_artistId, ttl) {
-                    assert.equal(ttl, 123);
+                    assert.equal(ttl, artistCacheTtlHours);
                     return ['release-1', 'release-2'];
                 },
             },
@@ -84,11 +84,6 @@ describe('artist use cases', () => {
                 queueArtistProfileImagesWithLookups(_userId, scope, artistLookups, ttl) {
                     queueCalls.push({ scope, artistLookups, ttl });
                     return 'profile-task-1';
-                },
-            },
-            cacheTtlGateway: {
-                async getArtistTtl() {
-                    return 123;
                 },
             },
             followingNotifier: {
@@ -217,11 +212,7 @@ describe('artist use cases', () => {
         };
         const deps: Pick<
             ArtistReadUseCaseDependencies,
-            | 'artistDetailsGateway'
-            | 'artistProfileImageQueue'
-            | 'assetPlanner'
-            | 'cacheTtlGateway'
-            | 'requestDeduper'
+            'artistDetailsGateway' | 'artistProfileImageQueue' | 'assetPlanner' | 'requestDeduper'
         > = {
             assetPlanner: createDefaultAssetPlanner({
                 planArtistProfileImages: async () => ({ taskId: 'task-1', resolved: {} }),
@@ -241,11 +232,6 @@ describe('artist use cases', () => {
                 },
                 queueArtistProfileImagesWithLookups() {
                     throw new Error('should not run');
-                },
-            },
-            cacheTtlGateway: {
-                async getArtistTtl() {
-                    return 500;
                 },
             },
             requestDeduper: fakeRequestDeduper,
@@ -270,11 +256,7 @@ describe('artist use cases', () => {
         };
         const deps: Pick<
             ArtistReadUseCaseDependencies,
-            | 'artistDetailsGateway'
-            | 'artistProfileImageQueue'
-            | 'assetPlanner'
-            | 'cacheTtlGateway'
-            | 'requestDeduper'
+            'artistDetailsGateway' | 'artistProfileImageQueue' | 'assetPlanner' | 'requestDeduper'
         > = {
             assetPlanner: createDefaultAssetPlanner(),
             artistDetailsGateway: {
@@ -291,11 +273,6 @@ describe('artist use cases', () => {
                 },
                 queueArtistProfileImagesWithLookups() {
                     throw new Error('should not run');
-                },
-            },
-            cacheTtlGateway: {
-                async getArtistTtl() {
-                    return undefined;
                 },
             },
             requestDeduper: fakeRequestDeduper,

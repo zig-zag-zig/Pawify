@@ -8,7 +8,6 @@ export const createFollowArtistUseCase =
         artistFollowingRepository,
         artistReleaseCatalogGateway,
         artistProfileImageQueue,
-        cacheTtlGateway,
         followingNotifier,
         requestDeduper,
     }: Pick<
@@ -17,7 +16,6 @@ export const createFollowArtistUseCase =
         | 'artistFollowingRepository'
         | 'artistReleaseCatalogGateway'
         | 'artistProfileImageQueue'
-        | 'cacheTtlGateway'
         | 'followingNotifier'
         | 'requestDeduper'
     >) =>
@@ -29,7 +27,7 @@ export const createFollowArtistUseCase =
                 skipTtlLookup: true,
             },
         );
-        const ttl = await cacheTtlGateway.getArtistTtl(userId, artistId);
+        const ttl = artistCacheTtlHours;
         const releaseIds = await artistReleaseCatalogGateway.getArtistReleaseIds(artistId, ttl);
 
         await artistFollowingRepository.saveFollowedArtist(

@@ -25,10 +25,6 @@ const createFakeDependencies = (
         async deleteUserAccount() {},
         ...overrides.accountGateway,
     },
-    userAccountCache: {
-        async deleteFollowingCache() {},
-        ...overrides.userAccountCache,
-    },
     requestDeduper: {
         async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
             return worker();
@@ -309,18 +305,13 @@ describe('auth use cases', () => {
     });
 
     describe('deleteUserAccount', () => {
-        it('deletes account, clears following cache, and invalidates per-user read keys', async () => {
+        it('deletes account and invalidates per-user read keys', async () => {
             const calls: string[] = [];
             const deps = createFakeDependencies({
                 accountGateway: {
                     ...createFakeDependencies().accountGateway,
                     async deleteUserAccount(userId) {
                         calls.push(`delete:${userId}`);
-                    },
-                },
-                userAccountCache: {
-                    async deleteFollowingCache(userId) {
-                        calls.push(`clearCache:${userId}`);
                     },
                 },
                 requestDeduper: {
@@ -337,7 +328,6 @@ describe('auth use cases', () => {
             await useCase('user-1');
             assert.deepEqual(calls, [
                 'delete:user-1',
-                'clearCache:user-1',
                 'invalidate:getFollowing:user-1',
                 'invalidate:getArtistDetails:user-1:',
                 'invalidate:getArtistReleases:user-1:',

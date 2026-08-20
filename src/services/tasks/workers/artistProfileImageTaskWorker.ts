@@ -24,7 +24,6 @@ const logger = createLogger('services.backgroundTasks.artistImages');
 
 const ARTIST_PROFILE_IMAGE_REQUEST_CONCURRENCY =
     backgroundTaskWorkerConfig.artistProfileImageRequestConcurrency;
-const ARTIST_PROFILE_IMAGE_DETAIL_LOGS_ENABLED = false;
 
 export const fetchAndUpsertArtistProfileImages = async (
     _userId: string,
@@ -93,10 +92,8 @@ export const fetchAndUpsertArtistProfileImages = async (
                 | 'artist_name_missing'
                 | 'discogs'
                 | 'error' = 'cache';
-            let legacyRewrite = false;
             let musicBrainzDurationMs: number | undefined;
             let discogsDurationMs: number | undefined;
-            let artistError: unknown;
             let usedLookupBypass = false;
             let usedMusicBrainzFetch = false;
             let cachedArtistDetailsHit = false;
@@ -112,7 +109,6 @@ export const fetchAndUpsertArtistProfileImages = async (
                     cacheHitCount += 1;
                     const state = normalizeArtistImageState(cachedImage);
                     if (hasLegacyArtistImageFields(cachedImage)) {
-                        legacyRewrite = true;
                         legacyRewriteCount += 1;
                         await replaceCachedData(imageCacheKey, state, ttl);
                     }
@@ -275,31 +271,8 @@ export const fetchAndUpsertArtistProfileImages = async (
                 }
             } catch (error) {
                 source = 'error';
-                artistError = error;
                 throw error;
             } finally {
-                if (ARTIST_PROFILE_IMAGE_DETAIL_LOGS_ENABLED) {
-                    const resolvedUrl = artists[artistId];
-                    const urlState =
-                        resolvedUrl === undefined
-                            ? 'undefined'
-                            : resolvedUrl === null
-                              ? 'null'
-                              : 'present';
-
-                    logger.debug('artist profile image resolved', {
-                        artistId,
-                        source,
-                        cacheHit: source === 'cache',
-                        legacyRewrite,
-                        urlState,
-                        musicBrainzDurationMs,
-                        discogsDurationMs,
-                        durationMs: Date.now() - artistStartedAt,
-                        error: artistError,
-                    });
-                }
-
                 if (artists[artistId] === null) {
                     logger.debug('artist profile image resolved to null', {
                         artistId,

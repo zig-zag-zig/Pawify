@@ -22,19 +22,8 @@ type NewReleasesSnapshot = {
     coverPageEntries: ReleaseGroupReleasesPageEntry[];
 };
 
-export interface ArtistReleaseContextGateway {
-    getArtistTtl(userId: string, artistId: string): Promise<number | undefined>;
-}
-
 export interface ReleaseCatalogGateway {
-    getArtistReleases(
-        artistId: string,
-        ttl: number | undefined,
-        onReleaseGroupPage: (
-            pageEntries: ReleaseGroupPageEntry[],
-            isLastPage: boolean,
-        ) => Promise<void> | void,
-    ): Promise<CachedArtistReleases>;
+    getArtistReleases(artistId: string, ttl: number | undefined): Promise<CachedArtistReleases>;
     getReleaseGroupReleases(
         releaseGroupId: string,
         ttl: number | undefined,
@@ -112,7 +101,6 @@ export interface ReleaseNotifier {
 }
 
 type ReleaseSharedUseCaseDependencies = {
-    artistReleaseContextGateway: ArtistReleaseContextGateway;
     missingReleaseCleanupRepository: MissingReleaseCleanupRepository;
     newReleasesRepository: NewReleasesRepository;
     releaseCatalogGateway: ReleaseCatalogGateway;

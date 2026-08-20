@@ -47,10 +47,6 @@ interface ArtistReleaseCatalogGateway {
     getArtistReleaseIds(artistId: string, ttl: number | undefined): Promise<string[]>;
 }
 
-interface ArtistCacheTtlGateway {
-    getArtistTtl(userId: string, artistId: string): Promise<number | undefined>;
-}
-
 interface ArtistProfileImageQueue {
     queueArtistProfileImages(
         userId: string,
@@ -87,7 +83,6 @@ type ArtistSharedUseCaseDependencies = {
     artistReleaseCatalogGateway: ArtistReleaseCatalogGateway;
     artistProfileImageQueue: ArtistProfileImageQueue;
     artistSearchGateway: ArtistSearchGateway;
-    cacheTtlGateway: ArtistCacheTtlGateway;
     followingNotifier: FollowingNotifier;
 };
 

@@ -1,5 +1,6 @@
 import type { Artist } from '../../../modules/models/models.js';
 import { mapArtistToProfileImageLookup } from '../domain/profileImageLookups.js';
+import { artistCacheTtlHours } from '../../../utils/helpers/followingHelper.js';
 import type { ArtistReadUseCaseDependencies } from '../ports.js';
 
 type GetArtistDetailsResult = {
@@ -12,14 +13,13 @@ export const createGetArtistDetailsUseCase =
     ({
         artistDetailsGateway,
         assetPlanner,
-        cacheTtlGateway,
         requestDeduper,
     }: Pick<
         ArtistReadUseCaseDependencies,
-        'artistDetailsGateway' | 'assetPlanner' | 'cacheTtlGateway' | 'requestDeduper'
+        'artistDetailsGateway' | 'assetPlanner' | 'requestDeduper'
     >) =>
     async (userId: string, artistId: string): Promise<GetArtistDetailsResult> => {
-        const ttl = await cacheTtlGateway.getArtistTtl(userId, artistId);
+        const ttl = artistCacheTtlHours;
         const artist = await requestDeduper.run(
             `getArtistDetails:${userId}:${artistId}`,
             async () =>

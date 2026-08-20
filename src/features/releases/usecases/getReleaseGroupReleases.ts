@@ -22,12 +22,11 @@ export const createGetReleaseGroupReleasesUseCase =
         const payload = await requestDeduper.run(
             `getReleaseGroupReleases:${userId}:${releaseGroupId}`,
             async () => {
-                const ttl: number | undefined = undefined;
                 const coverPageEntries: ReleaseGroupReleasesPageEntry[] = [];
 
                 const releases = await releaseCatalogGateway.getReleaseGroupReleases(
                     releaseGroupId,
-                    ttl,
+                    undefined,
                     async (groupId, releaseIds) => {
                         coverPageEntries.push({
                             releaseGroupId: groupId,
