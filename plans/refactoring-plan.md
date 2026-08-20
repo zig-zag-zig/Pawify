@@ -4,7 +4,7 @@
 **Scope:** everything in this repo except `src/modules` (git submodule — do not touch).
 **Sources reviewed:** all of `src/` (~150 files), tests, `package.json`/lockfile, Dockerfile, compose files, dapr config, env examples, CI workflow, scripts, README/DEPLOYMENT docs. Client (`PawifyApp`) was consulted to confirm API-contract decisions.
 
-**Status:** Phase 0 (tooling & npm baseline) implemented 2026-08-20 — see §3 for the recorded npm state. Phases 1–5 not started.
+**Status:** Phases 0–4 implemented 2026-08-20 — see §3 for the recorded npm state and §7 for the per-commit implementation status. Phase 5 items remain deferred.
 
 ---
 
@@ -182,3 +182,30 @@ Each phase = one or more commits, each followed by `npm run verify` (typecheck +
 - [ ] `npm audit` clean or only the documented dev-only advisory
 - [ ] `npm run build:unchecked` still emits; Docker dev compose boots (`docker compose -f docker-compose.dev.yml up` smoke test) where phase touches runtime entry (`server.ts`, compose, deps)
 - [ ] `git status` — no changes under `src/modules`
+
+---
+
+## 7. Implementation status
+
+Implemented 2026-08-20 across the phase commits below (oldest → newest):
+
+| Commit | Phase | Items |
+|---|---|---|
+| `a4075be` chore: add prettier and format codebase | 0 | Prettier config + format-only commit (D6); `format`/`format:check` scripts |
+| `afa5141` chore(deps): fix npm audit findings, repair uuid override, bump minors | 0 | N1–N5 (audit clean, scoped uuid override + `_comment`, dependency bumps, dev compose runner → `npm run dev`); B8 dead env var removed from examples |
+| `a5e5b9d` fix: dedupe cache invalidation, request ids in error logs, drained response bodies, pagination guards | 1 | B1, B2, B3, B4 |
+| `cb0d358` fix: typed auth errors, best-effort change notifications, validation hardening | 1 | B5, B6 (decision applied: notifications best-effort), B7, B9, B11, B12 |
+| `145428d` refactor: remove dead ttl membership machinery and unused parameters | 2 | Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8 |
+| `f0b12f5` refactor: consolidate duplicates, typed discogs urls, api route factory, test dir rename | 3 | D1, D2, D3, D4, D5, D7, D8, D9, D10, D11 |
+| `e67a7c9` refactor: relocate helpers to proper layers, split profile-image worker | 4 | A1, A3 |
+| this commit — feat: graceful shutdown, docs for v2 contract, plan archive | 4 | A4, A5, A6, A7, A8; N6 (README Java/build note) |
+
+**Skips and deviations reported by implementers:**
+
+- **B10** (`GET /revokeToken` mutating auth state over GET) was kept exactly as-is. The plan marked POST + documentation as *optional* ("v1 compat — keep the GET, optionally accept POST too; document") and no phase listed it, so it was not addressed. Revisit if prefetch/cache hazards materialize.
+- **A2** (collapse the task-queueing indirection) and **membership-based TTL** semantics (Y1 option b) remain deferred — both are explicit Phase 5 non-goals for this pass.
+- **N6** was docs-only and deliberately deferred to this commit; the README now notes that `npm run build` and `npm run test:integration` require Java (Firebase emulators) and that the dev compose stack runs `npm run dev`.
+
+**Final npm state (re-checked 2026-08-20):** `npm audit` → **0 vulnerabilities**; `npm ls` → **exits 0** (no ELSPROBLEMS).
+
+**Final validation state:** `npm run verify` green (**488/488** tests — the suite grew from the 443 baseline as tests were added in Phases 1–3); `npm run test:integration` green (**11/11** emulator tests); `git status` clean of any `src/modules` changes.

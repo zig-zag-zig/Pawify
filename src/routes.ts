@@ -13,7 +13,10 @@ export const registerRoutes = (app: Express): void => {
     app.use(v1Routes);
     app.use(v2Routes);
 
-    // Compatibility alias for clients still using the original unversioned paths.
+    // Unversioned compatibility alias: duplicates the v1 API for ancient client
+    // builds that predate versioned paths. PawifyApp always sends a vN prefix
+    // (derived from its app major), so this serves only old builds — it can be
+    // removed once those have aged out.
     app.use(
         createApiRoutes('', {
             artistUseCases: artistUseCasesV1,

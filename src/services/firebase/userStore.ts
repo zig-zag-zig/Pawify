@@ -5,6 +5,13 @@ import { RequestWithAuthHeader, UNAUTH_MESSAGE } from './types.js';
 import { getUserRef } from './refs.js';
 import { deleteUserPushTokensFromDb } from './pushTokenStore.js';
 
+/**
+ * Returns the user document's data and reference.
+ *
+ * Read side effect: when no user document exists yet, an empty document is
+ * created before the data is returned — any settings read through this
+ * helper auto-creates the user document.
+ */
 export const getDocumentRefAndSnapshot = async (
     userId: string,
 ): Promise<{ snapShot: DocumentData; ref: DocumentReference }> => {
