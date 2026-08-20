@@ -43,7 +43,11 @@ export const requireBoolean = (body: unknown, property: string): boolean => {
     return value;
 };
 
-export const requireStringArray = (body: unknown, property: string): string[] => {
+export const requireStringArray = (
+    body: unknown,
+    property: string,
+    maxItems?: number,
+): string[] => {
     const value = requireBodyObject(body)[property];
 
     if (!Array.isArray(value) || value.length === 0) {
@@ -58,7 +62,15 @@ export const requireStringArray = (body: unknown, property: string): string[] =>
         return item.trim();
     });
 
-    return Array.from(new Set(values));
+    const uniqueValues = Array.from(new Set(values));
+
+    if (maxItems !== undefined && uniqueValues.length > maxItems) {
+        throw new BadRequestError(
+            `The ${property} property in the body must contain at most ${maxItems} items`,
+        );
+    }
+
+    return uniqueValues;
 };
 
 const parseIntegerValue = (value: unknown): number => {

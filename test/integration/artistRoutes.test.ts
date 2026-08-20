@@ -7,6 +7,7 @@ import {
     setFakeCheckAuth,
     stopTestServer,
 } from '../helpers/httpTestApp.js';
+import { installModuleFake } from '../helpers/moduleFakes.js';
 
 installAllFakes();
 
@@ -139,6 +140,64 @@ describe('artist route integration', () => {
                 body: JSON.stringify({ artistIds: [' '] }),
             });
             assert.equal(response.status, 400);
+        });
+
+        it('returns 400 when artistIds exceeds the 500-item cap', async () => {
+            const response = await fetch(`${baseUrl}/v1/unfollowArtists`, {
+                method: 'POST',
+                headers: { ...authHeader, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    artistIds: Array.from({ length: 501 }, (_, index) => `artist-${index}`),
+                }),
+            });
+            assert.equal(response.status, 400);
+        });
+    });
+
+    describe('POST /v1/unfollowArtists (best-effort notifications)', () => {
+        it('returns 200 even when the change notification fails', async () => {
+            const publisherPath =
+                require.resolve('../../src/services/notifications/dataNotificationPublisher.js');
+            const originalPublisher = require.cache[publisherPath];
+            installModuleFake('../../src/services/notifications/dataNotificationPublisher.js', {
+                sendDataOnlyNotification: async () => {
+                    throw new Error('expo push failed');
+                },
+            });
+
+            // The notifier adapter binds sendDataOnlyNotification at module
+            // evaluation, so re-evaluate the dependency chain via require()
+            // (which bypasses the ESM loader cache) after the fake swap.
+            for (const modulePath of [
+                '../../src/features/artists/infrastructure/artistDependencies.js',
+                '../../src/features/artists/artistUseCases.js',
+                '../../src/api/useCaseVariants.js',
+            ]) {
+                delete require.cache[require.resolve(modulePath)];
+            }
+
+            try {
+                const { createArtistRoutes } =
+                    require('../../src/features/artists/artistRoutes.js') as typeof import('../../src/features/artists/artistRoutes.js');
+                const { artistPresentersV1, artistUseCasesV1 } =
+                    require('../../src/api/useCaseVariants.js') as typeof import('../../src/api/useCaseVariants.js');
+                const testBaseUrl = await createIntegrationTestApp(
+                    createArtistRoutes(artistUseCasesV1, artistPresentersV1),
+                );
+
+                const response = await fetch(`${testBaseUrl}/v1/unfollowArtists`, {
+                    method: 'POST',
+                    headers: { ...authHeader, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ artistIds: ['artist-1', 'artist-2'] }),
+                });
+                assert.equal(response.status, 200);
+            } finally {
+                if (originalPublisher) {
+                    require.cache[publisherPath] = originalPublisher;
+                } else {
+                    delete require.cache[publisherPath];
+                }
+            }
         });
     });
 });

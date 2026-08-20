@@ -16,12 +16,13 @@ describe('chunkArray', () => {
         assert.deepEqual(chunkArray([], 3), []);
     });
 
-    it('returns the full array as a single chunk when size is zero', () => {
-        assert.deepEqual(chunkArray([1, 2, 3], 0), [[1, 2, 3]]);
+    it('throws RangeError when size is zero', () => {
+        assert.throws(() => chunkArray([1, 2, 3], 0), RangeError);
+        assert.throws(() => chunkArray([], 0), RangeError);
     });
 
-    it('returns the full array as a single chunk when size is negative', () => {
-        assert.deepEqual(chunkArray([1, 2], -1), [[1, 2]]);
+    it('throws RangeError when size is negative', () => {
+        assert.throws(() => chunkArray([1, 2], -1), RangeError);
     });
 
     it('chunks into size-1 arrays', () => {

@@ -1,5 +1,6 @@
 import { getNewReleasesSnapshotFromDb } from '../../../services/firebase/newReleasesStore.js';
 import { removeReleaseFromAllUserDocuments } from '../../../services/firebase/missingReleaseCleanupStore.js';
+import { createLogger } from '../../../common/logging/logger.js';
 import { sendDataOnlyNotification } from '../../../services/notifications/dataNotificationPublisher.js';
 import { notificationEvents } from '../../../services/notifications/notificationEvents.js';
 import { deleteNewReleases } from '../../../utils/helpers/cacheManagementHelpers.js';
@@ -13,6 +14,8 @@ import type {
     NewReleasesRepository,
     ReleaseNotifier,
 } from '../ports.js';
+
+const logger = createLogger('features.releases.infrastructure');
 
 export const artistReleaseContextGateway: ArtistReleaseContextGateway = {
     getArtistTtl: async (userId, artistId) => await getArtistTtl(userId, artistId),
@@ -36,8 +39,14 @@ export const newReleasesRepository: NewReleasesRepository = {
 
 export const releaseNotifier: ReleaseNotifier = {
     notifyReleasesChanged: async (userId, sourcePushToken) => {
-        await sendDataOnlyNotification(userId, notificationEvents.releases, undefined, {
-            excludePushToken: sourcePushToken,
-        });
+        try {
+            await sendDataOnlyNotification(userId, notificationEvents.releases, undefined, {
+                excludePushToken: sourcePushToken,
+            });
+        } catch (error) {
+            // Best-effort: the write already committed; a push notification
+            // failure must not fail the request.
+            logger.warn('failed to send releases-changed notification', { userId, error });
+        }
     },
 };

@@ -14,7 +14,7 @@ export const sendOtpHandler = publicHandler('/sendOtp', async (req, res) => {
     const email = requireString(req.body, 'email');
 
     await authUseCases.sendOtp(email);
-    res.json('OTP sent successfully');
+    res.send('OTP sent successfully');
 });
 
 export const revokeTokenHandler = authenticatedHandler('/revokeToken', async ({ res, userId }) => {

@@ -57,7 +57,7 @@ describe('HTTP route integration', () => {
                 body: JSON.stringify({ email: 'test@example.com' }),
             });
             assert.equal(response.status, 200);
-            const body = await response.json();
+            const body = await response.text();
             assert.equal(body, 'OTP sent successfully');
         });
 

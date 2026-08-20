@@ -89,9 +89,15 @@ export const artistDependencies: Omit<ArtistUseCaseDependencies, 'assetPlanner'>
     },
     followingNotifier: {
         notifyFollowingChanged: async (userId, sourcePushToken) => {
-            await sendDataOnlyNotification(userId, notificationEvents.following, undefined, {
-                excludePushToken: sourcePushToken,
-            });
+            try {
+                await sendDataOnlyNotification(userId, notificationEvents.following, undefined, {
+                    excludePushToken: sourcePushToken,
+                });
+            } catch (error) {
+                // Best-effort: the follow/unfollow write already committed; a push
+                // notification failure must not fail the request.
+                logger.warn('failed to send following-changed notification', { userId, error });
+            }
         },
     },
     requestDeduper,

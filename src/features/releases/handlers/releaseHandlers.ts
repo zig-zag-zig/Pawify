@@ -65,7 +65,7 @@ export const createReleaseHandlers = (
     const removeNewReleasesHandler = authenticatedHandler(
         '/removeNewReleases',
         async ({ req, res, userId }) => {
-            const releaseIds = requireStringArray(req.body, 'releaseIds');
+            const releaseIds = requireStringArray(req.body, 'releaseIds', 500);
             const sourcePushToken = optionalString(req.body, 'sourcePushToken');
 
             await releaseUseCases.removeNewReleases(userId, releaseIds, sourcePushToken);

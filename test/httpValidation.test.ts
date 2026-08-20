@@ -73,6 +73,27 @@ describe('request validation helpers', () => {
         );
     });
 
+    it('requireStringArray enforces an optional maxItems cap', () => {
+        assert.deepEqual(requireStringArray({ artistIds: ['a', 'b', 'c'] }, 'artistIds', 3), [
+            'a',
+            'b',
+            'c',
+        ]);
+        assert.deepEqual(requireStringArray({ artistIds: ['a', 'a', 'b'] }, 'artistIds', 2), [
+            'a',
+            'b',
+        ]);
+        assertBadRequest(
+            () => requireStringArray({ artistIds: ['a', 'b', 'c', 'd'] }, 'artistIds', 3),
+            'The artistIds property in the body must contain at most 3 items',
+        );
+    });
+
+    it('requireStringArray is uncapped when maxItems is omitted', () => {
+        const large = Array.from({ length: 1000 }, (_, index) => `id-${index}`);
+        assert.equal(requireStringArray({ artistIds: large }, 'artistIds').length, 1000);
+    });
+
     it('optionalPositiveInteger returns fallback for undefined', () => {
         assert.equal(optionalPositiveInteger({}, 'page', 0), 0);
     });

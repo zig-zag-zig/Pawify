@@ -1,14 +1,24 @@
 import { BadRequestError } from '../../../common/http/errors.js';
+import { AccountError, type AccountErrorCode } from '../../../services/account/accountErrors.js';
 import type { AuthUseCaseDependencies } from '../ports.js';
 
-const mapAccountError = (error: unknown): never => {
-    const message = error instanceof Error ? error.message : 'Account operation failed';
+// User-facing message overrides per typed failure. Codes not listed here
+// already carry their user-facing message on the AccountError itself.
+const USER_FACING_MESSAGES: Partial<Record<AccountErrorCode, string>> = {
+    // Deliberately hide whether the account exists: the reset flow treats an
+    // unknown email like an expired request.
+    USER_NOT_FOUND: 'Invalid or expired password reset request.',
+};
 
-    if (message === 'User not found') {
-        throw new BadRequestError('Invalid or expired password reset request.');
+const mapAccountError = (error: unknown): never => {
+    if (error instanceof AccountError) {
+        throw new BadRequestError(USER_FACING_MESSAGES[error.code] ?? error.message);
     }
 
-    throw new BadRequestError(message);
+    // Unexpected errors (TypeError, Firestore/Auth outages, anything
+    // unrecognized) propagate unwrapped so errorMiddleware returns 500
+    // without leaking internal messages.
+    throw error;
 };
 
 export const createSendOtpUseCase =
@@ -37,11 +47,7 @@ export const createRevokeTokenUseCase =
         try {
             await accountGateway.revokeToken(userId);
         } catch (error) {
-            const message =
-                error instanceof Error
-                    ? error.message
-                    : 'Could not update the sign-in session. Please try again.';
-            throw new BadRequestError(message);
+            mapAccountError(error);
         }
     };
 
@@ -51,11 +57,7 @@ export const createChangeEmailUseCase =
         try {
             await accountGateway.changeEmail(userId, email);
         } catch (error) {
-            const message =
-                error instanceof Error
-                    ? error.message
-                    : 'Could not change email. Please try again.';
-            throw new BadRequestError(message);
+            mapAccountError(error);
         }
     };
 

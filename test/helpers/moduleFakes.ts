@@ -106,14 +106,19 @@ export const installFirebaseFakes = (): void => {
 export const installFirebaseStoreFakes = (): void => {
     installModuleFake('../../src/services/firebase/followingStore.js', {
         getFollowingFromDb: async () => [],
+        readFollowingArtistsMap: async () => ({}),
+        writeFollowingArtistsMap: async () => {},
     });
     installModuleFake('../../src/services/firebase/knownReleasesStore.js', {
         getKnownArtistReleaseIdsFromDb: async () => [],
         getKnownReleasesFromDb: async () => ({}),
+        deleteKnownArtistReleasesFromDb: async () => {},
     });
     installModuleFake('../../src/services/firebase/newReleasesStore.js', {
         getNewReleasesSnapshotFromDb: async () => ({ newReleasesMap: {}, coverPageEntries: [] }),
         removeNewReleasesFromDb: async () => {},
+        readNewReleasesState: async () => ({}),
+        writeNewReleasesState: async () => {},
     });
     installModuleFake('../../src/services/firebase/pushTokenStore.js', {
         deleteDevicePushTokenFromDb: async () => {},

@@ -7,6 +7,7 @@ import {
     setFakeCheckAuth,
     stopTestServer,
 } from '../helpers/httpTestApp.js';
+import { installModuleFake } from '../helpers/moduleFakes.js';
 
 installAllFakes();
 
@@ -59,6 +60,64 @@ describe('release route integration', () => {
                 body: JSON.stringify({ releaseIds: ['r1'] }),
             });
             assert.equal(response.status, 401);
+        });
+
+        it('returns 400 when releaseIds exceeds the 500-item cap', async () => {
+            const response = await fetch(`${baseUrl}/v1/removeNewReleases`, {
+                method: 'POST',
+                headers: { ...authHeader, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    releaseIds: Array.from({ length: 501 }, (_, index) => `release-${index}`),
+                }),
+            });
+            assert.equal(response.status, 400);
+        });
+    });
+
+    describe('POST /v1/removeNewReleases (best-effort notifications)', () => {
+        it('returns 200 even when the change notification fails', async () => {
+            const publisherPath =
+                require.resolve('../../src/services/notifications/dataNotificationPublisher.js');
+            const originalPublisher = require.cache[publisherPath];
+            installModuleFake('../../src/services/notifications/dataNotificationPublisher.js', {
+                sendDataOnlyNotification: async () => {
+                    throw new Error('expo push failed');
+                },
+            });
+
+            // The notifier adapter binds sendDataOnlyNotification at module
+            // evaluation, so re-evaluate the dependency chain via require()
+            // (which bypasses the ESM loader cache) after the fake swap.
+            for (const modulePath of [
+                '../../src/features/releases/infrastructure/releaseInfrastructureAdapters.js',
+                '../../src/features/releases/releaseUseCases.js',
+                '../../src/api/useCaseVariants.js',
+            ]) {
+                delete require.cache[require.resolve(modulePath)];
+            }
+
+            try {
+                const { createReleaseRoutes } =
+                    require('../../src/features/releases/releaseRoutes.js') as typeof import('../../src/features/releases/releaseRoutes.js');
+                const { releasePresentersV1, releaseUseCasesV1 } =
+                    require('../../src/api/useCaseVariants.js') as typeof import('../../src/api/useCaseVariants.js');
+                const testBaseUrl = await createIntegrationTestApp(
+                    createReleaseRoutes(releaseUseCasesV1, releasePresentersV1),
+                );
+
+                const response = await fetch(`${testBaseUrl}/v1/removeNewReleases`, {
+                    method: 'POST',
+                    headers: { ...authHeader, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ releaseIds: ['release-1', 'release-2'] }),
+                });
+                assert.equal(response.status, 200);
+            } finally {
+                if (originalPublisher) {
+                    require.cache[publisherPath] = originalPublisher;
+                } else {
+                    delete require.cache[publisherPath];
+                }
+            }
         });
     });
 

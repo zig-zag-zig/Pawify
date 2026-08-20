@@ -103,7 +103,7 @@ export const createArtistHandlers = (
     const unfollowArtistsHandler = authenticatedHandler(
         '/unfollowArtists',
         async ({ req, res, userId }) => {
-            const artistIds = requireStringArray(req.body, 'artistIds');
+            const artistIds = requireStringArray(req.body, 'artistIds', 500);
             const sourcePushToken = optionalString(req.body, 'sourcePushToken');
 
             await artistUseCases.unfollowArtists(userId, artistIds, sourcePushToken);

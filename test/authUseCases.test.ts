@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { BadRequestError } from '../src/common/http/errors.js';
+import { BadRequestError, toHttpError } from '../src/common/http/errors.js';
+import { AccountError } from '../src/services/account/accountErrors.js';
 import {
     createSendOtpUseCase,
     createVerifyOtpUseCase,
@@ -37,6 +38,14 @@ const createFakeDependencies = (
     },
 });
 
+// Asserts the error propagates unwrapped (not a BadRequestError) and maps to a
+// 500 at the HTTP boundary — the contract for unexpected service failures.
+const assertBecomes500 = (error: unknown): boolean => {
+    assert.ok(!(error instanceof BadRequestError), 'unexpected errors are not mapped to 400');
+    assert.equal(toHttpError(error).statusCode, 500);
+    return true;
+};
+
 describe('auth use cases', () => {
     describe('sendOtp', () => {
         it('calls accountGateway.sendOtp with the email', async () => {
@@ -55,12 +64,12 @@ describe('auth use cases', () => {
             assert.equal(calledWith, 'user@example.com');
         });
 
-        it('throws BadRequestError for "User not found" gateway error', async () => {
+        it('maps AccountError USER_NOT_FOUND to BadRequestError "Invalid or expired password reset request."', async () => {
             const deps = createFakeDependencies({
                 accountGateway: {
                     ...createFakeDependencies().accountGateway,
                     async sendOtp() {
-                        throw new Error('User not found');
+                        throw new AccountError('USER_NOT_FOUND', 'User not found');
                     },
                 },
             });
@@ -74,12 +83,15 @@ describe('auth use cases', () => {
             );
         });
 
-        it('throws BadRequestError with original message for other errors', async () => {
+        it('maps AccountError OTP_DELIVERY_FAILED to BadRequestError with the delivery message', async () => {
             const deps = createFakeDependencies({
                 accountGateway: {
                     ...createFakeDependencies().accountGateway,
                     async sendOtp() {
-                        throw new Error('Service unavailable');
+                        throw new AccountError(
+                            'OTP_DELIVERY_FAILED',
+                            'Could not send OTP. Please check the email address and try again.',
+                        );
                     },
                 },
             });
@@ -88,7 +100,32 @@ describe('auth use cases', () => {
             await assert.rejects(
                 () => useCase('user@example.com'),
                 (error) =>
-                    error instanceof BadRequestError && error.message === 'Service unavailable',
+                    error instanceof BadRequestError &&
+                    error.message ===
+                        'Could not send OTP. Please check the email address and try again.',
+            );
+        });
+
+        it('lets unexpected gateway errors propagate so errorMiddleware returns 500', async () => {
+            const deps = createFakeDependencies({
+                accountGateway: {
+                    ...createFakeDependencies().accountGateway,
+                    async sendOtp() {
+                        throw new Error('Firestore is unavailable');
+                    },
+                },
+            });
+            const useCase = createSendOtpUseCase(deps);
+
+            await assert.rejects(
+                () => useCase('user@example.com'),
+                (error) => {
+                    assert.equal(
+                        error instanceof Error ? error.message : String(error),
+                        'Firestore is unavailable',
+                    );
+                    return assertBecomes500(error);
+                },
             );
         });
     });
@@ -109,12 +146,12 @@ describe('auth use cases', () => {
             assert.equal(result, 'reset-token-abc');
         });
 
-        it('throws BadRequestError on gateway error', async () => {
+        it('maps AccountError INVALID_OTP to BadRequestError "Invalid OTP"', async () => {
             const deps = createFakeDependencies({
                 accountGateway: {
                     ...createFakeDependencies().accountGateway,
                     async verifyOtp() {
-                        throw new Error('Invalid OTP');
+                        throw new AccountError('INVALID_OTP', 'Invalid OTP');
                     },
                 },
             });
@@ -124,6 +161,42 @@ describe('auth use cases', () => {
                 () => useCase('user@example.com', '000000'),
                 (error) => error instanceof BadRequestError && error.message === 'Invalid OTP',
             );
+        });
+
+        it('maps AccountError RESET_REQUEST_NOT_FOUND to BadRequestError with the request message', async () => {
+            const deps = createFakeDependencies({
+                accountGateway: {
+                    ...createFakeDependencies().accountGateway,
+                    async verifyOtp() {
+                        throw new AccountError(
+                            'RESET_REQUEST_NOT_FOUND',
+                            'Password reset request was not found or has expired.',
+                        );
+                    },
+                },
+            });
+            const useCase = createVerifyOtpUseCase(deps);
+
+            await assert.rejects(
+                () => useCase('user@example.com', '123456'),
+                (error) =>
+                    error instanceof BadRequestError &&
+                    error.message === 'Password reset request was not found or has expired.',
+            );
+        });
+
+        it('lets unexpected gateway errors propagate so errorMiddleware returns 500', async () => {
+            const deps = createFakeDependencies({
+                accountGateway: {
+                    ...createFakeDependencies().accountGateway,
+                    async verifyOtp() {
+                        throw new TypeError('resetData.expiresAt.toDate is not a function');
+                    },
+                },
+            });
+            const useCase = createVerifyOtpUseCase(deps);
+
+            await assert.rejects(() => useCase('user@example.com', '123456'), assertBecomes500);
         });
     });
 
@@ -144,12 +217,15 @@ describe('auth use cases', () => {
             assert.equal(calledWith, 'user-1');
         });
 
-        it('throws BadRequestError on gateway error', async () => {
+        it('maps AccountError SESSION_UPDATE_FAILED to BadRequestError with the session message', async () => {
             const deps = createFakeDependencies({
                 accountGateway: {
                     ...createFakeDependencies().accountGateway,
                     async revokeToken() {
-                        throw new Error('Session not found');
+                        throw new AccountError(
+                            'SESSION_UPDATE_FAILED',
+                            'Could not update the sign-in session. Please try again.',
+                        );
                     },
                 },
             });
@@ -158,8 +234,23 @@ describe('auth use cases', () => {
             await assert.rejects(
                 () => useCase('user-1'),
                 (error) =>
-                    error instanceof BadRequestError && error.message === 'Session not found',
+                    error instanceof BadRequestError &&
+                    error.message === 'Could not update the sign-in session. Please try again.',
             );
+        });
+
+        it('lets unexpected gateway errors propagate so errorMiddleware returns 500', async () => {
+            const deps = createFakeDependencies({
+                accountGateway: {
+                    ...createFakeDependencies().accountGateway,
+                    async revokeToken() {
+                        throw new Error('Auth service unavailable');
+                    },
+                },
+            });
+            const useCase = createRevokeTokenUseCase(deps);
+
+            await assert.rejects(() => useCase('user-1'), assertBecomes500);
         });
     });
 
@@ -180,12 +271,15 @@ describe('auth use cases', () => {
             assert.deepEqual(calls, [{ userId: 'user-1', email: 'new@example.com' }]);
         });
 
-        it('throws BadRequestError on gateway error', async () => {
+        it('maps AccountError EMAIL_CHANGE_FAILED to BadRequestError with the email message', async () => {
             const deps = createFakeDependencies({
                 accountGateway: {
                     ...createFakeDependencies().accountGateway,
                     async changeEmail() {
-                        throw new Error('Email already in use');
+                        throw new AccountError(
+                            'EMAIL_CHANGE_FAILED',
+                            'Could not change email. Please try again.',
+                        );
                     },
                 },
             });
@@ -194,8 +288,23 @@ describe('auth use cases', () => {
             await assert.rejects(
                 () => useCase('user-1', 'dup@example.com'),
                 (error) =>
-                    error instanceof BadRequestError && error.message === 'Email already in use',
+                    error instanceof BadRequestError &&
+                    error.message === 'Could not change email. Please try again.',
             );
+        });
+
+        it('lets unexpected gateway errors propagate so errorMiddleware returns 500', async () => {
+            const deps = createFakeDependencies({
+                accountGateway: {
+                    ...createFakeDependencies().accountGateway,
+                    async changeEmail() {
+                        throw new Error('Firestore is unavailable');
+                    },
+                },
+            });
+            const useCase = createChangeEmailUseCase(deps);
+
+            await assert.rejects(() => useCase('user-1', 'new@example.com'), assertBecomes500);
         });
     });
 
