@@ -33,7 +33,6 @@ export type ExpoPushTicket =
     | { status: 'error'; message: string; details?: ExpoPushErrorDetails };
 
 export type ExpoPushReceipt =
-    | { status: 'ok' }
-    | { status: 'error'; message?: string; details?: ExpoPushErrorDetails };
+    { status: 'ok' } | { status: 'error'; message?: string; details?: ExpoPushErrorDetails };
 
 export type ExpoPushReceiptId = string;

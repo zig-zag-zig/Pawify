@@ -37,7 +37,7 @@ const logger = createLogger('services.backgroundTasks');
 export const withTaskKeyNamespace = (
     contractNamespace: ContractNamespace | undefined,
     key: string,
-): string => contractNamespace === 'v2' ? `v2:${key}` : key;
+): string => (contractNamespace === 'v2' ? `v2:${key}` : key);
 
 type QueueChunkedTaskOptions<T extends BackgroundTaskResultPayload, TChunk> = {
     userId: string;
@@ -125,8 +125,14 @@ const chunkReleaseGroupReleasePageEntries = (
     };
 
     for (const entry of pageEntries) {
-        for (const releaseIdChunk of chunkArray(dedupeStrings(entry.releaseIds), SUBTASK_ITEM_LIMIT)) {
-            if (currentItemCount > 0 && currentItemCount + releaseIdChunk.length > SUBTASK_ITEM_LIMIT) {
+        for (const releaseIdChunk of chunkArray(
+            dedupeStrings(entry.releaseIds),
+            SUBTASK_ITEM_LIMIT,
+        )) {
+            if (
+                currentItemCount > 0 &&
+                currentItemCount + releaseIdChunk.length > SUBTASK_ITEM_LIMIT
+            ) {
                 flushCurrentChunk();
             }
 
@@ -152,7 +158,10 @@ const submitArtistReleaseGroupCoversPage = (
     pageEntries: ReleaseGroupPageEntry[],
     ttl: number | undefined,
 ): void => {
-    session.submitPage(async (signal) => await fetchAndUpsertArtistReleaseGroupCovers(artistId, pageEntries, ttl, signal));
+    session.submitPage(
+        async (signal) =>
+            await fetchAndUpsertArtistReleaseGroupCovers(artistId, pageEntries, ttl, signal),
+    );
 };
 
 const submitReleaseGroupReleaseCoversPage = (
@@ -160,7 +169,15 @@ const submitReleaseGroupReleaseCoversPage = (
     pageEntry: ReleaseGroupReleasesPageEntry,
     ttl: number | undefined,
 ): void => {
-    session.submitPage(async (signal) => await fetchAndUpsertReleaseGroupReleaseCovers(pageEntry.releaseGroupId, pageEntry.releaseIds, ttl, signal));
+    session.submitPage(
+        async (signal) =>
+            await fetchAndUpsertReleaseGroupReleaseCovers(
+                pageEntry.releaseGroupId,
+                pageEntry.releaseIds,
+                ttl,
+                signal,
+            ),
+    );
 };
 
 const submitNewReleaseCoversPage = (
@@ -172,7 +189,12 @@ const submitNewReleaseCoversPage = (
         const covers: NewReleaseCoverTaskResult['covers'] = {};
 
         await mapWithConcurrency(pageEntries, 4, async (pageEntry) => {
-            const result = await fetchAndUpsertReleaseGroupReleaseCovers(pageEntry.releaseGroupId, pageEntry.releaseIds, ttl, signal);
+            const result = await fetchAndUpsertReleaseGroupReleaseCovers(
+                pageEntry.releaseGroupId,
+                pageEntry.releaseIds,
+                ttl,
+                signal,
+            );
             Object.assign(covers, result.covers);
         });
 
@@ -186,7 +208,9 @@ const submitTrackLyricsPage = (
     tracks: TrackLyricsRequest[],
     ttl: number | undefined,
 ): void => {
-    session.submitPage(async (signal) => await fetchAndUpsertTrackLyrics(releaseId, tracks, ttl, signal));
+    session.submitPage(
+        async (signal) => await fetchAndUpsertTrackLyrics(releaseId, tracks, ttl, signal),
+    );
 };
 
 const submitArtistProfileImagesPage = (
@@ -195,7 +219,10 @@ const submitArtistProfileImagesPage = (
     artistLookups: ArtistProfileImageLookup[],
     ttl: number | undefined,
 ): void => {
-    session.submitPage(async (signal) => await fetchAndUpsertArtistProfileImages(userId, artistLookups, ttl, signal));
+    session.submitPage(
+        async (signal) =>
+            await fetchAndUpsertArtistProfileImages(userId, artistLookups, ttl, signal),
+    );
 };
 
 export const queueArtistReleaseGroupCoversTask = (
@@ -230,7 +257,10 @@ export const queueReleaseGroupReleaseCoversTask = (
     return queueChunkedTask<ReleaseGroupReleaseCoverTaskResult, ReleaseGroupReleasesPageEntry[]>({
         userId,
         type: 'release_group_release_covers',
-        dedupeKey: withTaskKeyNamespace(contractNamespace, `release_group_release_covers:${releaseGroupId}`),
+        dedupeKey: withTaskKeyNamespace(
+            contractNamespace,
+            `release_group_release_covers:${releaseGroupId}`,
+        ),
         initialResult: {
             releaseGroupId,
             covers: {},

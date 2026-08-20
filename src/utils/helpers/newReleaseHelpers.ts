@@ -1,5 +1,10 @@
 import { mapToNewRelease } from '../../infrastructure/musicbrainz/musicbrainzMapper.js';
-import { DEFAULT_RELEASE_NOTIFICATION_SETTINGS, NewRelease, Release, ReleaseNotificationSettings } from '../../modules/models/models.js';
+import {
+    DEFAULT_RELEASE_NOTIFICATION_SETTINGS,
+    NewRelease,
+    Release,
+    ReleaseNotificationSettings,
+} from '../../modules/models/models.js';
 import { sortReleasesByDate } from '../../modules/utils/dateUtil.js';
 import { getReleaseCover } from '../../services/coverArtService.js';
 import { saveArtistAndKnownReleasesToDb } from '../../services/firebase/artistStore.js';
@@ -14,8 +19,8 @@ import { getArtistTtl } from './followingHelper.js';
 import { mapWithConcurrency } from './promisePool.js';
 
 type ProcessArtistResult = {
-    newReleases: NewRelease[],
-    deletedReleaseIds: string[],
+    newReleases: NewRelease[];
+    deletedReleaseIds: string[];
 };
 
 const NEW_RELEASE_COVER_CACHE_CONCURRENCY = 10;
@@ -37,19 +42,27 @@ const createStoredNewReleases = (
 export const processArtistReleases = async (
     userId: string,
     artistId: string,
-    getArtistReleases: (artistId: string, useCache: boolean, ttl: number | undefined) => Promise<Release[]>,
+    getArtistReleases: (
+        artistId: string,
+        useCache: boolean,
+        ttl: number | undefined,
+    ) => Promise<Release[]>,
     currentReleasesByArtist?: { [artistId: string]: string[] },
     releaseNotificationSettings: ReleaseNotificationSettings = DEFAULT_RELEASE_NOTIFICATION_SETTINGS,
 ): Promise<ProcessArtistResult> => {
     const ttl = await getArtistTtl(userId, artistId);
     const allReleasesFlat = await getArtistReleases(artistId, false, ttl);
 
-    const currentReleases = currentReleasesByArtist?.[artistId] ?? await getCurrentReleases(userId, artistId);
-    const { deletedReleaseIds, duplicateReleaseIds, prunedReleaseIds, artistNewReleases, notificationCandidateReleases, releasesChanged } = analyzeReleaseChanges(
-        currentReleases,
-        allReleasesFlat,
-        releaseNotificationSettings,
-    );
+    const currentReleases =
+        currentReleasesByArtist?.[artistId] ?? (await getCurrentReleases(userId, artistId));
+    const {
+        deletedReleaseIds,
+        duplicateReleaseIds,
+        prunedReleaseIds,
+        artistNewReleases,
+        notificationCandidateReleases,
+        releasesChanged,
+    } = analyzeReleaseChanges(currentReleases, allReleasesFlat, releaseNotificationSettings);
     const eligibleNewReleases = artistNewReleases;
     const sortedEligibleNewReleases = [...eligibleNewReleases];
     sortReleasesByDate(sortedEligibleNewReleases);

@@ -13,9 +13,7 @@ export const getDaprSecret = async (
         return secretCache.get(cacheKey);
     }
 
-    const response = await daprFetch(
-        `/v1.0/secrets/${storeName}/${encodeURIComponent(key)}`,
-    );
+    const response = await daprFetch(`/v1.0/secrets/${storeName}/${encodeURIComponent(key)}`);
 
     if (response.status === 404) {
         secretCache.set(cacheKey, undefined);
@@ -24,10 +22,8 @@ export const getDaprSecret = async (
 
     await assertOk(response, `read Dapr secret ${key}`);
 
-    const body = await response.json() as Record<string, unknown>;
-    const value = typeof body[key] === 'string' && body[key].trim()
-        ? body[key]
-        : undefined;
+    const body = (await response.json()) as Record<string, unknown>;
+    const value = typeof body[key] === 'string' && body[key].trim() ? body[key] : undefined;
 
     secretCache.set(cacheKey, value);
     return value;

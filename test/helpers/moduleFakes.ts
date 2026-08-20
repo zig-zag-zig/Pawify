@@ -36,15 +36,16 @@ export const installFirebaseServiceFake = (): void => {
 };
 
 const makeMockAuth = () => ({
-    revokeRefreshTokens: async () => { },
+    revokeRefreshTokens: async () => {},
     updateUser: async (_uid: string, _props: unknown) => ({}),
-    deleteUser: async () => { },
-    getUser: async (uid: string) => ({
-        uid,
-        email: 'test@example.com',
-        emailVerified: true,
-        displayName: 'Test User',
-    } satisfies { uid: string; email: string; emailVerified: boolean; displayName: string }),
+    deleteUser: async () => {},
+    getUser: async (uid: string) =>
+        ({
+            uid,
+            email: 'test@example.com',
+            emailVerified: true,
+            displayName: 'Test User',
+        }) satisfies { uid: string; email: string; emailVerified: boolean; displayName: string },
     getUserByEmail: async (email: string) => ({
         uid: 'test-user-id',
         email,
@@ -58,37 +59,37 @@ const makeMockAuth = () => ({
         throw new Error('Invalid token');
     },
     listUsers: async () => ({ users: [], pageToken: undefined }),
-    setCustomUserClaims: async () => { },
+    setCustomUserClaims: async () => {},
     createCustomToken: async (_uid: string, _claims?: unknown) => 'custom-token',
 });
 
 const makeMockFirestore = () => {
     const batchFn = () => ({
-        set: () => { },
-        update: () => { },
-        delete: () => { },
-        commit: async () => { },
+        set: () => {},
+        update: () => {},
+        delete: () => {},
+        commit: async () => {},
     });
     return {
         collection: () => ({
             doc: () => ({
                 get: async () => ({ exists: false, data: () => null }),
-                set: async () => { },
-                update: async () => { },
-                delete: async () => { },
+                set: async () => {},
+                update: async () => {},
+                delete: async () => {},
             }),
         }),
         batch: batchFn,
-        recursiveDelete: async () => { },
+        recursiveDelete: async () => {},
     };
 };
 
 const makeMockRtdb = () => ({
     ref: () => ({
         once: async () => ({ val: () => null }),
-        set: async () => { },
-        remove: async () => { },
-        update: async () => { },
+        set: async () => {},
+        remove: async () => {},
+        update: async () => {},
     }),
 });
 
@@ -112,23 +113,23 @@ export const installFirebaseStoreFakes = (): void => {
     });
     installModuleFake('../../src/services/firebase/newReleasesStore.js', {
         getNewReleasesSnapshotFromDb: async () => ({ newReleasesMap: {}, coverPageEntries: [] }),
-        removeNewReleasesFromDb: async () => { },
+        removeNewReleasesFromDb: async () => {},
     });
     installModuleFake('../../src/services/firebase/pushTokenStore.js', {
-        deleteDevicePushTokenFromDb: async () => { },
-        deleteUserPushTokensFromDb: async () => { },
-        savePushTokenToDb: async () => { },
-        deletePushTokenFromDb: async () => { },
+        deleteDevicePushTokenFromDb: async () => {},
+        deleteUserPushTokensFromDb: async () => {},
+        savePushTokenToDb: async () => {},
+        deletePushTokenFromDb: async () => {},
     });
     installModuleFake('../../src/services/firebase/notificationRunLockStore.js', {
         acquireNotifyNewReleasesLock: async () => true,
-        releaseNotifyNewReleasesLock: async () => { },
+        releaseNotifyNewReleasesLock: async () => {},
     });
     installModuleFake('../../src/services/firebase/refs.js', {
         getUserRef: () => ({
             get: async () => ({ exists: false, data: () => null }),
-            set: async () => { },
-            update: async () => { },
+            set: async () => {},
+            update: async () => {},
         }),
     });
 };
@@ -137,8 +138,8 @@ export const installFirebaseStoreFakes = (): void => {
 export const installDaprFakes = (): void => {
     installModuleFake('../../src/infrastructure/dapr/daprStateStore.js', {
         getStateValue: async () => null,
-        saveStateValues: async () => { },
-        deleteStateValues: async () => { },
+        saveStateValues: async () => {},
+        deleteStateValues: async () => {},
     });
     installModuleFake('../../src/infrastructure/dapr/daprClient.js', {
         daprClient: {},
@@ -147,11 +148,11 @@ export const installDaprFakes = (): void => {
         getSecret: async () => '',
     });
     installModuleFake('../../src/infrastructure/dapr/daprBindings.js', {
-        sendBinding: async () => { },
+        sendBinding: async () => {},
     });
     installModuleFake('../../src/infrastructure/dapr/daprLockStore.js', {
         acquireLock: async () => true,
-        releaseLock: async () => { },
+        releaseLock: async () => {},
     });
     installModuleFake('../../src/infrastructure/dapr/daprHttp.js', {
         daprHttpFetch: async () => new Response(''),
@@ -161,27 +162,29 @@ export const installDaprFakes = (): void => {
 /** Installs a no-op Sentry fake. */
 export const installSentryFakes = (): void => {
     installModuleFake('../../src/infrastructure/monitoring/sentry.js', {
-        setupExpressErrorMonitoring: () => { },
-        captureException: () => { },
+        setupExpressErrorMonitoring: () => {},
+        captureException: () => {},
     });
 };
 
 /** Installs working user/auth service fakes. */
-export const installAccountServiceFakes = (checkAuth: (req: { headers: { authorization?: string } }) => Promise<string>) => {
+export const installAccountServiceFakes = (
+    checkAuth: (req: { headers: { authorization?: string } }) => Promise<string>,
+) => {
     installModuleFake('../../src/services/firebase/userStore.js', {
         checkAuth: async (req: { headers: { authorization?: string } }) => checkAuth(req),
-        deleteUserAccount: async () => { },
+        deleteUserAccount: async () => {},
         getDocumentRefAndSnapshot: async () => ({
             snapShot: {},
-            ref: { get: async () => ({ exists: false, data: () => null }), set: async () => { } },
+            ref: { get: async () => ({ exists: false, data: () => null }), set: async () => {} },
         }),
     });
     installModuleFake('../../src/services/account/accountIdentityService.js', {
-        changeEmail: async () => { },
-        revokeToken: async () => { },
+        changeEmail: async () => {},
+        revokeToken: async () => {},
     });
     installModuleFake('../../src/services/account/passwordResetOtpService.js', {
-        sendOtp: async () => { },
+        sendOtp: async () => {},
         verifyOtp: async () => ({ email: 'test@example.com' }),
     });
 };
@@ -195,7 +198,7 @@ export const installFirebaseTypesFake = (): void => {
 
 export const installPushTokenAdapterFake = (): void => {
     installModuleFake('../../src/services/notifications/pushTokenStoreAdapter.js', {
-        savePushToken: async () => { },
-        deletePushToken: async () => { },
+        savePushToken: async () => {},
+        deletePushToken: async () => {},
     });
 };

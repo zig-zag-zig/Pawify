@@ -12,7 +12,8 @@ describe('Dapr provider HTTP migration', () => {
             return new Response(JSON.stringify({ artist: 'Pawify' }), { status: 200 });
         });
 
-        const { fetchMusicBrainzWithStatus } = await import('../../../src/services/musicApi/musicBrainzClient.js');
+        const { fetchMusicBrainzWithStatus } =
+            await import('../../../src/services/musicApi/musicBrainzClient.js');
         const result = await fetchMusicBrainzWithStatus('/artist?query=test&fmt=json');
 
         assert.deepEqual(result, { artist: 'Pawify' });
@@ -21,7 +22,10 @@ describe('Dapr provider HTTP migration', () => {
             calls[0].url,
             'http://dapr.test/v1.0/invoke/musicbrainz/method/ws/2/artist?query=test&fmt=json',
         );
-        assert.equal(new Headers(calls[0].init.headers).get('User-Agent'), 'MusicReleaseNotifier/1.0');
+        assert.equal(
+            new Headers(calls[0].init.headers).get('User-Agent'),
+            'MusicReleaseNotifier/1.0',
+        );
     });
 
     it('does not retry transient final provider failures in app code', async () => {
@@ -54,7 +58,8 @@ describe('Dapr provider HTTP migration', () => {
             return new Response(null, { status: 204 });
         });
 
-        const { fetchDaprProvider, isAbortError } = await import('../../../src/services/musicApi/httpClient.js');
+        const { fetchDaprProvider, isAbortError } =
+            await import('../../../src/services/musicApi/httpClient.js');
         const headResult = await fetchDaprProvider(
             'coverartarchive',
             '/release/abc/front',
@@ -65,15 +70,16 @@ describe('Dapr provider HTTP migration', () => {
         );
 
         await assert.rejects(
-            () => fetchDaprProvider(
-                'coverartarchive',
-                '/release/abc/front',
-                { method: 'HEAD', headers: {} },
-                true,
-                true,
-                'status',
-                controller.signal,
-            ),
+            () =>
+                fetchDaprProvider(
+                    'coverartarchive',
+                    '/release/abc/front',
+                    { method: 'HEAD', headers: {} },
+                    true,
+                    true,
+                    'status',
+                    controller.signal,
+                ),
             (error) => isAbortError(error),
         );
         assert.equal(headResult, true);
@@ -83,7 +89,7 @@ describe('Dapr provider HTTP migration', () => {
     it('keeps retry policy in Dapr resiliency configuration', async () => {
         const resiliency = await readFile('dapr/components/resiliency.yaml', 'utf8');
 
-        assert.match(resiliency, /httpStatusCodes: "429,500-599"/);
+        assert.match(resiliency, /httpStatusCodes: ["']429,500-599["']/);
         assert.match(resiliency, /coverartarchive:\n\s+retry: noRetry/);
         assert.match(resiliency, /musicbrainz:\n\s+retry: externalHttpRetry/);
         assert.match(resiliency, /musicbrainzTimeout: 30s/);

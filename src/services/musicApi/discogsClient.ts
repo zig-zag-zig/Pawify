@@ -1,24 +1,12 @@
-import {
-    getDiscogsToken,
-    logMissingOptionalCredentialOnce,
-} from './credentials.js';
+import { getDiscogsToken, logMissingOptionalCredentialOnce } from './credentials.js';
 import { fetchDaprProvider, isAbortError } from './httpClient.js';
-import {
-    isConfirmedMissingFetchFailure,
-    isFetchFailureResult,
-} from './types.js';
-import type {
-    DiscogsResult,
-    FetchFailureResult,
-    HttpOptions,
-} from './types.js';
+import { isConfirmedMissingFetchFailure, isFetchFailureResult } from './types.js';
+import type { DiscogsResult, FetchFailureResult, HttpOptions } from './types.js';
 
 type DiscogsFetchResult = FetchFailureResult | Record<string, any> | null | undefined;
 
 type DiscogsLookupResult =
-    | { type: 'data'; data: any; image: string | null }
-    | { type: 'missing' }
-    | { type: 'transient' };
+    { type: 'data'; data: any; image: string | null } | { type: 'missing' } | { type: 'transient' };
 
 const fetchDiscogs = async (
     endpoint: string,
@@ -33,7 +21,7 @@ const fetchDiscogs = async (
     const options: HttpOptions = {
         method: 'GET',
         headers: {
-            'Authorization': `Discogs token=${token}`,
+            Authorization: `Discogs token=${token}`,
         },
     };
 
@@ -92,8 +80,8 @@ export const getDiscogsUrls = (relationships?: any[]): string[] => {
     if (!relationships || relationships.length === 0) return [];
     const discogsRelation = relationships.filter((rel) => rel.type === 'discogs');
     if (discogsRelation.length === 0) return [];
-    const urls = discogsRelation.flatMap(d => d.url);
-    return urls ? urls.filter(u => u.resource).map(u => u.resource) : [];
+    const urls = discogsRelation.flatMap((d) => d.url);
+    return urls ? urls.filter((u) => u.resource).map((u) => u.resource) : [];
 };
 
 export const getDiscogsData = async (
@@ -167,9 +155,10 @@ export const getDiscogsData = async (
                 .replace(/\s?\(\d+\)(?!.*\(\d+\))/, '')
                 .trim()
                 .toLowerCase();
-            const nameMatch = discogsName.length > normalizedName.length
-                ? discogsName.includes(normalizedName)
-                : normalizedName.includes(discogsName);
+            const nameMatch =
+                discogsName.length > normalizedName.length
+                    ? discogsName.includes(normalizedName)
+                    : normalizedName.includes(discogsName);
 
             if (nameMatch && result.image) {
                 break;

@@ -11,12 +11,20 @@ describe('mapArtistSummaryToProfileImageLookup', () => {
         const result = mapArtistSummaryToProfileImageLookup({
             id: 'artist-1',
             name: 'Artist One',
-            discogsUrls: ['https://discogs.com/artist/1', 'https://discogs.com/artist/1', '', 'https://discogs.com/artist/2'],
+            discogsUrls: [
+                'https://discogs.com/artist/1',
+                'https://discogs.com/artist/1',
+                '',
+                'https://discogs.com/artist/2',
+            ],
         });
 
         assert.equal(result.artistId, 'artist-1');
         assert.equal(result.artistName, 'Artist One');
-        assert.deepEqual(result.discogsUrls, ['https://discogs.com/artist/1', 'https://discogs.com/artist/2']);
+        assert.deepEqual(result.discogsUrls, [
+            'https://discogs.com/artist/1',
+            'https://discogs.com/artist/2',
+        ]);
     });
 
     it('returns undefined discogsUrls when array is empty after filtering', () => {

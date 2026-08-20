@@ -127,15 +127,9 @@ describe('requestDeduper run()', () => {
             throw new Error('worker failed');
         };
 
-        await assert.rejects(
-            () => requestDeduper.run(key, worker),
-            /worker failed/,
-        );
+        await assert.rejects(() => requestDeduper.run(key, worker), /worker failed/);
 
-        await assert.rejects(
-            () => requestDeduper.run(key, worker),
-            /worker failed/,
-        );
+        await assert.rejects(() => requestDeduper.run(key, worker), /worker failed/);
         assert.equal(callCount, 2);
     });
 

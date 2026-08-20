@@ -14,8 +14,11 @@ let baseUrl: string;
 
 beforeEach(async () => {
     const { createReleaseRoutes } = await import('../../src/features/releases/releaseRoutes.js');
-    const { releasePresentersV1, releaseUseCasesV1 } = await import('../../src/api/useCaseVariants.js');
-    baseUrl = await createIntegrationTestApp(createReleaseRoutes(releaseUseCasesV1, releasePresentersV1));
+    const { releasePresentersV1, releaseUseCasesV1 } =
+        await import('../../src/api/useCaseVariants.js');
+    baseUrl = await createIntegrationTestApp(
+        createReleaseRoutes(releaseUseCasesV1, releasePresentersV1),
+    );
 });
 
 afterEach(async () => {

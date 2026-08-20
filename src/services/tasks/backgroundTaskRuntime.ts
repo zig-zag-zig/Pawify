@@ -1,19 +1,13 @@
 import { randomUUID } from 'crypto';
 import type { Logger } from '../../common/logging/logger.js';
-import {
-    getRequestContext,
-    runWithRequestContext,
-} from '../../common/logging/requestContext.js';
+import { getRequestContext, runWithRequestContext } from '../../common/logging/requestContext.js';
 import type {
     BackgroundTaskResultPayload,
     BackgroundTaskType,
     CompositeTaskSessionController,
     TaskSessionController,
 } from '../../utils/types/taskTypes.js';
-import {
-    BackgroundTaskRegistry,
-    type TaskLookupResult,
-} from './backgroundTaskRegistry.js';
+import { BackgroundTaskRegistry, type TaskLookupResult } from './backgroundTaskRegistry.js';
 import { createTaskJobProcessor } from './taskJobProcessor.js';
 import { BackgroundTaskQueue } from './taskQueue.js';
 import { toTaskRequestContext } from './taskContext.js';
@@ -80,8 +74,8 @@ export class BackgroundTaskRuntime {
             return {
                 taskId: createdSession.taskId,
                 reused: true,
-                submitPage: () => { },
-                finalize: () => { },
+                submitPage: () => {},
+                finalize: () => {},
             };
         }
 
@@ -105,7 +99,8 @@ export class BackgroundTaskRuntime {
                     taskId,
                     pageNumber,
                     queuedAt,
-                    worker: async (signal) => await worker(signal) as Partial<BackgroundTaskResultPayload> | void,
+                    worker: async (signal) =>
+                        (await worker(signal)) as Partial<BackgroundTaskResultPayload> | void,
                 });
 
                 runWithRequestContext(session.requestContext, () => {
@@ -139,7 +134,7 @@ export class BackgroundTaskRuntime {
                 taskId: createdSession.taskId,
                 reused: true,
                 submitSubtask: () => null,
-                finalize: () => { },
+                finalize: () => {},
             };
         }
 
@@ -420,8 +415,12 @@ export class BackgroundTaskRuntime {
                 continue;
             }
 
-            const completedAt = this.getTaskRetentionCompletedAt(taskId, task.completedAt ?? task.createdAt, now);
-            if ((now - completedAt) > this.options.resultRetentionMs) {
+            const completedAt = this.getTaskRetentionCompletedAt(
+                taskId,
+                task.completedAt ?? task.createdAt,
+                now,
+            );
+            if (now - completedAt > this.options.resultRetentionMs) {
                 this.registry.deleteTask(taskId);
             }
         }
@@ -429,14 +428,12 @@ export class BackgroundTaskRuntime {
 
     private hasPendingSubtasks(taskId: string): boolean {
         const task = this.registry.getTask(taskId);
-        return (task?.subtaskIds ?? []).some((subtaskId) => this.registry.getTask(subtaskId)?.status === 'pending');
+        return (task?.subtaskIds ?? []).some(
+            (subtaskId) => this.registry.getTask(subtaskId)?.status === 'pending',
+        );
     }
 
-    private getTaskRetentionCompletedAt(
-        taskId: string,
-        completedAt: number,
-        now: number,
-    ): number {
+    private getTaskRetentionCompletedAt(taskId: string, completedAt: number, now: number): number {
         const task = this.registry.getTask(taskId);
         if (!task?.parentTaskId) {
             return completedAt;

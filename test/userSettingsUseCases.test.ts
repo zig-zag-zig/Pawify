@@ -11,9 +11,8 @@ installFirebaseServiceFake();
 
 describe('user settings use cases', () => {
     it('saves notification settings, rebuilds known releases, prunes new releases, and notifies clients', async () => {
-        const { createUpdateReleaseNotificationSettingsUseCase } = await import(
-            '../src/features/userSettings/usecases/updateReleaseNotificationSettings.js'
-        );
+        const { createUpdateReleaseNotificationSettingsUseCase } =
+            await import('../src/features/userSettings/usecases/updateReleaseNotificationSettings.js');
         const nextSettings = createReleaseNotificationSettings();
         const state = createUserSettingsDependencies({
             catalog: {
@@ -23,7 +22,11 @@ describe('user settings use cases', () => {
                     createRelease({ id: 'future', artistId: 'artist-1', date: '2999-01-01' }),
                 ],
                 'artist-2': [
-                    createRelease({ id: 'older-included', artistId: 'artist-2', date: '2020-01-01' }),
+                    createRelease({
+                        id: 'older-included',
+                        artistId: 'artist-2',
+                        date: '2020-01-01',
+                    }),
                 ],
             },
         });
@@ -37,9 +40,7 @@ describe('user settings use cases', () => {
             { userId: 'user-1', artistId: 'artist-1', releaseIds: ['tracked'] },
             { userId: 'user-1', artistId: 'artist-2', releaseIds: ['older-included'] },
         ]);
-        assert.deepEqual(state.removeCalls, [
-            { userId: 'user-1', settings: nextSettings },
-        ]);
+        assert.deepEqual(state.removeCalls, [{ userId: 'user-1', settings: nextSettings }]);
         assert.deepEqual(state.notificationCalls.sort(), [
             'releases:push-token-1',
             'settings:push-token-1',
@@ -47,9 +48,8 @@ describe('user settings use cases', () => {
     });
 
     it('rolls settings back and skips notifications when known release rebuild fails', async () => {
-        const { createUpdateReleaseNotificationSettingsUseCase } = await import(
-            '../src/features/userSettings/usecases/updateReleaseNotificationSettings.js'
-        );
+        const { createUpdateReleaseNotificationSettingsUseCase } =
+            await import('../src/features/userSettings/usecases/updateReleaseNotificationSettings.js');
         const previousSettings = createReleaseNotificationSettings({
             oldestReleaseDateMonths: 12,
             includeReleasesWithoutDate: true,
@@ -75,9 +75,8 @@ describe('user settings use cases', () => {
     });
 
     it('getReleaseNotificationSettings returns stored settings', async () => {
-        const { createGetReleaseNotificationSettingsUseCase } = await import(
-            '../src/features/userSettings/usecases/getReleaseNotificationSettings.js'
-        );
+        const { createGetReleaseNotificationSettingsUseCase } =
+            await import('../src/features/userSettings/usecases/getReleaseNotificationSettings.js');
         const settings = createReleaseNotificationSettings({ oldestReleaseDateMonths: 6 });
         const deps = {
             releaseNotificationSettingsRepository: {

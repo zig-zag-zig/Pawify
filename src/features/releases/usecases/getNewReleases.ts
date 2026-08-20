@@ -11,22 +11,22 @@ export type GetNewReleasesResult = Omit<NewReleasesResult, 'releaseCoverTaskId'>
     releaseCovers: Record<string, string | null>;
 };
 
-export const createGetNewReleasesUseCase = ({
-    newReleasesRepository,
-    assetPlanner,
-}: Pick<ReleaseUseCaseDependencies, 'newReleasesRepository' | 'assetPlanner'>) => async (
-    userId: string,
-): Promise<GetNewReleasesResult> => {
-    const snapshot = await newReleasesRepository.getNewReleasesSnapshot(userId);
-    const releases = sortNewReleasesNewestFirst(flattenNewReleasesMap(snapshot.newReleasesMap));
-    const plan = await assetPlanner.planNewReleaseCovers({
-        userId,
-        pageEntries: snapshot.coverPageEntries,
-    });
+export const createGetNewReleasesUseCase =
+    ({
+        newReleasesRepository,
+        assetPlanner,
+    }: Pick<ReleaseUseCaseDependencies, 'newReleasesRepository' | 'assetPlanner'>) =>
+    async (userId: string): Promise<GetNewReleasesResult> => {
+        const snapshot = await newReleasesRepository.getNewReleasesSnapshot(userId);
+        const releases = sortNewReleasesNewestFirst(flattenNewReleasesMap(snapshot.newReleasesMap));
+        const plan = await assetPlanner.planNewReleaseCovers({
+            userId,
+            pageEntries: snapshot.coverPageEntries,
+        });
 
-    return {
-        releases,
-        releaseCovers: plan.resolved,
-        releaseCoverTaskId: plan.taskId,
+        return {
+            releases,
+            releaseCovers: plan.resolved,
+            releaseCoverTaskId: plan.taskId,
+        };
     };
-};

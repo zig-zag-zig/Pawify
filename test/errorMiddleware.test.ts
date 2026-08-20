@@ -10,7 +10,9 @@ const createMockReq = (method = 'GET', originalUrl = '/test'): Partial<Request> 
     originalUrl,
 });
 
-const createMockRes = (headersSent = false): Partial<Response> & { _status?: number; _body?: unknown } => {
+const createMockRes = (
+    headersSent = false,
+): Partial<Response> & { _status?: number; _body?: unknown } => {
     const res: Partial<Response> & { _status?: number; _body?: unknown } = {
         headersSent,
         status(code: number) {

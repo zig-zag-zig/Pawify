@@ -11,7 +11,10 @@ describe('music API rate limiting', () => {
     it('selects provider limiters without upstream URLs', async () => {
         const { getRateLimiter } = await importRateLimiter();
 
-        assert.notEqual(getRateLimiter('musicbrainz', 'foreground'), getRateLimiter('musicbrainz', 'background'));
+        assert.notEqual(
+            getRateLimiter('musicbrainz', 'foreground'),
+            getRateLimiter('musicbrainz', 'background'),
+        );
         assert.equal(getRateLimiter('discogs'), getRateLimiter('discogs'));
         assert.equal(getRateLimiter('genius'), getRateLimiter('genius'));
         assert.equal(getRateLimiter('coverartarchive'), getRateLimiter('coverartarchive'));
@@ -101,9 +104,15 @@ describe('music API rate limiting', () => {
 
         const backoffMs = applyRateLimitHeaders(response, limiter, 'discogs');
 
-        assert.ok(backoffMs >= 9_000 && backoffMs < 11_000, `backoff should be ~10s, got ${backoffMs}`);
+        assert.ok(
+            backoffMs >= 9_000 && backoffMs < 11_000,
+            `backoff should be ~10s, got ${backoffMs}`,
+        );
         const delta = limiter.backoffUntil - before;
-        assert.ok(delta >= 9_000 && delta < 11_000, `backoffUntil delta should be ~10s, got ${delta}`);
+        assert.ok(
+            delta >= 9_000 && delta < 11_000,
+            `backoffUntil delta should be ~10s, got ${delta}`,
+        );
     });
 
     it('converts absolute x-ratelimit-reset epochs into a relative backoff (generic headers)', async () => {
@@ -120,7 +129,10 @@ describe('music API rate limiting', () => {
 
         const backoffMs = applyRateLimitHeaders(response, limiter, 'discogs');
 
-        assert.ok(backoffMs >= 9_000 && backoffMs < 11_000, `backoff should be ~10s, got ${backoffMs}`);
+        assert.ok(
+            backoffMs >= 9_000 && backoffMs < 11_000,
+            `backoff should be ~10s, got ${backoffMs}`,
+        );
     });
 
     it('ignores reset timestamps already in the past', async () => {
@@ -181,7 +193,10 @@ describe('music API rate limiting', () => {
         const longDeadline = limiter.backoffUntil;
         applyRateLimitHeaders(shortResponse, limiter, 'discogs');
 
-        assert.ok(longDeadline - before >= 59_000, `long deadline should be ~60s, got ${longDeadline - before}`);
+        assert.ok(
+            longDeadline - before >= 59_000,
+            `long deadline should be ~60s, got ${longDeadline - before}`,
+        );
         assert.equal(limiter.backoffUntil, longDeadline);
     });
 

@@ -1,11 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import {
-    parsePositiveIntEnv,
-    parseBooleanEnv,
-    parseFloatEnv,
-} from '../src/config/envParsing.js';
+import { parsePositiveIntEnv, parseBooleanEnv, parseFloatEnv } from '../src/config/envParsing.js';
 
 describe('parsePositiveIntEnv', () => {
     it('parses a valid positive integer', () => {

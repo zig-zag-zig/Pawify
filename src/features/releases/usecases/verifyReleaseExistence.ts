@@ -4,27 +4,26 @@ type VerifyReleaseExistenceResult = {
     exists: boolean;
 };
 
-export const createVerifyReleaseExistenceUseCase = ({
-    missingReleaseCleanupRepository,
-    releaseCatalogGateway,
-    releaseNotifier,
-}: Pick<
-    ReleaseWriteUseCaseDependencies,
-    'missingReleaseCleanupRepository' | 'releaseCatalogGateway' | 'releaseNotifier'
->) => async (
-    _userId: string,
-    releaseId: string,
-): Promise<VerifyReleaseExistenceResult> => {
-    const exists = await releaseCatalogGateway.releaseExists(releaseId);
+export const createVerifyReleaseExistenceUseCase =
+    ({
+        missingReleaseCleanupRepository,
+        releaseCatalogGateway,
+        releaseNotifier,
+    }: Pick<
+        ReleaseWriteUseCaseDependencies,
+        'missingReleaseCleanupRepository' | 'releaseCatalogGateway' | 'releaseNotifier'
+    >) =>
+    async (_userId: string, releaseId: string): Promise<VerifyReleaseExistenceResult> => {
+        const exists = await releaseCatalogGateway.releaseExists(releaseId);
 
-    if (exists) {
-        return { exists: true };
-    }
+        if (exists) {
+            return { exists: true };
+        }
 
-    const cleanup = await missingReleaseCleanupRepository.removeMissingRelease(releaseId);
-    for (const affectedUserId of cleanup.removedFromNewReleasesUserIds) {
-        await releaseNotifier.notifyReleasesChanged(affectedUserId);
-    }
+        const cleanup = await missingReleaseCleanupRepository.removeMissingRelease(releaseId);
+        for (const affectedUserId of cleanup.removedFromNewReleasesUserIds) {
+            await releaseNotifier.notifyReleasesChanged(affectedUserId);
+        }
 
-    return { exists: false };
-};
+        return { exists: false };
+    };

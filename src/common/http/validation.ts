@@ -87,7 +87,9 @@ export const requireNullablePositiveInteger = (
     const parsed = parseIntegerValue(value);
 
     if (!Number.isInteger(parsed) || parsed < 1 || (max !== undefined && parsed > max)) {
-        throw new BadRequestError(`The ${property} property in the body must be a positive integer or null`);
+        throw new BadRequestError(
+            `The ${property} property in the body must be a positive integer or null`,
+        );
     }
 
     return parsed;
@@ -107,7 +109,9 @@ export const optionalPositiveInteger = (
     const parsed = parseIntegerValue(value);
 
     if (!Number.isInteger(parsed) || parsed < 0) {
-        throw new BadRequestError(`The ${property} property in the body must be a non-negative integer`);
+        throw new BadRequestError(
+            `The ${property} property in the body must be a non-negative integer`,
+        );
     }
 
     return parsed;
@@ -129,7 +133,9 @@ export const optionalIntegerInRange = (
     const parsed = parseIntegerValue(value);
 
     if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
-        throw new BadRequestError(`The ${property} property in the body must be an integer between ${min} and ${max}`);
+        throw new BadRequestError(
+            `The ${property} property in the body must be an integer between ${min} and ${max}`,
+        );
     }
 
     return parsed;

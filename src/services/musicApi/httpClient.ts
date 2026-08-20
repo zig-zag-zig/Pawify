@@ -2,11 +2,7 @@ import { invokeHttpEndpoint, type DaprEndpointName } from '../../infrastructure/
 import { getMusicBrainzUserAgent } from './credentials.js';
 import { createAbortError, delayWithAbort, isAbortError } from './abortableDelay.js';
 import { applyRateLimitHeaders, getRateLimiter, type ExternalService } from './rateLimiter.js';
-import type {
-    FetchFailureResult,
-    HttpOptions,
-    MusicBrainzPriority,
-} from './types.js';
+import type { FetchFailureResult, HttpOptions, MusicBrainzPriority } from './types.js';
 
 export { isAbortError } from './abortableDelay.js';
 
@@ -16,7 +12,7 @@ let activeForegroundMusicBrainzRequests = 0;
 const nonRetriableStatusCodes = new Set([400, 401, 403, 404, 405, 410, 422]);
 
 const waitForForegroundMusicBrainzDrain = async (signal?: AbortSignal): Promise<void> => {
-    while ((pendingForegroundMusicBrainzRequests > 0 || activeForegroundMusicBrainzRequests > 0)) {
+    while (pendingForegroundMusicBrainzRequests > 0 || activeForegroundMusicBrainzRequests > 0) {
         await delayWithAbort(50, signal);
     }
 };
@@ -75,7 +71,10 @@ export const fetchDaprProvider = async (
         release = await rateLimiter.acquire();
         if (useForegroundTracking) {
             if (isForegroundPending) {
-                pendingForegroundMusicBrainzRequests = Math.max(0, pendingForegroundMusicBrainzRequests - 1);
+                pendingForegroundMusicBrainzRequests = Math.max(
+                    0,
+                    pendingForegroundMusicBrainzRequests - 1,
+                );
                 isForegroundPending = false;
             }
 
@@ -113,15 +112,19 @@ export const fetchDaprProvider = async (
             throw error;
         }
 
-        return failureMode === 'status'
-            ? createFetchFailureResult(null)
-            : null;
+        return failureMode === 'status' ? createFetchFailureResult(null) : null;
     } finally {
         if (isForegroundPending) {
-            pendingForegroundMusicBrainzRequests = Math.max(0, pendingForegroundMusicBrainzRequests - 1);
+            pendingForegroundMusicBrainzRequests = Math.max(
+                0,
+                pendingForegroundMusicBrainzRequests - 1,
+            );
         }
         if (isForegroundActive) {
-            activeForegroundMusicBrainzRequests = Math.max(0, activeForegroundMusicBrainzRequests - 1);
+            activeForegroundMusicBrainzRequests = Math.max(
+                0,
+                activeForegroundMusicBrainzRequests - 1,
+            );
         }
         if (release) {
             release();

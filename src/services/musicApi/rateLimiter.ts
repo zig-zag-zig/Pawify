@@ -1,7 +1,8 @@
 import { musicApiConfig } from '../../config/runtimeConfig.js';
 import type { MusicBrainzPriority } from './types.js';
 
-export type ExternalService = 'musicbrainz' | 'coverartarchive' | 'discogs' | 'genius' | 'expo' | 'other';
+export type ExternalService =
+    'musicbrainz' | 'coverartarchive' | 'discogs' | 'genius' | 'expo' | 'other';
 
 // Node clamps setTimeout delays above 2^31 - 1 ms to 1 ms, which turns an
 // oversized wait into a tight timer storm. Never schedule beyond this.
@@ -9,7 +10,10 @@ export const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
 const RATE_LIMIT_CONFIG = {
     musicbrainzForeground: { maxConcurrent: 1, delayMs: musicApiConfig.musicBrainzDelayMs },
-    musicbrainzBackground: { maxConcurrent: 1, delayMs: musicApiConfig.musicBrainzBackgroundDelayMs },
+    musicbrainzBackground: {
+        maxConcurrent: 1,
+        delayMs: musicApiConfig.musicBrainzBackgroundDelayMs,
+    },
     discogs: { maxConcurrent: 10, delayMs: 0 },
     genius: { maxConcurrent: 30, delayMs: 0 },
     coverartarchive: { maxConcurrent: 40, delayMs: 0 },
@@ -100,10 +104,13 @@ export class RateLimiter {
         if (this.pendingTimer !== undefined) {
             clearTimeout(this.pendingTimer);
         }
-        this.pendingTimer = setTimeout(() => {
-            this.pendingTimer = undefined;
-            this.processQueue();
-        }, Math.min(delayMs, MAX_TIMEOUT_MS));
+        this.pendingTimer = setTimeout(
+            () => {
+                this.pendingTimer = undefined;
+                this.processQueue();
+            },
+            Math.min(delayMs, MAX_TIMEOUT_MS),
+        );
     }
 }
 
@@ -116,9 +123,18 @@ const rateLimiters = {
         RATE_LIMIT_CONFIG.musicbrainzBackground.maxConcurrent,
         RATE_LIMIT_CONFIG.musicbrainzBackground.delayMs,
     ),
-    discogs: new RateLimiter(RATE_LIMIT_CONFIG.discogs.maxConcurrent, RATE_LIMIT_CONFIG.discogs.delayMs),
-    genius: new RateLimiter(RATE_LIMIT_CONFIG.genius.maxConcurrent, RATE_LIMIT_CONFIG.genius.delayMs),
-    coverartarchive: new RateLimiter(RATE_LIMIT_CONFIG.coverartarchive.maxConcurrent, RATE_LIMIT_CONFIG.coverartarchive.delayMs),
+    discogs: new RateLimiter(
+        RATE_LIMIT_CONFIG.discogs.maxConcurrent,
+        RATE_LIMIT_CONFIG.discogs.delayMs,
+    ),
+    genius: new RateLimiter(
+        RATE_LIMIT_CONFIG.genius.maxConcurrent,
+        RATE_LIMIT_CONFIG.genius.delayMs,
+    ),
+    coverartarchive: new RateLimiter(
+        RATE_LIMIT_CONFIG.coverartarchive.maxConcurrent,
+        RATE_LIMIT_CONFIG.coverartarchive.delayMs,
+    ),
 };
 
 export const getRateLimiter = (
@@ -136,7 +152,8 @@ export const getRateLimiter = (
     return rateLimiters.musicbrainzForeground;
 };
 
-const isMusicBrainzRateLimitedStatus = (status: number): boolean => status === 429 || status === 503;
+const isMusicBrainzRateLimitedStatus = (status: number): boolean =>
+    status === 429 || status === 503;
 
 // x-ratelimit-reset (Discogs, GitHub-style APIs) is an absolute Unix epoch in
 // seconds: "the current window resets at this instant". Convert it into the
@@ -172,9 +189,10 @@ export const applyRateLimitHeaders = (
     const retryAfter = response.headers.get('retry-after');
     if (retryAfter) {
         const retryAfterMsRaw = /^\d+$/.test(retryAfter) ? parseInt(retryAfter, 10) * 1000 : 0;
-        const retryAfterMs = service === 'musicbrainz' && retryAfterMsRaw > 0
-            ? retryAfterMsRaw + musicApiConfig.musicBrainzRetryAfterBufferMs
-            : retryAfterMsRaw;
+        const retryAfterMs =
+            service === 'musicbrainz' && retryAfterMsRaw > 0
+                ? retryAfterMsRaw + musicApiConfig.musicBrainzRetryAfterBufferMs
+                : retryAfterMsRaw;
         if (retryAfterMs > 0) {
             backoffMs = Math.max(backoffMs, retryAfterMs);
         }

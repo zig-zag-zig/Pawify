@@ -8,55 +8,57 @@ type GetArtistReleasesResult = {
     releaseGroupCovers: Record<string, string | null>;
 };
 
-export const createGetArtistReleasesUseCase = ({
-    artistReleaseContextGateway,
-    releaseCatalogGateway,
-    releaseTaskQueue,
-    assetPlanner,
-    requestDeduper,
-}: Pick<
-    ReleaseReadUseCaseDependencies,
-    | 'artistReleaseContextGateway'
-    | 'releaseCatalogGateway'
-    | 'releaseTaskQueue'
-    | 'assetPlanner'
-    | 'requestDeduper'
->) => async (
-    userId: string,
-    artistId: string,
-): Promise<GetArtistReleasesResult> => {
-    const payload = await requestDeduper.run(`getArtistReleases:${userId}:${artistId}`, async () => {
-        const ttl = await artistReleaseContextGateway.getArtistTtl(userId, artistId);
-        const releaseGroups = await releaseCatalogGateway.getArtistReleases(
-            artistId,
-            ttl,
-            async () => { },
+export const createGetArtistReleasesUseCase =
+    ({
+        artistReleaseContextGateway,
+        releaseCatalogGateway,
+        releaseTaskQueue,
+        assetPlanner,
+        requestDeduper,
+    }: Pick<
+        ReleaseReadUseCaseDependencies,
+        | 'artistReleaseContextGateway'
+        | 'releaseCatalogGateway'
+        | 'releaseTaskQueue'
+        | 'assetPlanner'
+        | 'requestDeduper'
+    >) =>
+    async (userId: string, artistId: string): Promise<GetArtistReleasesResult> => {
+        const payload = await requestDeduper.run(
+            `getArtistReleases:${userId}:${artistId}`,
+            async () => {
+                const ttl = await artistReleaseContextGateway.getArtistTtl(userId, artistId);
+                const releaseGroups = await releaseCatalogGateway.getArtistReleases(
+                    artistId,
+                    ttl,
+                    async () => {},
+                );
+                return {
+                    releaseGroups,
+                    ttl,
+                };
+            },
         );
+
+        const pageEntries: ReleaseGroupPageEntry[] = payload.releaseGroups.map((group) => ({
+            releaseGroupId: group.id,
+            releaseIds: group.releaseIds,
+        }));
+
+        const plan = await assetPlanner.planArtistReleaseGroupCovers({
+            userId,
+            artistId,
+            pageEntries,
+            ttl: payload.ttl,
+        });
+
+        if (plan.taskId !== null) {
+            releaseTaskQueue.addTaskUser(plan.taskId, userId);
+        }
+
         return {
-            releaseGroups,
-            ttl,
+            releaseGroups: payload.releaseGroups,
+            releaseGroupCovers: plan.resolved,
+            releaseGroupCoverTaskId: plan.taskId,
         };
-    });
-
-    const pageEntries: ReleaseGroupPageEntry[] = payload.releaseGroups.map(group => ({
-        releaseGroupId: group.id,
-        releaseIds: group.releaseIds,
-    }));
-
-    const plan = await assetPlanner.planArtistReleaseGroupCovers({
-        userId,
-        artistId,
-        pageEntries,
-        ttl: payload.ttl,
-    });
-
-    if (plan.taskId !== null) {
-        releaseTaskQueue.addTaskUser(plan.taskId, userId);
-    }
-
-    return {
-        releaseGroups: payload.releaseGroups,
-        releaseGroupCovers: plan.resolved,
-        releaseGroupCoverTaskId: plan.taskId,
     };
-};

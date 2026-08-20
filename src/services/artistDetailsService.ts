@@ -8,13 +8,8 @@ import {
 } from '../utils/helpers/externalLinks.js';
 import { replaceCachedData, getCachedData } from './cacheService.js';
 import type { CachedArtistDetails } from '../utils/types/cacheTypes.js';
-import {
-    fetchMusicBrainzWithStatus,
-} from './musicApi/musicBrainzClient.js';
-import {
-    isConfirmedMissingFetchFailure,
-    isFetchFailureResult,
-} from './musicApi/types.js';
+import { fetchMusicBrainzWithStatus } from './musicApi/musicBrainzClient.js';
+import { isConfirmedMissingFetchFailure, isFetchFailureResult } from './musicApi/types.js';
 import { getArtistTtl } from '../utils/helpers/followingHelper.js';
 import { getCacheKey } from '../utils/helpers/cacheHelpers.js';
 import type { FollowedArtistSummary } from '../utils/types/followedArtistTypes.js';
@@ -32,19 +27,19 @@ const getArtistDiscogsUrls = (artist: Artist): string[] => {
 
     const legacyArtist = artist as Artist & { discogsUrls?: unknown };
     return Array.isArray(legacyArtist.discogsUrls)
-        ? legacyArtist.discogsUrls.filter((url): url is string => typeof url === 'string' && url.trim().length > 0)
+        ? legacyArtist.discogsUrls.filter(
+              (url): url is string => typeof url === 'string' && url.trim().length > 0,
+          )
         : [];
 };
 
-const hasExternalLinks = (artist: Artist): boolean => (
-    Array.isArray((artist as Artist & { externalLinks?: unknown }).externalLinks)
-);
+const hasExternalLinks = (artist: Artist): boolean =>
+    Array.isArray((artist as Artist & { externalLinks?: unknown }).externalLinks);
 
-const fetchArtistData = async (
-    artistId: string,
-    include: string,
-): Promise<unknown | null> => {
-    const artistData = await fetchMusicBrainzWithStatus(`/artist/${artistId}?fmt=json&inc=${include}`);
+const fetchArtistData = async (artistId: string, include: string): Promise<unknown | null> => {
+    const artistData = await fetchMusicBrainzWithStatus(
+        `/artist/${artistId}?fmt=json&inc=${include}`,
+    );
 
     if (isFetchFailureResult(artistData)) {
         if (isConfirmedMissingFetchFailure(artistData)) {
@@ -80,8 +75,9 @@ export const getFollowedArtistSummary = async (
         };
 
         if (Array.isArray(discogsUrls)) {
-            summaryWithLookups.discogsUrls = discogsUrls
-                .filter((url): url is string => typeof url === 'string' && url.trim().length > 0);
+            summaryWithLookups.discogsUrls = discogsUrls.filter(
+                (url): url is string => typeof url === 'string' && url.trim().length > 0,
+            );
         }
 
         return summaryWithLookups;
@@ -109,12 +105,13 @@ export const getFollowedArtistSummary = async (
     } satisfies FollowedArtistSummary;
 
     const externalLinks = mapRelationsToExternalLinks(artistRecord.relations);
-    return mapSummaryWithDiscogsUrls(summary, getExternalLinkUrlsByService(externalLinks, 'discogs'));
+    return mapSummaryWithDiscogsUrls(
+        summary,
+        getExternalLinkUrlsByService(externalLinks, 'discogs'),
+    );
 };
 
-const fetchArtistDetailsRecord = async (
-    artistId: string,
-): Promise<CachedArtistDetails | null> => {
+const fetchArtistDetailsRecord = async (artistId: string): Promise<CachedArtistDetails | null> => {
     const artistData = await fetchArtistData(artistId, 'aliases+artist-rels+url-rels');
 
     if (artistData === null) {

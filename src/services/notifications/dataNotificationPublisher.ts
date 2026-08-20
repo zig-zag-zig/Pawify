@@ -1,7 +1,4 @@
-import {
-    sendPushNotification,
-    type PushDeliveryOptions,
-} from './pushNotificationDelivery.js';
+import { sendPushNotification, type PushDeliveryOptions } from './pushNotificationDelivery.js';
 import type { NotificationEventName } from './notificationEvents.js';
 
 export const sendDataOnlyNotification = async (

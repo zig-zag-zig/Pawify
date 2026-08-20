@@ -13,19 +13,25 @@ const validatePushToken = (pushToken: string): void => {
     }
 };
 
-export const savePushTokenHandler = authenticatedHandler('/savePushToken', async ({ req, res, userId }) => {
-    const deviceId = requireString(req.body, 'deviceId');
-    const pushToken = requireString(req.body, 'pushToken');
+export const savePushTokenHandler = authenticatedHandler(
+    '/savePushToken',
+    async ({ req, res, userId }) => {
+        const deviceId = requireString(req.body, 'deviceId');
+        const pushToken = requireString(req.body, 'pushToken');
 
-    validatePushToken(pushToken);
+        validatePushToken(pushToken);
 
-    await pushTokenUseCases.savePushToken(userId, deviceId, pushToken);
-    res.status(200).send('Push token saved successfully.');
-});
+        await pushTokenUseCases.savePushToken(userId, deviceId, pushToken);
+        res.status(200).send('Push token saved successfully.');
+    },
+);
 
-export const deletePushTokenHandler = authenticatedHandler('/deletePushToken', async ({ req, res, userId }) => {
-    const deviceId = requireString(req.body, 'deviceId');
+export const deletePushTokenHandler = authenticatedHandler(
+    '/deletePushToken',
+    async ({ req, res, userId }) => {
+        const deviceId = requireString(req.body, 'deviceId');
 
-    await pushTokenUseCases.deletePushToken(userId, deviceId);
-    res.status(200).send('Push token deleted successfully.');
-});
+        await pushTokenUseCases.deletePushToken(userId, deviceId);
+        res.status(200).send('Push token deleted successfully.');
+    },
+);

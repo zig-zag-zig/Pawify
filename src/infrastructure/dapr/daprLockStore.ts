@@ -30,7 +30,7 @@ export const tryAcquireDaprLock = async (
 
     await assertOk(response, `acquire Dapr lock ${resourceId}`);
 
-    const body = await response.json().catch(() => ({})) as LockResponse;
+    const body = (await response.json().catch(() => ({}))) as LockResponse;
     return body.success !== false;
 };
 

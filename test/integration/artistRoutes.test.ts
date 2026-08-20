@@ -14,8 +14,11 @@ let baseUrl: string;
 
 beforeEach(async () => {
     const { createArtistRoutes } = await import('../../src/features/artists/artistRoutes.js');
-    const { artistPresentersV1, artistUseCasesV1 } = await import('../../src/api/useCaseVariants.js');
-    baseUrl = await createIntegrationTestApp(createArtistRoutes(artistUseCasesV1, artistPresentersV1));
+    const { artistPresentersV1, artistUseCasesV1 } =
+        await import('../../src/api/useCaseVariants.js');
+    baseUrl = await createIntegrationTestApp(
+        createArtistRoutes(artistUseCasesV1, artistPresentersV1),
+    );
 });
 
 afterEach(async () => {

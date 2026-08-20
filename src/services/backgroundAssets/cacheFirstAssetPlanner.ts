@@ -21,65 +21,100 @@ export const createCacheFirstAssetPlanner = (deps: {
     cacheAssetPartitioner: AssetCachePartitioner;
 }): BackgroundAssetPlanner => ({
     planArtistProfileImages: async ({ userId, scope, lookups, ttl }) => {
-        const { resolved, pending } = await deps.cacheAssetPartitioner.partitionArtistProfileImages(lookups);
-        const taskId = pending.length > 0
-            ? deps.artistProfileImageQueue.queueArtistProfileImagesWithLookups(userId, scope, pending, ttl, {
-                fullArtistIds: lookups.map((lookup) => lookup.artistId),
-                contractNamespace: 'v2',
-            })
-            : null;
+        const { resolved, pending } =
+            await deps.cacheAssetPartitioner.partitionArtistProfileImages(lookups);
+        const taskId =
+            pending.length > 0
+                ? deps.artistProfileImageQueue.queueArtistProfileImagesWithLookups(
+                      userId,
+                      scope,
+                      pending,
+                      ttl,
+                      {
+                          fullArtistIds: lookups.map((lookup) => lookup.artistId),
+                          contractNamespace: 'v2',
+                      },
+                  )
+                : null;
         return { taskId, resolved };
     },
     planArtistReleaseGroupCovers: async ({ userId, artistId, pageEntries, ttl }) => {
-        const { resolved, pending } = await deps.cacheAssetPartitioner.partitionArtistReleaseGroupCovers(artistId, pageEntries);
-        const taskId = pending.length > 0
-            ? deps.releaseTaskQueue.queueArtistReleaseGroupCovers(userId, artistId, pending, ttl, {
-                contractNamespace: 'v2',
-            })
-            : null;
+        const { resolved, pending } =
+            await deps.cacheAssetPartitioner.partitionArtistReleaseGroupCovers(
+                artistId,
+                pageEntries,
+            );
+        const taskId =
+            pending.length > 0
+                ? deps.releaseTaskQueue.queueArtistReleaseGroupCovers(
+                      userId,
+                      artistId,
+                      pending,
+                      ttl,
+                      {
+                          contractNamespace: 'v2',
+                      },
+                  )
+                : null;
         return { taskId, resolved };
     },
     planReleaseGroupReleaseCovers: async ({ userId, releaseGroupId, pageEntries, ttl }) => {
-        const { resolved, pending } = await deps.cacheAssetPartitioner.partitionReleaseGroupReleaseCovers(pageEntries);
-        const taskId = pending.length > 0
-            ? deps.releaseTaskQueue.queueReleaseGroupReleaseCovers(userId, releaseGroupId, pending, ttl, {
-                contractNamespace: 'v2',
-            })
-            : null;
+        const { resolved, pending } =
+            await deps.cacheAssetPartitioner.partitionReleaseGroupReleaseCovers(pageEntries);
+        const taskId =
+            pending.length > 0
+                ? deps.releaseTaskQueue.queueReleaseGroupReleaseCovers(
+                      userId,
+                      releaseGroupId,
+                      pending,
+                      ttl,
+                      {
+                          contractNamespace: 'v2',
+                      },
+                  )
+                : null;
         return { taskId, resolved };
     },
     planNewReleaseCovers: async ({ userId, pageEntries }) => {
-        const { resolved, pending } = await deps.cacheAssetPartitioner.partitionReleaseGroupReleaseCovers(pageEntries);
-        const taskId = pending.length > 0
-            ? deps.releaseTaskQueue.queueNewReleaseCovers(userId, pageEntries, undefined, {
-                pendingEntries: pending,
-                contractNamespace: 'v2',
-            })
-            : null;
+        const { resolved, pending } =
+            await deps.cacheAssetPartitioner.partitionReleaseGroupReleaseCovers(pageEntries);
+        const taskId =
+            pending.length > 0
+                ? deps.releaseTaskQueue.queueNewReleaseCovers(userId, pageEntries, undefined, {
+                      pendingEntries: pending,
+                      contractNamespace: 'v2',
+                  })
+                : null;
         return { taskId, resolved };
     },
     planReleaseTrackLyrics: async ({ userId, release, ttl }) => {
         const tracks = collectTrackLyricsRequests(release);
-        const { resolved, pending } = await deps.cacheAssetPartitioner.partitionTrackLyrics(release.id, tracks);
-        const taskId = pending.length > 0
-            ? deps.releaseTaskQueue.queueReleaseTrackLyrics(userId, release, ttl, {
-                pendingTracks: pending,
-                contractNamespace: 'v2',
-            })
-            : null;
+        const { resolved, pending } = await deps.cacheAssetPartitioner.partitionTrackLyrics(
+            release.id,
+            tracks,
+        );
+        const taskId =
+            pending.length > 0
+                ? deps.releaseTaskQueue.queueReleaseTrackLyrics(userId, release, ttl, {
+                      pendingTracks: pending,
+                      contractNamespace: 'v2',
+                  })
+                : null;
         return { taskId, resolved };
     },
     planReleaseArtistProfileImages: async ({ userId, release, ttl }) => {
         const artistIds = collectReleaseArtistIds(release);
         const lookups = artistIds.map((artistId) => ({ artistId }));
-        const { resolved, pending } = await deps.cacheAssetPartitioner.partitionArtistProfileImages(lookups);
-        const taskId = pending.length > 0
-            ? deps.releaseTaskQueue.queueReleaseArtistProfileImages(userId, release, ttl, {
-                pendingArtistIds: pending.map((lookup) => lookup.artistId),
-                fullArtistIds: artistIds,
-                contractNamespace: 'v2',
-            })
-            : null;
+        const { resolved, pending } =
+            await deps.cacheAssetPartitioner.partitionArtistProfileImages(lookups);
+        const taskId =
+            pending.length > 0
+                ? deps.releaseTaskQueue.queueReleaseArtistProfileImages(userId, release, ttl, {
+                      pendingArtistIds: pending.map((lookup) => lookup.artistId),
+                      fullArtistIds: artistIds,
+                      contractNamespace: 'v2',
+                  })
+                : null;
         return { taskId, resolved };
     },
 });

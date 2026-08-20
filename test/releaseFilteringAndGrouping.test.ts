@@ -23,12 +23,12 @@ const release = (overrides: Partial<Release> = {}): Release => {
         date_for_display: '01.01.2026',
         'release-group': releaseGroupId
             ? {
-                id: releaseGroupId,
-                title: 'Album',
-                date: null,
-                disambiguation: null,
-                'primary-type': 'Album',
-            }
+                  id: releaseGroupId,
+                  title: 'Album',
+                  date: null,
+                  disambiguation: null,
+                  'primary-type': 'Album',
+              }
             : null,
         'artist-credit': [],
         media: [
@@ -52,45 +52,69 @@ describe('release notification filtering', () => {
 
     it('honors missing-date, future-date, and age-window settings', () => {
         assert.equal(
-            releaseDateMatchesNotificationSettings(null, {
-                oldestReleaseDateMonths: 12,
-                includeReleasesWithoutDate: true,
-            }, now),
+            releaseDateMatchesNotificationSettings(
+                null,
+                {
+                    oldestReleaseDateMonths: 12,
+                    includeReleasesWithoutDate: true,
+                },
+                now,
+            ),
             true,
         );
         assert.equal(
-            releaseDateMatchesNotificationSettings(null, {
-                oldestReleaseDateMonths: 12,
-                includeReleasesWithoutDate: false,
-            }, now),
+            releaseDateMatchesNotificationSettings(
+                null,
+                {
+                    oldestReleaseDateMonths: 12,
+                    includeReleasesWithoutDate: false,
+                },
+                now,
+            ),
             false,
         );
         assert.equal(
-            releaseDateMatchesNotificationSettings('2026-05-27', {
-                oldestReleaseDateMonths: 12,
-                includeReleasesWithoutDate: true,
-            }, now),
+            releaseDateMatchesNotificationSettings(
+                '2026-05-27',
+                {
+                    oldestReleaseDateMonths: 12,
+                    includeReleasesWithoutDate: true,
+                },
+                now,
+            ),
             false,
         );
         assert.equal(
-            releaseDateMatchesNotificationSettings('2025-05-26', {
-                oldestReleaseDateMonths: 12,
-                includeReleasesWithoutDate: true,
-            }, now),
+            releaseDateMatchesNotificationSettings(
+                '2025-05-26',
+                {
+                    oldestReleaseDateMonths: 12,
+                    includeReleasesWithoutDate: true,
+                },
+                now,
+            ),
             true,
         );
         assert.equal(
-            releaseDateMatchesNotificationSettings('2025-05-25', {
-                oldestReleaseDateMonths: 12,
-                includeReleasesWithoutDate: true,
-            }, now),
+            releaseDateMatchesNotificationSettings(
+                '2025-05-25',
+                {
+                    oldestReleaseDateMonths: 12,
+                    includeReleasesWithoutDate: true,
+                },
+                now,
+            ),
             false,
         );
         assert.equal(
-            releaseDateMatchesNotificationSettings('1990-01-01', {
-                oldestReleaseDateMonths: null,
-                includeReleasesWithoutDate: true,
-            }, now),
+            releaseDateMatchesNotificationSettings(
+                '1990-01-01',
+                {
+                    oldestReleaseDateMonths: null,
+                    includeReleasesWithoutDate: true,
+                },
+                now,
+            ),
             true,
         );
     });
@@ -107,8 +131,18 @@ describe('release grouping helpers', () => {
                 {
                     'track-count': 2,
                     tracks: [
-                        { id: 'alternate-track-1', title: 'Intro', 'artist-credit': [], length: null },
-                        { id: 'alternate-track-2', title: 'Encore', 'artist-credit': [], length: null },
+                        {
+                            id: 'alternate-track-1',
+                            title: 'Intro',
+                            'artist-credit': [],
+                            length: null,
+                        },
+                        {
+                            id: 'alternate-track-2',
+                            title: 'Encore',
+                            'artist-credit': [],
+                            length: null,
+                        },
                     ],
                 },
             ],
@@ -116,7 +150,10 @@ describe('release grouping helpers', () => {
 
         const grouped = groupByReleaseGroup([original, duplicate, alternate]);
 
-        assert.deepEqual(grouped.get('group-1')?.map(item => item.id), ['original', 'alternate']);
+        assert.deepEqual(
+            grouped.get('group-1')?.map((item) => item.id),
+            ['original', 'alternate'],
+        );
     });
 
     it('reports pruned release IDs when deduping one release group from a mixed list', () => {
@@ -126,7 +163,10 @@ describe('release grouping helpers', () => {
             release({ id: 'other-group', releaseGroupId: 'group-2' }),
         ]);
 
-        assert.deepEqual(result.releases.map(item => item.id), ['target-1']);
+        assert.deepEqual(
+            result.releases.map((item) => item.id),
+            ['target-1'],
+        );
         assert.deepEqual(result.prunedReleaseIds.sort(), ['other-group', 'target-duplicate']);
     });
 

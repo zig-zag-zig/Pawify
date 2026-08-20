@@ -220,7 +220,9 @@ describe('HTTP route integration', () => {
         });
 
         it('returns 401 with structured error body for unauthenticated requests', async () => {
-            setFakeCheckAuth(async () => { throw new Error('Unauthorized'); });
+            setFakeCheckAuth(async () => {
+                throw new Error('Unauthorized');
+            });
             const response = await fetch(`${baseUrl}/v1/revokeToken`);
             assert.equal(response.status, 401);
             const body = await response.json();

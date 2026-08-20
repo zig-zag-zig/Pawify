@@ -131,7 +131,9 @@ describe('logger redaction', () => {
         const originalLevel = process.env.LOG_LEVEL;
         try {
             process.env.LOG_LEVEL = 'info';
-            mock.method(console, 'log', (line: string) => { lines.push(line); });
+            mock.method(console, 'log', (line: string) => {
+                lines.push(line);
+            });
 
             const logger = createLogger('test');
             logger.debug('should not appear');
@@ -141,5 +143,4 @@ describe('logger redaction', () => {
             process.env.LOG_LEVEL = originalLevel;
         }
     });
-
 });

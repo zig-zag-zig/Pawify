@@ -8,8 +8,8 @@ export const createCachedArtistReleaseGroups = (
 ): CachedArtistReleases => {
     return [...releaseGroups]
         .sort((left, right) => dateToTimestamp(right.date) - dateToTimestamp(left.date))
-        .map(releaseGroup => {
-            const cachedGroup = cached?.find(group => group.id === releaseGroup.id);
+        .map((releaseGroup) => {
+            const cachedGroup = cached?.find((group) => group.id === releaseGroup.id);
             const mergedReleaseGroup = {
                 ...releaseGroup,
                 date: releaseGroup.date ?? cachedGroup?.date ?? null,
@@ -26,20 +26,24 @@ export const createCachedReleaseGroupReleases = (
     const sortedReleases = [...releases];
     sortReleasesByDate(sortedReleases);
 
-    return sortedReleases.map(release => {
-        const cachedRelease = cached?.find(existing => existing.id === release.id);
+    return sortedReleases.map((release) => {
+        const cachedRelease = cached?.find((existing) => existing.id === release.id);
         const mergedReleaseGroup = release['release-group']
             ? {
-                ...release['release-group'],
-                date: release['release-group'].date ?? cachedRelease?.['release-group']?.date ?? null,
-            }
+                  ...release['release-group'],
+                  date:
+                      release['release-group'].date ??
+                      cachedRelease?.['release-group']?.date ??
+                      null,
+              }
             : null;
         return {
             ...release,
             'release-group': mergedReleaseGroup,
-            externalLinks: (release.externalLinks?.length ?? 0) > 0
-                ? release.externalLinks
-                : cachedRelease?.externalLinks ?? [],
+            externalLinks:
+                (release.externalLinks?.length ?? 0) > 0
+                    ? release.externalLinks
+                    : (cachedRelease?.externalLinks ?? []),
         };
     });
 };

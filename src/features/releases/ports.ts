@@ -30,12 +30,19 @@ export interface ReleaseCatalogGateway {
     getArtistReleases(
         artistId: string,
         ttl: number | undefined,
-        onReleaseGroupPage: (pageEntries: ReleaseGroupPageEntry[], isLastPage: boolean) => Promise<void> | void,
+        onReleaseGroupPage: (
+            pageEntries: ReleaseGroupPageEntry[],
+            isLastPage: boolean,
+        ) => Promise<void> | void,
     ): Promise<CachedArtistReleases>;
     getReleaseGroupReleases(
         releaseGroupId: string,
         ttl: number | undefined,
-        onReleaseIdsPage: (releaseGroupId: string, releaseIds: string[], isLastPage: boolean) => Promise<void> | void,
+        onReleaseIdsPage: (
+            releaseGroupId: string,
+            releaseIds: string[],
+            isLastPage: boolean,
+        ) => Promise<void> | void,
     ): Promise<ReleaseGroupReleaseListItem[]>;
     getRelease(releaseId: string): Promise<Release | null>;
     releaseExists(releaseId: string): Promise<boolean>;

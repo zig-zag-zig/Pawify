@@ -83,7 +83,9 @@ export const partitionArtistProfileImages = async (
         }
 
         try {
-            const cached = await readCache<CachedArtistImage>(getCacheKey(lookup.artistId, 'artistImages'));
+            const cached = await readCache<CachedArtistImage>(
+                getCacheKey(lookup.artistId, 'artistImages'),
+            );
             if (cached && !shouldRefetchArtistImageState(cached)) {
                 const value = toResolvedValue(cached.url);
                 if (value !== undefined) {
@@ -92,13 +94,21 @@ export const partitionArtistProfileImages = async (
                 }
             }
         } catch (error) {
-            logger.debug('artist image cache read failed; treating as pending', { artistId: lookup.artistId, error });
+            logger.debug('artist image cache read failed; treating as pending', {
+                artistId: lookup.artistId,
+                error,
+            });
         }
 
         pending.push(lookup);
     });
 
-    logPreResolved('artist_profile_images', lookups.length, Object.keys(resolved).length, startedAt);
+    logPreResolved(
+        'artist_profile_images',
+        lookups.length,
+        Object.keys(resolved).length,
+        startedAt,
+    );
     return { resolved, pending };
 };
 
@@ -117,9 +127,14 @@ export const partitionTrackLyrics = async (
 
     let cached: CachedReleaseLyricsByRelease | null = null;
     try {
-        cached = await readCache<CachedReleaseLyricsByRelease>(getCacheKey(releaseId, 'releaseLyrics'));
+        cached = await readCache<CachedReleaseLyricsByRelease>(
+            getCacheKey(releaseId, 'releaseLyrics'),
+        );
     } catch (error) {
-        logger.debug('lyrics cache read failed; treating all tracks as pending', { releaseId, error });
+        logger.debug('lyrics cache read failed; treating all tracks as pending', {
+            releaseId,
+            error,
+        });
     }
 
     for (const track of tracks) {
@@ -155,11 +170,15 @@ export const partitionReleaseGroupReleaseCovers = async (
     await mapWithConcurrency(pageEntries, PRE_RESOLVE_CONCURRENCY, async (entry) => {
         let cache: CachedReleaseGroupReleaseCovers = {};
         try {
-            cache = await readCache<CachedReleaseGroupReleaseCovers>(
-                getCacheKey(entry.releaseGroupId, 'releaseGroupReleaseCovers'),
-            ) ?? {};
+            cache =
+                (await readCache<CachedReleaseGroupReleaseCovers>(
+                    getCacheKey(entry.releaseGroupId, 'releaseGroupReleaseCovers'),
+                )) ?? {};
         } catch (error) {
-            logger.debug('release cover cache read failed; treating entry as pending', { releaseGroupId: entry.releaseGroupId, error });
+            logger.debug('release cover cache read failed; treating entry as pending', {
+                releaseGroupId: entry.releaseGroupId,
+                error,
+            });
         }
 
         const unresolvedReleaseIds: string[] = [];
@@ -187,7 +206,12 @@ export const partitionReleaseGroupReleaseCovers = async (
     });
 
     const totalCount = pageEntries.reduce((sum, entry) => sum + entry.releaseIds.length, 0);
-    logPreResolved('release_group_release_covers', totalCount, Object.keys(resolved).length, startedAt);
+    logPreResolved(
+        'release_group_release_covers',
+        totalCount,
+        Object.keys(resolved).length,
+        startedAt,
+    );
     return { resolved, pending };
 };
 
@@ -206,11 +230,15 @@ export const partitionArtistReleaseGroupCovers = async (
 
     let cache: CachedArtistReleaseGroupCovers = {};
     try {
-        cache = await readCache<CachedArtistReleaseGroupCovers>(
-            getCacheKey(artistId, 'artistReleaseGroupCovers'),
-        ) ?? {};
+        cache =
+            (await readCache<CachedArtistReleaseGroupCovers>(
+                getCacheKey(artistId, 'artistReleaseGroupCovers'),
+            )) ?? {};
     } catch (error) {
-        logger.debug('artist release-group cover cache read failed; treating all entries as pending', { artistId, error });
+        logger.debug(
+            'artist release-group cover cache read failed; treating all entries as pending',
+            { artistId, error },
+        );
     }
 
     for (const entry of pageEntries) {
@@ -227,7 +255,12 @@ export const partitionArtistReleaseGroupCovers = async (
         pending.push(entry);
     }
 
-    logPreResolved('release_group_covers', pageEntries.length, Object.keys(resolved).length, startedAt);
+    logPreResolved(
+        'release_group_covers',
+        pageEntries.length,
+        Object.keys(resolved).length,
+        startedAt,
+    );
     return { resolved, pending };
 };
 

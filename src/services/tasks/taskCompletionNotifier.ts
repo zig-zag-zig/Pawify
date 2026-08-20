@@ -44,19 +44,27 @@ const sendTaskCompletedNotificationNow = async (
             userCount: userIds.length,
         });
 
-        await Promise.all(userIds.map(async (userId) => {
-            try {
-                await sendDataOnlyNotification(userId, notificationEvents.taskCompleted, {
-                    taskId,
-                    taskType,
-                    status,
-                    ...payload,
-                });
-            } catch (error) {
-                failureCount += 1;
-                logger.error('task completion notification failed', { taskId, taskType, userId, status, error });
-            }
-        }));
+        await Promise.all(
+            userIds.map(async (userId) => {
+                try {
+                    await sendDataOnlyNotification(userId, notificationEvents.taskCompleted, {
+                        taskId,
+                        taskType,
+                        status,
+                        ...payload,
+                    });
+                } catch (error) {
+                    failureCount += 1;
+                    logger.error('task completion notification failed', {
+                        taskId,
+                        taskType,
+                        userId,
+                        status,
+                        error,
+                    });
+                }
+            }),
+        );
 
         logger.debug('task completion notification completed', {
             taskId,
@@ -123,7 +131,14 @@ const sendThrottledProgressNotification = async (
 
     if (!existingState) {
         progressNotificationStateByTaskId.set(taskId, { lastSentAt: now });
-        await sendTaskCompletedNotificationNow(userIds, taskId, taskType, 'progress', context, payload);
+        await sendTaskCompletedNotificationNow(
+            userIds,
+            taskId,
+            taskType,
+            'progress',
+            context,
+            payload,
+        );
         return;
     }
 
@@ -136,7 +151,14 @@ const sendThrottledProgressNotification = async (
         }
 
         existingState.lastSentAt = now;
-        await sendTaskCompletedNotificationNow(userIds, taskId, taskType, 'progress', context, payload);
+        await sendTaskCompletedNotificationNow(
+            userIds,
+            taskId,
+            taskType,
+            'progress',
+            context,
+            payload,
+        );
         return;
     }
 

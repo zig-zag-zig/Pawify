@@ -48,15 +48,16 @@ describe('pushReceiptChecker', () => {
         });
 
         installModuleFake('../../src/services/firebase/pushTokenStore.js', {
-            deletePushTokensFromDb: async () => { },
+            deletePushTokensFromDb: async () => {},
             getPushTokensFromDb: async () => [],
-            deleteDevicePushTokenFromDb: async () => { },
-            deleteUserPushTokensFromDb: async () => { },
-            savePushTokenToDb: async () => { },
-            deletePushTokenFromDb: async () => { },
+            deleteDevicePushTokenFromDb: async () => {},
+            deleteUserPushTokensFromDb: async () => {},
+            savePushTokenToDb: async () => {},
+            deletePushTokenFromDb: async () => {},
         });
 
-        const { checkPushReceipts } = await import('../../../src/services/notifications/pushReceiptChecker.js');
+        const { checkPushReceipts } =
+            await import('../../../src/services/notifications/pushReceiptChecker.js');
         const receiptTokens = new Map([['receipt-1', 'ExpoPushToken[abc]']]);
 
         const promise = checkPushReceipts('user-1', 'visible', 'testEvent', receiptTokens);
@@ -69,16 +70,22 @@ describe('pushReceiptChecker', () => {
 
         installFetch((url) => {
             if (url.includes('/push/getReceipts')) {
-                return new Response(JSON.stringify({
-                    data: {
-                        'receipt-1': {
-                            status: 'error',
-                            message: 'DeviceNotRegistered',
-                            details: { error: 'DeviceNotRegistered', expoPushToken: 'ExpoPushToken[bad1]' },
+                return new Response(
+                    JSON.stringify({
+                        data: {
+                            'receipt-1': {
+                                status: 'error',
+                                message: 'DeviceNotRegistered',
+                                details: {
+                                    error: 'DeviceNotRegistered',
+                                    expoPushToken: 'ExpoPushToken[bad1]',
+                                },
+                            },
+                            'receipt-2': { status: 'ok' },
                         },
-                        'receipt-2': { status: 'ok' },
-                    },
-                }), { status: 200 });
+                    }),
+                    { status: 200 },
+                );
             }
             if (url.includes('/state/pawify-state')) {
                 return new Response(null, { status: 204 });
@@ -91,13 +98,14 @@ describe('pushReceiptChecker', () => {
                 deletedTokens.push(...tokens);
             },
             getPushTokensFromDb: async () => [],
-            deleteDevicePushTokenFromDb: async () => { },
-            deleteUserPushTokensFromDb: async () => { },
-            savePushTokenToDb: async () => { },
-            deletePushTokenFromDb: async () => { },
+            deleteDevicePushTokenFromDb: async () => {},
+            deleteUserPushTokensFromDb: async () => {},
+            savePushTokenToDb: async () => {},
+            deletePushTokenFromDb: async () => {},
         });
 
-        const { checkPushReceipts } = await import('../../../src/services/notifications/pushReceiptChecker.js');
+        const { checkPushReceipts } =
+            await import('../../../src/services/notifications/pushReceiptChecker.js');
         const receiptTokens = new Map([
             ['receipt-1', 'ExpoPushToken[bad1]'],
             ['receipt-2', 'ExpoPushToken[good2]'],
@@ -115,15 +123,18 @@ describe('pushReceiptChecker', () => {
 
         installFetch((url) => {
             if (url.includes('/push/getReceipts')) {
-                return new Response(JSON.stringify({
-                    data: {
-                        'receipt-1': {
-                            status: 'error',
-                            message: 'MessageTooBig',
-                            details: { error: 'MessageTooBig' },
+                return new Response(
+                    JSON.stringify({
+                        data: {
+                            'receipt-1': {
+                                status: 'error',
+                                message: 'MessageTooBig',
+                                details: { error: 'MessageTooBig' },
+                            },
                         },
-                    },
-                }), { status: 200 });
+                    }),
+                    { status: 200 },
+                );
             }
             if (url.includes('/state/pawify-state')) {
                 return new Response(null, { status: 204 });
@@ -136,13 +147,14 @@ describe('pushReceiptChecker', () => {
                 deletedTokens.push(...tokens);
             },
             getPushTokensFromDb: async () => [],
-            deleteDevicePushTokenFromDb: async () => { },
-            deleteUserPushTokensFromDb: async () => { },
-            savePushTokenToDb: async () => { },
-            deletePushTokenFromDb: async () => { },
+            deleteDevicePushTokenFromDb: async () => {},
+            deleteUserPushTokensFromDb: async () => {},
+            savePushTokenToDb: async () => {},
+            deletePushTokenFromDb: async () => {},
         });
 
-        const { checkPushReceipts } = await import('../../../src/services/notifications/pushReceiptChecker.js');
+        const { checkPushReceipts } =
+            await import('../../../src/services/notifications/pushReceiptChecker.js');
         const receiptTokens = new Map([['receipt-1', 'ExpoPushToken[abc]']]);
 
         const promise = checkPushReceipts('user-1', 'visible', 'testEvent', receiptTokens);

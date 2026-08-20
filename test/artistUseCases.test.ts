@@ -3,7 +3,10 @@ import { describe, it } from 'node:test';
 
 import { installFirebaseServiceFake } from './helpers/moduleFakes.js';
 import { createDefaultAssetPlanner } from './helpers/assetPlannerFakes.js';
-import type { ArtistWriteUseCaseDependencies, ArtistReadUseCaseDependencies } from '../src/features/artists/ports.js';
+import type {
+    ArtistWriteUseCaseDependencies,
+    ArtistReadUseCaseDependencies,
+} from '../src/features/artists/ports.js';
 import type { FollowedArtistSummary } from '../src/utils/types/followedArtistTypes.js';
 
 // Prevent Firebase store modules from loading and triggering firebaseInit.js
@@ -12,7 +15,8 @@ installFirebaseServiceFake();
 
 describe('artist use cases', () => {
     it('follows an artist, saves known releases, queues profile images, and notifies clients', async () => {
-        const { createFollowArtistUseCase } = await import('../src/features/artists/usecases/followArtist.js');
+        const { createFollowArtistUseCase } =
+            await import('../src/features/artists/usecases/followArtist.js');
         const saveCalls: Array<{
             artistId: string;
             releaseIds: string[];
@@ -96,34 +100,52 @@ describe('artist use cases', () => {
 
         await useCase('user-1', 'artist-1', 'source-token');
 
-        assert.deepEqual(saveCalls, [{
-            artistId: 'artist-1',
-            releaseIds: ['release-1', 'release-2'],
-            summary,
-        }]);
+        assert.deepEqual(saveCalls, [
+            {
+                artistId: 'artist-1',
+                releaseIds: ['release-1', 'release-2'],
+                summary,
+            },
+        ]);
         assert.equal(queueCalls.length, 1);
         assert.equal(queueCalls[0]?.scope, 'follow_artist');
-        assert.deepEqual(queueCalls[0]?.artistLookups, [{
-            artistId: 'artist-1',
-            artistName: 'Artist One',
-            discogsUrls: ['https://discogs.com/artist/1'],
-        }]);
+        assert.deepEqual(queueCalls[0]?.artistLookups, [
+            {
+                artistId: 'artist-1',
+                artistName: 'Artist One',
+                discogsUrls: ['https://discogs.com/artist/1'],
+            },
+        ]);
         assert.ok(queueCalls[0]?.ttl && queueCalls[0].ttl > 0);
         assert.deepEqual(notificationCalls, ['source-token']);
     });
 
     it('unfollows multiple artists and notifies clients', async () => {
-        const { createUnfollowArtistsUseCase } = await import('../src/features/artists/usecases/unfollowArtists.js');
+        const { createUnfollowArtistsUseCase } =
+            await import('../src/features/artists/usecases/unfollowArtists.js');
         const deleteCalls: string[] = [];
         let notifyCalled = false;
 
-        const deps: Pick<ArtistWriteUseCaseDependencies, 'artistFollowingRepository' | 'followingNotifier'> = {
+        const deps: Pick<
+            ArtistWriteUseCaseDependencies,
+            'artistFollowingRepository' | 'followingNotifier'
+        > = {
             artistFollowingRepository: {
-                async getFollowingArtistIds() { throw new Error('should not run'); },
-                async getFollowingState() { throw new Error('should not run'); },
-                async saveFollowedArtist() { throw new Error('should not run'); },
-                async saveFollowingArtistSummaries() { throw new Error('should not run'); },
-                async deleteFollowedArtist(_userId, artistId) { deleteCalls.push(artistId); },
+                async getFollowingArtistIds() {
+                    throw new Error('should not run');
+                },
+                async getFollowingState() {
+                    throw new Error('should not run');
+                },
+                async saveFollowedArtist() {
+                    throw new Error('should not run');
+                },
+                async saveFollowingArtistSummaries() {
+                    throw new Error('should not run');
+                },
+                async deleteFollowedArtist(_userId, artistId) {
+                    deleteCalls.push(artistId);
+                },
             },
             followingNotifier: {
                 async notifyFollowingChanged(_userId, sourcePushToken) {
@@ -141,7 +163,8 @@ describe('artist use cases', () => {
     });
 
     it('returns artist details and queues profile image task', async () => {
-        const { createGetArtistDetailsUseCase } = await import('../src/features/artists/usecases/getArtistDetails.js');
+        const { createGetArtistDetailsUseCase } =
+            await import('../src/features/artists/usecases/getArtistDetails.js');
         const fakeRequestDeduper = {
             async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
                 return worker();
@@ -160,7 +183,11 @@ describe('artist use cases', () => {
         };
         const deps: Pick<
             ArtistReadUseCaseDependencies,
-            'artistDetailsGateway' | 'artistProfileImageQueue' | 'assetPlanner' | 'cacheTtlGateway' | 'requestDeduper'
+            | 'artistDetailsGateway'
+            | 'artistProfileImageQueue'
+            | 'assetPlanner'
+            | 'cacheTtlGateway'
+            | 'requestDeduper'
         > = {
             assetPlanner: createDefaultAssetPlanner({
                 planArtistProfileImages: async () => ({ taskId: 'task-1', resolved: {} }),
@@ -170,14 +197,22 @@ describe('artist use cases', () => {
                     assert.equal(options?.skipTtlLookup, true);
                     return artist;
                 },
-                async getFollowedArtistSummary() { throw new Error('should not run'); },
+                async getFollowedArtistSummary() {
+                    throw new Error('should not run');
+                },
             },
             artistProfileImageQueue: {
-                queueArtistProfileImages() { throw new Error('should not run'); },
-                queueArtistProfileImagesWithLookups() { throw new Error('should not run'); },
+                queueArtistProfileImages() {
+                    throw new Error('should not run');
+                },
+                queueArtistProfileImagesWithLookups() {
+                    throw new Error('should not run');
+                },
             },
             cacheTtlGateway: {
-                async getArtistTtl() { return 500; },
+                async getArtistTtl() {
+                    return 500;
+                },
             },
             requestDeduper: fakeRequestDeduper,
         };
@@ -191,7 +226,8 @@ describe('artist use cases', () => {
     });
 
     it('returns null when artist is not found', async () => {
-        const { createGetArtistDetailsUseCase } = await import('../src/features/artists/usecases/getArtistDetails.js');
+        const { createGetArtistDetailsUseCase } =
+            await import('../src/features/artists/usecases/getArtistDetails.js');
         const fakeRequestDeduper = {
             async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
                 return worker();
@@ -199,19 +235,33 @@ describe('artist use cases', () => {
         };
         const deps: Pick<
             ArtistReadUseCaseDependencies,
-            'artistDetailsGateway' | 'artistProfileImageQueue' | 'assetPlanner' | 'cacheTtlGateway' | 'requestDeduper'
+            | 'artistDetailsGateway'
+            | 'artistProfileImageQueue'
+            | 'assetPlanner'
+            | 'cacheTtlGateway'
+            | 'requestDeduper'
         > = {
             assetPlanner: createDefaultAssetPlanner(),
             artistDetailsGateway: {
-                async getArtistDetails() { return null; },
-                async getFollowedArtistSummary() { throw new Error('should not run'); },
+                async getArtistDetails() {
+                    return null;
+                },
+                async getFollowedArtistSummary() {
+                    throw new Error('should not run');
+                },
             },
             artistProfileImageQueue: {
-                queueArtistProfileImages() { throw new Error('should not run'); },
-                queueArtistProfileImagesWithLookups() { throw new Error('should not run'); },
+                queueArtistProfileImages() {
+                    throw new Error('should not run');
+                },
+                queueArtistProfileImagesWithLookups() {
+                    throw new Error('should not run');
+                },
             },
             cacheTtlGateway: {
-                async getArtistTtl() { return undefined; },
+                async getArtistTtl() {
+                    return undefined;
+                },
             },
             requestDeduper: fakeRequestDeduper,
         };
@@ -224,11 +274,17 @@ describe('artist use cases', () => {
 
     describe('getFollowing', () => {
         it('returns artists and queues profile image task', async () => {
-            const { createGetFollowingUseCase } = await import('../src/features/artists/usecases/getFollowing.js');
+            const { createGetFollowingUseCase } =
+                await import('../src/features/artists/usecases/getFollowing.js');
             const fakeRequestDeduper = {
-                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
+                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
+                    return worker();
+                },
             };
-            const summaries: Record<string, import('../src/utils/types/followedArtistTypes.js').FollowedArtistSummary> = {
+            const summaries: Record<
+                string,
+                import('../src/utils/types/followedArtistTypes.js').FollowedArtistSummary
+            > = {
                 'artist-1': { id: 'artist-1', name: 'Artist One', refreshedAt: Date.now() },
                 'artist-2': { id: 'artist-2', name: 'Artist Two', refreshedAt: Date.now() },
             };
@@ -237,7 +293,11 @@ describe('artist use cases', () => {
 
             const deps: Pick<
                 ArtistReadUseCaseDependencies,
-                'artistDetailsGateway' | 'artistFollowingRepository' | 'artistProfileImageQueue' | 'assetPlanner' | 'requestDeduper'
+                | 'artistDetailsGateway'
+                | 'artistFollowingRepository'
+                | 'artistProfileImageQueue'
+                | 'assetPlanner'
+                | 'requestDeduper'
             > = {
                 assetPlanner: createDefaultAssetPlanner({
                     planArtistProfileImages: async ({ lookups, scope }) => {
@@ -247,24 +307,38 @@ describe('artist use cases', () => {
                     },
                 }),
                 artistDetailsGateway: {
-                    async getArtistDetails() { throw new Error('should not run'); },
-                    async getFollowedArtistSummary() { throw new Error('should not run'); },
+                    async getArtistDetails() {
+                        throw new Error('should not run');
+                    },
+                    async getFollowedArtistSummary() {
+                        throw new Error('should not run');
+                    },
                 },
                 artistFollowingRepository: {
-                    async getFollowingArtistIds() { throw new Error('should not run'); },
+                    async getFollowingArtistIds() {
+                        throw new Error('should not run');
+                    },
                     async getFollowingState() {
                         return {
                             artistIds: ['artist-1', 'artist-2'],
                             artistSummaries: summaries,
                         };
                     },
-                    async saveFollowedArtist() { throw new Error('should not run'); },
-                    async saveFollowingArtistSummaries() { },
-                    async deleteFollowedArtist() { throw new Error('should not run'); },
+                    async saveFollowedArtist() {
+                        throw new Error('should not run');
+                    },
+                    async saveFollowingArtistSummaries() {},
+                    async deleteFollowedArtist() {
+                        throw new Error('should not run');
+                    },
                 },
                 artistProfileImageQueue: {
-                    queueArtistProfileImages() { throw new Error('should not run'); },
-                    queueArtistProfileImagesWithLookups() { throw new Error('should not run'); },
+                    queueArtistProfileImages() {
+                        throw new Error('should not run');
+                    },
+                    queueArtistProfileImagesWithLookups() {
+                        throw new Error('should not run');
+                    },
                 },
                 requestDeduper: fakeRequestDeduper,
             };
@@ -281,11 +355,17 @@ describe('artist use cases', () => {
         });
 
         it('returns cached profile images immediately with no task when all are cached', async () => {
-            const { createGetFollowingUseCase } = await import('../src/features/artists/usecases/getFollowing.js');
+            const { createGetFollowingUseCase } =
+                await import('../src/features/artists/usecases/getFollowing.js');
             const fakeRequestDeduper = {
-                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
+                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
+                    return worker();
+                },
             };
-            const summaries: Record<string, import('../src/utils/types/followedArtistTypes.js').FollowedArtistSummary> = {
+            const summaries: Record<
+                string,
+                import('../src/utils/types/followedArtistTypes.js').FollowedArtistSummary
+            > = {
                 'artist-1': { id: 'artist-1', name: 'Artist One', refreshedAt: Date.now() },
                 'artist-2': { id: 'artist-2', name: 'Artist Two', refreshedAt: Date.now() },
             };
@@ -293,7 +373,11 @@ describe('artist use cases', () => {
 
             const deps: Pick<
                 ArtistReadUseCaseDependencies,
-                'artistDetailsGateway' | 'artistFollowingRepository' | 'artistProfileImageQueue' | 'assetPlanner' | 'requestDeduper'
+                | 'artistDetailsGateway'
+                | 'artistFollowingRepository'
+                | 'artistProfileImageQueue'
+                | 'assetPlanner'
+                | 'requestDeduper'
             > = {
                 assetPlanner: createDefaultAssetPlanner({
                     planArtistProfileImages: async () => ({
@@ -305,23 +389,35 @@ describe('artist use cases', () => {
                     }),
                 }),
                 artistDetailsGateway: {
-                    async getArtistDetails() { throw new Error('should not run'); },
-                    async getFollowedArtistSummary() { throw new Error('should not run'); },
+                    async getArtistDetails() {
+                        throw new Error('should not run');
+                    },
+                    async getFollowedArtistSummary() {
+                        throw new Error('should not run');
+                    },
                 },
                 artistFollowingRepository: {
-                    async getFollowingArtistIds() { throw new Error('should not run'); },
+                    async getFollowingArtistIds() {
+                        throw new Error('should not run');
+                    },
                     async getFollowingState() {
                         return {
                             artistIds: ['artist-1', 'artist-2'],
                             artistSummaries: summaries,
                         };
                     },
-                    async saveFollowedArtist() { throw new Error('should not run'); },
-                    async saveFollowingArtistSummaries() { },
-                    async deleteFollowedArtist() { throw new Error('should not run'); },
+                    async saveFollowedArtist() {
+                        throw new Error('should not run');
+                    },
+                    async saveFollowingArtistSummaries() {},
+                    async deleteFollowedArtist() {
+                        throw new Error('should not run');
+                    },
                 },
                 artistProfileImageQueue: {
-                    queueArtistProfileImages() { throw new Error('should not run'); },
+                    queueArtistProfileImages() {
+                        throw new Error('should not run');
+                    },
                     queueArtistProfileImagesWithLookups() {
                         queueCalled = true;
                         return 'profile-task-1';
@@ -343,32 +439,51 @@ describe('artist use cases', () => {
         });
 
         it('returns empty artists list and no task when following state has no artistIds', async () => {
-            const { createGetFollowingUseCase } = await import('../src/features/artists/usecases/getFollowing.js');
+            const { createGetFollowingUseCase } =
+                await import('../src/features/artists/usecases/getFollowing.js');
             const fakeRequestDeduper = {
-                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
+                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
+                    return worker();
+                },
             };
             let queueCalled = false;
 
             const deps: Pick<
                 ArtistReadUseCaseDependencies,
-                'artistDetailsGateway' | 'artistFollowingRepository' | 'artistProfileImageQueue' | 'assetPlanner' | 'requestDeduper'
+                | 'artistDetailsGateway'
+                | 'artistFollowingRepository'
+                | 'artistProfileImageQueue'
+                | 'assetPlanner'
+                | 'requestDeduper'
             > = {
                 assetPlanner: createDefaultAssetPlanner(),
                 artistDetailsGateway: {
-                    async getArtistDetails() { throw new Error('should not run'); },
-                    async getFollowedArtistSummary() { throw new Error('should not run'); },
+                    async getArtistDetails() {
+                        throw new Error('should not run');
+                    },
+                    async getFollowedArtistSummary() {
+                        throw new Error('should not run');
+                    },
                 },
                 artistFollowingRepository: {
-                    async getFollowingArtistIds() { throw new Error('should not run'); },
+                    async getFollowingArtistIds() {
+                        throw new Error('should not run');
+                    },
                     async getFollowingState() {
                         return { artistIds: [], artistSummaries: {} };
                     },
-                    async saveFollowedArtist() { throw new Error('should not run'); },
-                    async saveFollowingArtistSummaries() { },
-                    async deleteFollowedArtist() { throw new Error('should not run'); },
+                    async saveFollowedArtist() {
+                        throw new Error('should not run');
+                    },
+                    async saveFollowingArtistSummaries() {},
+                    async deleteFollowedArtist() {
+                        throw new Error('should not run');
+                    },
                 },
                 artistProfileImageQueue: {
-                    queueArtistProfileImages() { throw new Error('should not run'); },
+                    queueArtistProfileImages() {
+                        throw new Error('should not run');
+                    },
                     queueArtistProfileImagesWithLookups() {
                         queueCalled = true;
                         return 'profile-task-empty';
@@ -387,49 +502,73 @@ describe('artist use cases', () => {
         });
 
         it('refetches stale summaries and persists them, swallowing persistence errors', async () => {
-            const { createGetFollowingUseCase } = await import('../src/features/artists/usecases/getFollowing.js');
+            const { createGetFollowingUseCase } =
+                await import('../src/features/artists/usecases/getFollowing.js');
             const fakeRequestDeduper = {
-                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
+                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
+                    return worker();
+                },
             };
-            const staleSummary: import('../src/utils/types/followedArtistTypes.js').FollowedArtistSummary = {
-                id: 'artist-1',
-                name: 'Old Name',
-                refreshedAt: 1,
-            };
-            const freshSummary: import('../src/utils/types/followedArtistTypes.js').FollowedArtistSummary = {
-                id: 'artist-1',
-                name: 'Fresh Name',
-                refreshedAt: Date.now(),
-            };
-            const persistedSummaries: import('../src/utils/types/followedArtistTypes.js').FollowedArtistSummary[] = [];
+            const staleSummary: import('../src/utils/types/followedArtistTypes.js').FollowedArtistSummary =
+                {
+                    id: 'artist-1',
+                    name: 'Old Name',
+                    refreshedAt: 1,
+                };
+            const freshSummary: import('../src/utils/types/followedArtistTypes.js').FollowedArtistSummary =
+                {
+                    id: 'artist-1',
+                    name: 'Fresh Name',
+                    refreshedAt: Date.now(),
+                };
+            const persistedSummaries: import('../src/utils/types/followedArtistTypes.js').FollowedArtistSummary[] =
+                [];
 
             const deps: Pick<
                 ArtistReadUseCaseDependencies,
-                'artistDetailsGateway' | 'artistFollowingRepository' | 'artistProfileImageQueue' | 'assetPlanner' | 'requestDeduper'
+                | 'artistDetailsGateway'
+                | 'artistFollowingRepository'
+                | 'artistProfileImageQueue'
+                | 'assetPlanner'
+                | 'requestDeduper'
             > = {
                 assetPlanner: createDefaultAssetPlanner(),
                 artistDetailsGateway: {
-                    async getArtistDetails() { throw new Error('should not run'); },
-                    async getFollowedArtistSummary() { return freshSummary; },
+                    async getArtistDetails() {
+                        throw new Error('should not run');
+                    },
+                    async getFollowedArtistSummary() {
+                        return freshSummary;
+                    },
                 },
                 artistFollowingRepository: {
-                    async getFollowingArtistIds() { throw new Error('should not run'); },
+                    async getFollowingArtistIds() {
+                        throw new Error('should not run');
+                    },
                     async getFollowingState() {
                         return {
                             artistIds: ['artist-1'],
                             artistSummaries: { 'artist-1': staleSummary },
                         };
                     },
-                    async saveFollowedArtist() { throw new Error('should not run'); },
+                    async saveFollowedArtist() {
+                        throw new Error('should not run');
+                    },
                     async saveFollowingArtistSummaries(_userId, summaries) {
                         persistedSummaries.push(...summaries);
                         throw new Error('persistence failed — should be swallowed');
                     },
-                    async deleteFollowedArtist() { throw new Error('should not run'); },
+                    async deleteFollowedArtist() {
+                        throw new Error('should not run');
+                    },
                 },
                 artistProfileImageQueue: {
-                    queueArtistProfileImages() { throw new Error('should not run'); },
-                    queueArtistProfileImagesWithLookups() { return 'profile-task-1'; },
+                    queueArtistProfileImages() {
+                        throw new Error('should not run');
+                    },
+                    queueArtistProfileImagesWithLookups() {
+                        return 'profile-task-1';
+                    },
                 },
                 requestDeduper: fakeRequestDeduper,
             };
@@ -447,16 +586,22 @@ describe('artist use cases', () => {
 
     describe('searchArtists', () => {
         it('returns search results with profile image task ID', async () => {
-            const { createSearchArtistsUseCase } = await import('../src/features/artists/usecases/searchArtists.js');
+            const { createSearchArtistsUseCase } =
+                await import('../src/features/artists/usecases/searchArtists.js');
             const fakeRequestDeduper = {
-                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
+                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
+                    return worker();
+                },
             };
             let plannedScope = '';
             let plannedLookups: Array<{ artistId: string; artistName?: string }> = [];
 
             const deps: Pick<
                 ArtistReadUseCaseDependencies,
-                'artistProfileImageQueue' | 'artistSearchGateway' | 'assetPlanner' | 'requestDeduper'
+                | 'artistProfileImageQueue'
+                | 'artistSearchGateway'
+                | 'assetPlanner'
+                | 'requestDeduper'
             > = {
                 assetPlanner: createDefaultAssetPlanner({
                     planArtistProfileImages: async ({ lookups, scope }) => {
@@ -466,15 +611,39 @@ describe('artist use cases', () => {
                     },
                 }),
                 artistProfileImageQueue: {
-                    queueArtistProfileImages() { throw new Error('should not run'); },
-                    queueArtistProfileImagesWithLookups() { throw new Error('should not run'); },
+                    queueArtistProfileImages() {
+                        throw new Error('should not run');
+                    },
+                    queueArtistProfileImagesWithLookups() {
+                        throw new Error('should not run');
+                    },
                 },
                 artistSearchGateway: {
                     async searchArtists(_userId, _query, _offset, _limit) {
                         return {
                             artists: [
-                                { id: 'artist-1', name: 'Band One', type: 'Group', disambiguation: null, aliases: [], members: [], externalLinks: [], lifeSpan: { begin: null, end: null, ended: false }, beginArea: { name: null } },
-                                { id: 'artist-2', name: 'Band Two', type: 'Group', disambiguation: null, aliases: [], members: [], externalLinks: [], lifeSpan: { begin: null, end: null, ended: false }, beginArea: { name: null } },
+                                {
+                                    id: 'artist-1',
+                                    name: 'Band One',
+                                    type: 'Group',
+                                    disambiguation: null,
+                                    aliases: [],
+                                    members: [],
+                                    externalLinks: [],
+                                    lifeSpan: { begin: null, end: null, ended: false },
+                                    beginArea: { name: null },
+                                },
+                                {
+                                    id: 'artist-2',
+                                    name: 'Band Two',
+                                    type: 'Group',
+                                    disambiguation: null,
+                                    aliases: [],
+                                    members: [],
+                                    externalLinks: [],
+                                    lifeSpan: { begin: null, end: null, ended: false },
+                                    beginArea: { name: null },
+                                },
                             ],
                             count: 2,
                             offset: 0,
@@ -497,15 +666,21 @@ describe('artist use cases', () => {
         });
 
         it('returns cached profile images immediately with no task when all are cached', async () => {
-            const { createSearchArtistsUseCase } = await import('../src/features/artists/usecases/searchArtists.js');
+            const { createSearchArtistsUseCase } =
+                await import('../src/features/artists/usecases/searchArtists.js');
             const fakeRequestDeduper = {
-                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
+                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
+                    return worker();
+                },
             };
             let queueCalled = false;
 
             const deps: Pick<
                 ArtistReadUseCaseDependencies,
-                'artistProfileImageQueue' | 'artistSearchGateway' | 'assetPlanner' | 'requestDeduper'
+                | 'artistProfileImageQueue'
+                | 'artistSearchGateway'
+                | 'assetPlanner'
+                | 'requestDeduper'
             > = {
                 assetPlanner: createDefaultAssetPlanner({
                     planArtistProfileImages: async () => ({
@@ -517,7 +692,9 @@ describe('artist use cases', () => {
                     }),
                 }),
                 artistProfileImageQueue: {
-                    queueArtistProfileImages() { throw new Error('should not run'); },
+                    queueArtistProfileImages() {
+                        throw new Error('should not run');
+                    },
                     queueArtistProfileImagesWithLookups() {
                         queueCalled = true;
                         return 'search-task-1';
@@ -527,8 +704,28 @@ describe('artist use cases', () => {
                     async searchArtists(_userId, _query, _offset, _limit) {
                         return {
                             artists: [
-                                { id: 'artist-1', name: 'Band One', type: 'Group', disambiguation: null, aliases: [], members: [], externalLinks: [], lifeSpan: { begin: null, end: null, ended: false }, beginArea: { name: null } },
-                                { id: 'artist-2', name: 'Band Two', type: 'Group', disambiguation: null, aliases: [], members: [], externalLinks: [], lifeSpan: { begin: null, end: null, ended: false }, beginArea: { name: null } },
+                                {
+                                    id: 'artist-1',
+                                    name: 'Band One',
+                                    type: 'Group',
+                                    disambiguation: null,
+                                    aliases: [],
+                                    members: [],
+                                    externalLinks: [],
+                                    lifeSpan: { begin: null, end: null, ended: false },
+                                    beginArea: { name: null },
+                                },
+                                {
+                                    id: 'artist-2',
+                                    name: 'Band Two',
+                                    type: 'Group',
+                                    disambiguation: null,
+                                    aliases: [],
+                                    members: [],
+                                    externalLinks: [],
+                                    lifeSpan: { begin: null, end: null, ended: false },
+                                    beginArea: { name: null },
+                                },
                             ],
                             count: 2,
                             offset: 0,
@@ -551,15 +748,21 @@ describe('artist use cases', () => {
         });
 
         it('returns cached profile images immediately and queues only pending artists', async () => {
-            const { createSearchArtistsUseCase } = await import('../src/features/artists/usecases/searchArtists.js');
+            const { createSearchArtistsUseCase } =
+                await import('../src/features/artists/usecases/searchArtists.js');
             const fakeRequestDeduper = {
-                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> { return worker(); },
+                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
+                    return worker();
+                },
             };
             let plannedLookups: Array<{ artistId: string }> = [];
 
             const deps: Pick<
                 ArtistReadUseCaseDependencies,
-                'artistProfileImageQueue' | 'artistSearchGateway' | 'assetPlanner' | 'requestDeduper'
+                | 'artistProfileImageQueue'
+                | 'artistSearchGateway'
+                | 'assetPlanner'
+                | 'requestDeduper'
             > = {
                 assetPlanner: createDefaultAssetPlanner({
                     planArtistProfileImages: async ({ lookups }) => {
@@ -571,15 +774,39 @@ describe('artist use cases', () => {
                     },
                 }),
                 artistProfileImageQueue: {
-                    queueArtistProfileImages() { throw new Error('should not run'); },
-                    queueArtistProfileImagesWithLookups() { throw new Error('should not run'); },
+                    queueArtistProfileImages() {
+                        throw new Error('should not run');
+                    },
+                    queueArtistProfileImagesWithLookups() {
+                        throw new Error('should not run');
+                    },
                 },
                 artistSearchGateway: {
                     async searchArtists(_userId, _query, _offset, _limit) {
                         return {
                             artists: [
-                                { id: 'artist-1', name: 'Band One', type: 'Group', disambiguation: null, aliases: [], members: [], externalLinks: [], lifeSpan: { begin: null, end: null, ended: false }, beginArea: { name: null } },
-                                { id: 'artist-2', name: 'Band Two', type: 'Group', disambiguation: null, aliases: [], members: [], externalLinks: [], lifeSpan: { begin: null, end: null, ended: false }, beginArea: { name: null } },
+                                {
+                                    id: 'artist-1',
+                                    name: 'Band One',
+                                    type: 'Group',
+                                    disambiguation: null,
+                                    aliases: [],
+                                    members: [],
+                                    externalLinks: [],
+                                    lifeSpan: { begin: null, end: null, ended: false },
+                                    beginArea: { name: null },
+                                },
+                                {
+                                    id: 'artist-2',
+                                    name: 'Band Two',
+                                    type: 'Group',
+                                    disambiguation: null,
+                                    aliases: [],
+                                    members: [],
+                                    externalLinks: [],
+                                    lifeSpan: { begin: null, end: null, ended: false },
+                                    beginArea: { name: null },
+                                },
                             ],
                             count: 2,
                             offset: 0,

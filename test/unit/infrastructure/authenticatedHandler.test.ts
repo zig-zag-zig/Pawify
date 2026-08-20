@@ -21,14 +21,18 @@ describe('authenticatedHandler', () => {
                 assert.equal(req.headers.authorization, 'Bearer test-token');
                 return 'test-user-123';
             },
-            deleteUserAccount: async () => { },
+            deleteUserAccount: async () => {},
             getDocumentRefAndSnapshot: async () => ({
                 snapShot: {},
-                ref: { get: async () => ({ exists: false, data: () => null }), set: async () => { } },
+                ref: {
+                    get: async () => ({ exists: false, data: () => null }),
+                    set: async () => {},
+                },
             }),
         });
 
-        const { authenticatedHandler } = await import('../../../src/infrastructure/http/authenticatedHandler.js');
+        const { authenticatedHandler } =
+            await import('../../../src/infrastructure/http/authenticatedHandler.js');
 
         const handler = authenticatedHandler('testEndpoint', async ({ userId }) => {
             assert.equal(userId, 'test-user-123');
@@ -36,10 +40,12 @@ describe('authenticatedHandler', () => {
 
         const res = {
             statusCode: 200,
-            setHeader: () => { },
-            status: function () { return this; },
-            send: () => { },
-            json: () => { },
+            setHeader: () => {},
+            status: function () {
+                return this;
+            },
+            send: () => {},
+            json: () => {},
         } as unknown as Response;
 
         const req = {
@@ -49,7 +55,7 @@ describe('authenticatedHandler', () => {
             headers: { authorization: 'Bearer test-token' },
         } as unknown as Request;
 
-        await handler(req, res, () => { });
+        await handler(req, res, () => {});
 
         assert.equal(checkAuthCalled, true);
     });

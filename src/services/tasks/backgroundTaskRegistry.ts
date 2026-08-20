@@ -5,10 +5,7 @@ import type {
     BackgroundTaskResultPayload,
     TaskResultResponse,
 } from '../../utils/types/taskTypes.js';
-import {
-    hasUndefinedValue,
-    toTaskResponse,
-} from './taskResultSerialization.js';
+import { hasUndefinedValue, toTaskResponse } from './taskResultSerialization.js';
 
 export type TaskLookupResult =
     | { status: 'missing' }
@@ -43,7 +40,7 @@ export class BackgroundTaskRegistry {
     constructor(
         private readonly resultRetentionMs: number,
         private readonly logger: Logger,
-    ) { }
+    ) {}
 
     taskEntries(): IterableIterator<[string, BackgroundTaskRecord<BackgroundTaskResultPayload>]> {
         return this.tasks.entries();
@@ -107,13 +104,16 @@ export class BackgroundTaskRegistry {
                     return activeTaskId;
                 }
 
-                this.logger.warn('stale active dedupe task detected, replaying work for duplicate request', {
-                    dedupeKey,
-                    taskId: activeTaskId,
-                    taskType: task.type,
-                    ageMs,
-                    retentionMs: this.resultRetentionMs,
-                });
+                this.logger.warn(
+                    'stale active dedupe task detected, replaying work for duplicate request',
+                    {
+                        dedupeKey,
+                        taskId: activeTaskId,
+                        taskType: task.type,
+                        ageMs,
+                        retentionMs: this.resultRetentionMs,
+                    },
+                );
             } else if (task) {
                 this.linkTaskTree(task, userId);
             }
@@ -163,10 +163,15 @@ export class BackgroundTaskRegistry {
         };
     }
 
-    addTaskUser(taskId: string, userId: string): {
-        task: BackgroundTaskRecord<BackgroundTaskResultPayload>;
-        added: boolean;
-    } | undefined {
+    addTaskUser(
+        taskId: string,
+        userId: string,
+    ):
+        | {
+              task: BackgroundTaskRecord<BackgroundTaskResultPayload>;
+              added: boolean;
+          }
+        | undefined {
         const task = this.tasks.get(taskId);
         if (!task) {
             return undefined;
@@ -178,7 +183,10 @@ export class BackgroundTaskRegistry {
         };
     }
 
-    private linkUser(task: BackgroundTaskRecord<BackgroundTaskResultPayload>, userId: string): boolean {
+    private linkUser(
+        task: BackgroundTaskRecord<BackgroundTaskResultPayload>,
+        userId: string,
+    ): boolean {
         if (task.userIds.includes(userId)) {
             return false;
         }
@@ -187,7 +195,10 @@ export class BackgroundTaskRegistry {
         return true;
     }
 
-    private linkTaskTree(task: BackgroundTaskRecord<BackgroundTaskResultPayload>, userId: string): boolean {
+    private linkTaskTree(
+        task: BackgroundTaskRecord<BackgroundTaskResultPayload>,
+        userId: string,
+    ): boolean {
         const added = this.linkUser(task, userId);
 
         for (const subtaskId of task.subtaskIds ?? []) {
@@ -200,7 +211,9 @@ export class BackgroundTaskRegistry {
         return added;
     }
 
-    private taskOrSubtasksHaveUndefinedResult(task: BackgroundTaskRecord<BackgroundTaskResultPayload>): boolean {
+    private taskOrSubtasksHaveUndefinedResult(
+        task: BackgroundTaskRecord<BackgroundTaskResultPayload>,
+    ): boolean {
         if (hasUndefinedValue(task.result)) {
             return true;
         }

@@ -11,7 +11,8 @@ export { hashOtp, isOtpMatch };
 const OTP_EXPIRY_MINUTES = 15;
 const MAX_OTP_ATTEMPTS = 3;
 const logger = createLogger('services.account.passwordResetOtp');
-const OTP_DELIVERY_FAILED_MESSAGE = 'Could not send OTP. Please check the email address and try again.';
+const OTP_DELIVERY_FAILED_MESSAGE =
+    'Could not send OTP. Please check the email address and try again.';
 const RESET_REQUEST_NOT_FOUND_MESSAGE = 'Password reset request was not found or has expired.';
 const OTP_ATTEMPTS_EXCEEDED_MESSAGE = 'Too many incorrect OTP attempts. Please request a new OTP.';
 
@@ -48,7 +49,7 @@ export const sendOtp = async (email: string): Promise<void> => {
         try {
             await sendOtpEmail(email, otp, OTP_EXPIRY_MINUTES);
         } catch (error) {
-            await resetRef.delete().catch(() => { });
+            await resetRef.delete().catch(() => {});
             throw error;
         }
     } catch (error) {

@@ -24,5 +24,7 @@ const getReleaseSortTime = (release: NewRelease): number => {
 };
 
 export const sortNewReleasesNewestFirst = (releases: NewRelease[]): NewRelease[] => {
-    return [...releases].sort((left, right) => getReleaseSortTime(right) - getReleaseSortTime(left));
+    return [...releases].sort(
+        (left, right) => getReleaseSortTime(right) - getReleaseSortTime(left),
+    );
 };

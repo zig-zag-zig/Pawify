@@ -14,7 +14,9 @@ export const hashOtp = (otp: string): string => {
 export const constantTimeEquals = (left: string, right: string): boolean => {
     const leftBuffer = Buffer.from(left);
     const rightBuffer = Buffer.from(right);
-    return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer);
+    return (
+        leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer)
+    );
 };
 
 export const isOtpMatch = (resetData: Record<string, unknown>, otp: string): boolean => {
@@ -24,5 +26,7 @@ export const isOtpMatch = (resetData: Record<string, unknown>, otp: string): boo
         return constantTimeEquals(resetData.otpHash, hashedOtp);
     }
 
-    return typeof resetData.otp === 'string' && constantTimeEquals(hashOtp(resetData.otp), hashedOtp);
+    return (
+        typeof resetData.otp === 'string' && constantTimeEquals(hashOtp(resetData.otp), hashedOtp)
+    );
 };

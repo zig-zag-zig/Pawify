@@ -15,15 +15,17 @@ const createFakeDependencies = (
     overrides: Partial<AuthUseCaseDependencies> = {},
 ): AuthUseCaseDependencies => ({
     accountGateway: {
-        async sendOtp() { },
-        async verifyOtp() { return 'token-123'; },
-        async revokeToken() { },
-        async changeEmail() { },
-        async deleteUserAccount() { },
+        async sendOtp() {},
+        async verifyOtp() {
+            return 'token-123';
+        },
+        async revokeToken() {},
+        async changeEmail() {},
+        async deleteUserAccount() {},
         ...overrides.accountGateway,
     },
     userAccountCache: {
-        async deleteFollowingCache() { },
+        async deleteFollowingCache() {},
         ...overrides.userAccountCache,
     },
 });
@@ -35,7 +37,9 @@ describe('auth use cases', () => {
             const deps = createFakeDependencies({
                 accountGateway: {
                     ...createFakeDependencies().accountGateway,
-                    async sendOtp(email) { calledWith = email; },
+                    async sendOtp(email) {
+                        calledWith = email;
+                    },
                 },
             });
             const useCase = createSendOtpUseCase(deps);
@@ -48,15 +52,18 @@ describe('auth use cases', () => {
             const deps = createFakeDependencies({
                 accountGateway: {
                     ...createFakeDependencies().accountGateway,
-                    async sendOtp() { throw new Error('User not found'); },
+                    async sendOtp() {
+                        throw new Error('User not found');
+                    },
                 },
             });
             const useCase = createSendOtpUseCase(deps);
 
             await assert.rejects(
                 () => useCase('bad@example.com'),
-                (error) => error instanceof BadRequestError
-                    && error.message === 'Invalid or expired password reset request.',
+                (error) =>
+                    error instanceof BadRequestError &&
+                    error.message === 'Invalid or expired password reset request.',
             );
         });
 
@@ -64,15 +71,17 @@ describe('auth use cases', () => {
             const deps = createFakeDependencies({
                 accountGateway: {
                     ...createFakeDependencies().accountGateway,
-                    async sendOtp() { throw new Error('Service unavailable'); },
+                    async sendOtp() {
+                        throw new Error('Service unavailable');
+                    },
                 },
             });
             const useCase = createSendOtpUseCase(deps);
 
             await assert.rejects(
                 () => useCase('user@example.com'),
-                (error) => error instanceof BadRequestError
-                    && error.message === 'Service unavailable',
+                (error) =>
+                    error instanceof BadRequestError && error.message === 'Service unavailable',
             );
         });
     });
@@ -82,7 +91,9 @@ describe('auth use cases', () => {
             const deps = createFakeDependencies({
                 accountGateway: {
                     ...createFakeDependencies().accountGateway,
-                    async verifyOtp() { return 'reset-token-abc'; },
+                    async verifyOtp() {
+                        return 'reset-token-abc';
+                    },
                 },
             });
             const useCase = createVerifyOtpUseCase(deps);
@@ -95,7 +106,9 @@ describe('auth use cases', () => {
             const deps = createFakeDependencies({
                 accountGateway: {
                     ...createFakeDependencies().accountGateway,
-                    async verifyOtp() { throw new Error('Invalid OTP'); },
+                    async verifyOtp() {
+                        throw new Error('Invalid OTP');
+                    },
                 },
             });
             const useCase = createVerifyOtpUseCase(deps);
@@ -113,7 +126,9 @@ describe('auth use cases', () => {
             const deps = createFakeDependencies({
                 accountGateway: {
                     ...createFakeDependencies().accountGateway,
-                    async revokeToken(userId) { calledWith = userId; },
+                    async revokeToken(userId) {
+                        calledWith = userId;
+                    },
                 },
             });
             const useCase = createRevokeTokenUseCase(deps);
@@ -126,15 +141,17 @@ describe('auth use cases', () => {
             const deps = createFakeDependencies({
                 accountGateway: {
                     ...createFakeDependencies().accountGateway,
-                    async revokeToken() { throw new Error('Session not found'); },
+                    async revokeToken() {
+                        throw new Error('Session not found');
+                    },
                 },
             });
             const useCase = createRevokeTokenUseCase(deps);
 
             await assert.rejects(
                 () => useCase('user-1'),
-                (error) => error instanceof BadRequestError
-                    && error.message === 'Session not found',
+                (error) =>
+                    error instanceof BadRequestError && error.message === 'Session not found',
             );
         });
     });
@@ -145,7 +162,9 @@ describe('auth use cases', () => {
             const deps = createFakeDependencies({
                 accountGateway: {
                     ...createFakeDependencies().accountGateway,
-                    async changeEmail(userId, email) { calls.push({ userId, email }); },
+                    async changeEmail(userId, email) {
+                        calls.push({ userId, email });
+                    },
                 },
             });
             const useCase = createChangeEmailUseCase(deps);
@@ -158,15 +177,17 @@ describe('auth use cases', () => {
             const deps = createFakeDependencies({
                 accountGateway: {
                     ...createFakeDependencies().accountGateway,
-                    async changeEmail() { throw new Error('Email already in use'); },
+                    async changeEmail() {
+                        throw new Error('Email already in use');
+                    },
                 },
             });
             const useCase = createChangeEmailUseCase(deps);
 
             await assert.rejects(
                 () => useCase('user-1', 'dup@example.com'),
-                (error) => error instanceof BadRequestError
-                    && error.message === 'Email already in use',
+                (error) =>
+                    error instanceof BadRequestError && error.message === 'Email already in use',
             );
         });
     });
@@ -177,10 +198,14 @@ describe('auth use cases', () => {
             const deps = createFakeDependencies({
                 accountGateway: {
                     ...createFakeDependencies().accountGateway,
-                    async deleteUserAccount(userId) { calls.push(`delete:${userId}`); },
+                    async deleteUserAccount(userId) {
+                        calls.push(`delete:${userId}`);
+                    },
                 },
                 userAccountCache: {
-                    async deleteFollowingCache(userId) { calls.push(`clearCache:${userId}`); },
+                    async deleteFollowingCache(userId) {
+                        calls.push(`clearCache:${userId}`);
+                    },
                 },
             });
             const useCase = createDeleteUserAccountUseCase(deps);
@@ -193,7 +218,9 @@ describe('auth use cases', () => {
             const deps = createFakeDependencies({
                 accountGateway: {
                     ...createFakeDependencies().accountGateway,
-                    async deleteUserAccount() { throw new Error('Cannot delete admin'); },
+                    async deleteUserAccount() {
+                        throw new Error('Cannot delete admin');
+                    },
                 },
             });
             const useCase = createDeleteUserAccountUseCase(deps);

@@ -13,9 +13,14 @@ import type { AssetCachePartitioner } from '../src/services/cache/partitionCache
 
 installFirebaseServiceFake();
 
-const createQueuePorts = (calls: { queueArtistProfileImagesWithLookups: number; queueNewReleaseCovers: number }) => {
+const createQueuePorts = (calls: {
+    queueArtistProfileImagesWithLookups: number;
+    queueNewReleaseCovers: number;
+}) => {
     const artistProfileImageQueue: ArtistProfileImageQueuePort = {
-        queueArtistProfileImages() { return 'task'; },
+        queueArtistProfileImages() {
+            return 'task';
+        },
         queueArtistProfileImagesWithLookups() {
             calls.queueArtistProfileImagesWithLookups += 1;
             return 'profile-task';
@@ -23,14 +28,22 @@ const createQueuePorts = (calls: { queueArtistProfileImagesWithLookups: number; 
     };
     const releaseTaskQueue: ReleaseTaskQueuePort = {
         addTaskUser() {},
-        queueArtistReleaseGroupCovers() { return 'rg-covers'; },
-        queueReleaseGroupReleaseCovers() { return 'rg-releases'; },
+        queueArtistReleaseGroupCovers() {
+            return 'rg-covers';
+        },
+        queueReleaseGroupReleaseCovers() {
+            return 'rg-releases';
+        },
         queueNewReleaseCovers() {
             calls.queueNewReleaseCovers += 1;
             return 'new-covers';
         },
-        queueReleaseTrackLyrics() { return 'lyrics'; },
-        queueReleaseArtistProfileImages() { return 'release-profile'; },
+        queueReleaseTrackLyrics() {
+            return 'lyrics';
+        },
+        queueReleaseArtistProfileImages() {
+            return 'release-profile';
+        },
     };
     return { artistProfileImageQueue, releaseTaskQueue };
 };
@@ -39,15 +52,19 @@ const release = {
     id: 'release-1',
     title: 'Test',
     'artist-credit': [{ id: 'artist-1', name: 'Artist One', joinphrase: null }],
-    media: [{
-        'track-count': 1,
-        tracks: [{
-            id: 'track-1',
-            title: 'Song One',
-            'artist-credit': [{ id: 'artist-1', name: 'Artist One', joinphrase: null }],
-            length: 100,
-        }],
-    }],
+    media: [
+        {
+            'track-count': 1,
+            tracks: [
+                {
+                    id: 'track-1',
+                    title: 'Song One',
+                    'artist-credit': [{ id: 'artist-1', name: 'Artist One', joinphrase: null }],
+                    length: 100,
+                },
+            ],
+        },
+    ],
 } as any;
 
 describe('background asset planners', () => {
@@ -148,13 +165,27 @@ describe('background asset planners', () => {
                 ...createQueuePorts(calls),
                 cacheAssetPartitioner: {
                     ...createDefaultCacheAssetPartitioner(),
-                    partitionArtistProfileImages: async () => ({ resolved: {}, pending: [{ artistId: 'artist-1' }] }),
-                    partitionTrackLyrics: async (_releaseId, tracks) => ({ resolved: {}, pending: tracks }),
+                    partitionArtistProfileImages: async () => ({
+                        resolved: {},
+                        pending: [{ artistId: 'artist-1' }],
+                    }),
+                    partitionTrackLyrics: async (_releaseId, tracks) => ({
+                        resolved: {},
+                        pending: tracks,
+                    }),
                 },
             });
 
-            const lyricsPlan = await planner.planReleaseTrackLyrics({ userId: 'user-1', release, ttl: undefined });
-            const imagesPlan = await planner.planReleaseArtistProfileImages({ userId: 'user-1', release, ttl: undefined });
+            const lyricsPlan = await planner.planReleaseTrackLyrics({
+                userId: 'user-1',
+                release,
+                ttl: undefined,
+            });
+            const imagesPlan = await planner.planReleaseArtistProfileImages({
+                userId: 'user-1',
+                release,
+                ttl: undefined,
+            });
 
             assert.equal(lyricsPlan.taskId, 'lyrics');
             assert.equal(imagesPlan.taskId, 'release-profile');
@@ -163,10 +194,20 @@ describe('background asset planners', () => {
 
     describe('task key namespace', () => {
         it('prefixes v2 keys and leaves v1 keys untouched', async () => {
-            const { withTaskKeyNamespace } = await import('../src/services/backgroundTaskWorkers.js');
-            assert.equal(withTaskKeyNamespace(undefined, 'artist_profile_images:following:a,b'), 'artist_profile_images:following:a,b');
-            assert.equal(withTaskKeyNamespace('v1', 'artist_profile_images:following:a,b'), 'artist_profile_images:following:a,b');
-            assert.equal(withTaskKeyNamespace('v2', 'artist_profile_images:following:a,b'), 'v2:artist_profile_images:following:a,b');
+            const { withTaskKeyNamespace } =
+                await import('../src/services/backgroundTaskWorkers.js');
+            assert.equal(
+                withTaskKeyNamespace(undefined, 'artist_profile_images:following:a,b'),
+                'artist_profile_images:following:a,b',
+            );
+            assert.equal(
+                withTaskKeyNamespace('v1', 'artist_profile_images:following:a,b'),
+                'artist_profile_images:following:a,b',
+            );
+            assert.equal(
+                withTaskKeyNamespace('v2', 'artist_profile_images:following:a,b'),
+                'v2:artist_profile_images:following:a,b',
+            );
         });
     });
 });

@@ -29,20 +29,23 @@ export const runHttpRequestScope = async ({
     const requestId = resolveRequestId(req);
     res.setHeader('x-request-id', requestId);
 
-    await runWithRequestContext({
-        requestId,
-        endpoint: endpointName,
-        method: req.method,
-        path: req.originalUrl,
-    }, async () => {
-        const startedAt = Date.now();
-        logger.debug(`${requestKind} request started`);
+    await runWithRequestContext(
+        {
+            requestId,
+            endpoint: endpointName,
+            method: req.method,
+            path: req.originalUrl,
+        },
+        async () => {
+            const startedAt = Date.now();
+            logger.debug(`${requestKind} request started`);
 
-        await handler();
+            await handler();
 
-        logger.debug(`${requestKind} request completed`, {
-            statusCode: res.statusCode,
-            durationMs: Date.now() - startedAt,
-        });
-    });
+            logger.debug(`${requestKind} request completed`, {
+                statusCode: res.statusCode,
+                durationMs: Date.now() - startedAt,
+            });
+        },
+    );
 };

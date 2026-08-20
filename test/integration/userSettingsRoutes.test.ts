@@ -13,7 +13,8 @@ installAllFakes();
 let baseUrl: string;
 
 beforeEach(async () => {
-    const { userSettingsRoutes } = await import('../../src/features/userSettings/userSettingsRoutes.js');
+    const { userSettingsRoutes } =
+        await import('../../src/features/userSettings/userSettingsRoutes.js');
     baseUrl = await createIntegrationTestApp(userSettingsRoutes);
 });
 
@@ -43,7 +44,10 @@ describe('user settings route integration', () => {
             const response = await fetch(`${baseUrl}/v1/updateReleaseNotificationSettings`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ oldestReleaseDateMonths: null, includeReleasesWithoutDate: true }),
+                body: JSON.stringify({
+                    oldestReleaseDateMonths: null,
+                    includeReleasesWithoutDate: true,
+                }),
             });
             assert.equal(response.status, 401);
         });
@@ -61,7 +65,10 @@ describe('user settings route integration', () => {
             const response = await fetch(`${baseUrl}/v1/updateReleaseNotificationSettings`, {
                 method: 'POST',
                 headers: { ...authHeader, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ oldestReleaseDateMonths: null, includeReleasesWithoutDate: 'no' }),
+                body: JSON.stringify({
+                    oldestReleaseDateMonths: null,
+                    includeReleasesWithoutDate: 'no',
+                }),
             });
             assert.equal(response.status, 400);
         });

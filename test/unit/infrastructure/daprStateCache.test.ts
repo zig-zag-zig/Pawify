@@ -18,7 +18,10 @@ describe('Dapr state cache migration', () => {
             assert.ok(parsed.pathname.startsWith(statePrefix));
 
             if (init.method === 'POST') {
-                const items = JSON.parse(String(init.body)) as Array<{ key: string; value: string }>;
+                const items = JSON.parse(String(init.body)) as Array<{
+                    key: string;
+                    value: string;
+                }>;
                 savedItems.push(...items);
                 items.forEach((item) => state.set(item.key, item.value));
                 return new Response(null, { status: 204 });
@@ -39,7 +42,8 @@ describe('Dapr state cache migration', () => {
     });
 
     it('round trips simple and undefined cache values with TTL metadata', async () => {
-        const { getCachedData, replaceCachedData } = await import('../../../src/services/cacheService.js');
+        const { getCachedData, replaceCachedData } =
+            await import('../../../src/services/cacheService.js');
 
         await replaceCachedData('simple', { name: 'test' }, 2);
         assert.deepEqual(await getCachedData('simple'), { name: 'test' });
@@ -50,7 +54,8 @@ describe('Dapr state cache migration', () => {
     });
 
     it('chunks large values and deletes partial chunked entries', async () => {
-        const { deleteCachedData, getCachedData, replaceCachedData } = await import('../../../src/services/cacheService.js');
+        const { deleteCachedData, getCachedData, replaceCachedData } =
+            await import('../../../src/services/cacheService.js');
         const largeValue = 'x'.repeat(1024 * 1024 + 128);
 
         await replaceCachedData('large', largeValue, 1);

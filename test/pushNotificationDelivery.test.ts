@@ -34,7 +34,8 @@ describe('push notification delivery', () => {
             'ExpoPushToken[valid_2]',
             'ExpoPushToken[valid_2]',
         ];
-        const { getValidPushTokens } = await import('../src/services/notifications/pushNotificationDelivery.js');
+        const { getValidPushTokens } =
+            await import('../src/services/notifications/pushNotificationDelivery.js');
 
         const validTokens = await getValidPushTokens('user-1', {
             excludePushToken: 'ExpoPushToken[valid_2]',
@@ -53,28 +54,33 @@ describe('push notification delivery', () => {
             const messages = JSON.parse(String(init?.body)) as unknown[];
             assert.equal(messages.length, 2);
 
-            return new Response(JSON.stringify({
-                data: [
-                    { status: 'error', message: 'Transient Expo error' },
-                    {
-                        status: 'error',
-                        message: 'Device not registered',
-                        details: {
-                            expoPushToken: 'ExpoPushToken[rejected]',
+            return new Response(
+                JSON.stringify({
+                    data: [
+                        { status: 'error', message: 'Transient Expo error' },
+                        {
+                            status: 'error',
+                            message: 'Device not registered',
+                            details: {
+                                expoPushToken: 'ExpoPushToken[rejected]',
+                            },
                         },
-                    },
-                ],
-            }), { status: 200 });
+                    ],
+                }),
+                { status: 200 },
+            );
         }) as typeof fetch;
-        const { sendPushNotificationToTokens } = await import('../src/services/notifications/pushNotificationDelivery.js');
+        const { sendPushNotificationToTokens } =
+            await import('../src/services/notifications/pushNotificationDelivery.js');
 
-        const sent = await sendPushNotificationToTokens('user-1', [
-            'ExpoPushToken[valid]',
-            'ExpoPushToken[rejected]',
-        ], {
-            title: 'New release',
-            body: 'Released today',
-        });
+        const sent = await sendPushNotificationToTokens(
+            'user-1',
+            ['ExpoPushToken[valid]', 'ExpoPushToken[rejected]'],
+            {
+                title: 'New release',
+                body: 'Released today',
+            },
+        );
 
         assert.equal(sent, true);
         assert.deepEqual(pushTokenStoreState.deletedPushTokens, ['ExpoPushToken[rejected]']);

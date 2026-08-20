@@ -102,7 +102,10 @@ describe('sortReleasesByDate', () => {
 
         sortReleasesByDate(releases);
 
-        assert.deepEqual(releases.map((r) => r.id), ['new', 'mid', 'old']);
+        assert.deepEqual(
+            releases.map((r) => r.id),
+            ['new', 'mid', 'old'],
+        );
     });
 
     it('sorts null dates to the beginning (dateTimeMin is lowest)', () => {

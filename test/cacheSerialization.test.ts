@@ -66,10 +66,7 @@ describe('splitUtf8StringByByteSize', () => {
     });
 
     it('throws for character larger than max bytes', () => {
-        assert.throws(
-            () => splitUtf8StringByByteSize('🎸', 2),
-            /A single character is larger/,
-        );
+        assert.throws(() => splitUtf8StringByByteSize('🎸', 2), /A single character is larger/);
     });
 });
 

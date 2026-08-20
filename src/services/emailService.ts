@@ -1,15 +1,18 @@
 import { invokeDaprBinding } from '../infrastructure/dapr/daprBindings.js';
 
-const escapeHtml = (value: string): string => (
+const escapeHtml = (value: string): string =>
     value
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
-);
+        .replace(/'/g, '&#39;');
 
-export async function sendOtpEmail(to: string, otp: string, otpExpiryMinutes: number): Promise<void> {
+export async function sendOtpEmail(
+    to: string,
+    otp: string,
+    otpExpiryMinutes: number,
+): Promise<void> {
     const escapedOtp = escapeHtml(otp);
     const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

@@ -1,8 +1,5 @@
 import type { UserSettingsUseCaseDependencies } from '../../src/features/userSettings/ports.js';
-import type {
-    Release,
-    ReleaseNotificationSettings,
-} from '../../src/modules/models/models.js';
+import type { Release, ReleaseNotificationSettings } from '../../src/modules/models/models.js';
 import { createReleaseNotificationSettings } from './releaseFixtures.js';
 
 type UserSettingsFakeOptions = {
@@ -16,10 +13,12 @@ export const createUserSettingsDependencies = (options: UserSettingsFakeOptions 
     const replaceCalls: Array<{ userId: string; artistId: string; releaseIds: string[] }> = [];
     const removeCalls: Array<{ userId: string; settings: ReleaseNotificationSettings }> = [];
     const notificationCalls: string[] = [];
-    const previousSettings = options.previousSettings ?? createReleaseNotificationSettings({
-        oldestReleaseDateMonths: 12,
-        includeReleasesWithoutDate: true,
-    });
+    const previousSettings =
+        options.previousSettings ??
+        createReleaseNotificationSettings({
+            oldestReleaseDateMonths: 12,
+            includeReleasesWithoutDate: true,
+        });
 
     const dependencies: UserSettingsUseCaseDependencies = {
         followedArtistsRepository: {

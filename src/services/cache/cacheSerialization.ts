@@ -1,9 +1,7 @@
 const UNDEFINED_MARKER = '__redis__undefined__';
 
 export const serializeData = (data: unknown): string => {
-    return JSON.stringify(data, (_, value) =>
-        value === undefined ? UNDEFINED_MARKER : value,
-    );
+    return JSON.stringify(data, (_, value) => (value === undefined ? UNDEFINED_MARKER : value));
 };
 
 export const deserializeData = <T = unknown>(dataString: string): T => {
@@ -55,8 +53,5 @@ export const parseChunkMetadata = (metadata: string | null): number | null => {
     }
 };
 
-export const getEffectiveTtlInHours = (ttlInHours?: number, defaultTtlHours = 336): number => (
-    ttlInHours && Number.isFinite(ttlInHours) && ttlInHours > 0
-        ? ttlInHours
-        : defaultTtlHours
-);
+export const getEffectiveTtlInHours = (ttlInHours?: number, defaultTtlHours = 336): number =>
+    ttlInHours && Number.isFinite(ttlInHours) && ttlInHours > 0 ? ttlInHours : defaultTtlHours;

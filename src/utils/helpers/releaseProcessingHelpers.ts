@@ -1,4 +1,8 @@
-import { Release, DEFAULT_RELEASE_NOTIFICATION_SETTINGS, ReleaseNotificationSettings } from '../../modules/models/models.js';
+import {
+    Release,
+    DEFAULT_RELEASE_NOTIFICATION_SETTINGS,
+    ReleaseNotificationSettings,
+} from '../../modules/models/models.js';
 import {
     getKnownArtistReleaseIdsFromDb,
     getKnownReleasesFromDb,
@@ -23,14 +27,15 @@ const dedupeReleasesById = (releases: Release[]): Release[] => {
 const getTrackedReleases = (
     releases: Release[],
     settings: ReleaseNotificationSettings,
-): Release[] => (
-    dedupeReleasesById(releases).filter((release) => releaseMatchesNotificationSettings(release, settings))
-);
+): Release[] =>
+    dedupeReleasesById(releases).filter((release) =>
+        releaseMatchesNotificationSettings(release, settings),
+    );
 
 const sortReleaseCandidates = (
     releases: Release[],
     knownReleaseIds?: ReadonlySet<string>,
-): Release[] => (
+): Release[] =>
     [...releases].sort((left, right) => {
         const leftKnown = knownReleaseIds?.has(left.id) ?? false;
         const rightKnown = knownReleaseIds?.has(right.id) ?? false;
@@ -40,15 +45,17 @@ const sortReleaseCandidates = (
         }
 
         return left.id.localeCompare(right.id);
-    })
-);
+    });
 
 export const getNotificationCandidateReleases = (
     releases: Release[],
     knownReleaseIds?: ReadonlySet<string>,
     settings: ReleaseNotificationSettings = DEFAULT_RELEASE_NOTIFICATION_SETTINGS,
 ): Release[] => {
-    const trackedReleases = sortReleaseCandidates(getTrackedReleases(releases, settings), knownReleaseIds);
+    const trackedReleases = sortReleaseCandidates(
+        getTrackedReleases(releases, settings),
+        knownReleaseIds,
+    );
     const groupedReleases = groupByReleaseGroup(trackedReleases);
     const groupedReleaseIds = new Set<string>();
     const dedupedGroupedReleases = Array.from(groupedReleases.values()).flat();
@@ -59,7 +66,9 @@ export const getNotificationCandidateReleases = (
 
     return [
         ...dedupedGroupedReleases,
-        ...trackedReleases.filter((release) => !groupedReleaseIds.has(release.id) && !release.releaseGroupId),
+        ...trackedReleases.filter(
+            (release) => !groupedReleaseIds.has(release.id) && !release.releaseGroupId,
+        ),
     ];
 };
 
@@ -73,25 +82,42 @@ export const analyzeReleaseChanges = (
     settings: ReleaseNotificationSettings = DEFAULT_RELEASE_NOTIFICATION_SETTINGS,
 ) => {
     const currentReleaseIds = new Set(currentReleases);
-    const fetchedReleaseIds = new Set(dedupeReleasesById(allReleasesFlat).map((release) => release.id));
-    const trackedReleaseIds = new Set(getTrackedReleases(allReleasesFlat, settings).map((release) => release.id));
-    const notificationCandidateReleases = getNotificationCandidateReleases(allReleasesFlat, currentReleaseIds, settings);
-    const notificationCandidateReleaseIds = new Set(notificationCandidateReleases.map((release) => release.id));
-    const deletedReleaseIds = currentReleases.filter(id => !fetchedReleaseIds.has(id));
-    const duplicateReleaseIds = currentReleases.filter(id => (
-        trackedReleaseIds.has(id)
-        && !notificationCandidateReleaseIds.has(id)
-    ));
-    const filteredOutReleaseIds = currentReleases.filter(id => (
-        fetchedReleaseIds.has(id)
-        && !notificationCandidateReleaseIds.has(id)
-    ));
+    const fetchedReleaseIds = new Set(
+        dedupeReleasesById(allReleasesFlat).map((release) => release.id),
+    );
+    const trackedReleaseIds = new Set(
+        getTrackedReleases(allReleasesFlat, settings).map((release) => release.id),
+    );
+    const notificationCandidateReleases = getNotificationCandidateReleases(
+        allReleasesFlat,
+        currentReleaseIds,
+        settings,
+    );
+    const notificationCandidateReleaseIds = new Set(
+        notificationCandidateReleases.map((release) => release.id),
+    );
+    const deletedReleaseIds = currentReleases.filter((id) => !fetchedReleaseIds.has(id));
+    const duplicateReleaseIds = currentReleases.filter(
+        (id) => trackedReleaseIds.has(id) && !notificationCandidateReleaseIds.has(id),
+    );
+    const filteredOutReleaseIds = currentReleases.filter(
+        (id) => fetchedReleaseIds.has(id) && !notificationCandidateReleaseIds.has(id),
+    );
     const prunedReleaseIds = [...deletedReleaseIds, ...filteredOutReleaseIds];
-    const artistNewReleases = notificationCandidateReleases
-        .filter((release) => !currentReleaseIds.has(release.id));
+    const artistNewReleases = notificationCandidateReleases.filter(
+        (release) => !currentReleaseIds.has(release.id),
+    );
     const releasesChanged = prunedReleaseIds.length > 0 || artistNewReleases.length > 0;
 
-    return { deletedReleaseIds, duplicateReleaseIds, filteredOutReleaseIds, prunedReleaseIds, artistNewReleases, notificationCandidateReleases, releasesChanged };
+    return {
+        deletedReleaseIds,
+        duplicateReleaseIds,
+        filteredOutReleaseIds,
+        prunedReleaseIds,
+        artistNewReleases,
+        notificationCandidateReleases,
+        releasesChanged,
+    };
 };
 
 export const removePrunedNewReleases = async (
@@ -107,8 +133,9 @@ export const removePrunedNewReleases = async (
             return false;
         }
 
-        return !Object.values(knownReleasesByArtist)
-            .some((knownReleaseIds) => knownReleaseIds.includes(releaseId));
+        return !Object.values(knownReleasesByArtist).some((knownReleaseIds) =>
+            knownReleaseIds.includes(releaseId),
+        );
     });
 
     if (releaseIdsToRemove.length > 0) {

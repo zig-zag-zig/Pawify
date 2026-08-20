@@ -22,14 +22,20 @@ export const revokeTokenHandler = authenticatedHandler('/revokeToken', async ({ 
     res.status(204).send();
 });
 
-export const changeEmailHandler = authenticatedHandler('/changeEmail', async ({ req, res, userId }) => {
-    const email = requireString(req.body, 'email');
+export const changeEmailHandler = authenticatedHandler(
+    '/changeEmail',
+    async ({ req, res, userId }) => {
+        const email = requireString(req.body, 'email');
 
-    await authUseCases.changeEmail(userId, email);
-    res.status(204).send();
-});
+        await authUseCases.changeEmail(userId, email);
+        res.status(204).send();
+    },
+);
 
-export const deleteUserAccountHandler = authenticatedHandler('/deleteUserAccount', async ({ res, userId }) => {
-    await authUseCases.deleteUserAccount(userId);
-    res.status(200).send('User account and all associated data deleted successfully.');
-});
+export const deleteUserAccountHandler = authenticatedHandler(
+    '/deleteUserAccount',
+    async ({ res, userId }) => {
+        await authUseCases.deleteUserAccount(userId);
+        res.status(200).send('User account and all associated data deleted successfully.');
+    },
+);

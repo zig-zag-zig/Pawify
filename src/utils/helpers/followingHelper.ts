@@ -19,7 +19,10 @@ const writeLocalFollowingArtistIds = (userId: string, artistIds: string[]): void
     });
 };
 
-export const syncFollowingArtistIds = async (userId: string, artistIds: string[]): Promise<void> => {
+export const syncFollowingArtistIds = async (
+    userId: string,
+    artistIds: string[],
+): Promise<void> => {
     writeLocalFollowingArtistIds(userId, artistIds);
 };
 
@@ -52,7 +55,7 @@ const getFollowingArtistIds = async (userId: string): Promise<string[]> => {
 
     const inFlightLoad = followingMembershipLoads.get(userId);
     if (inFlightLoad) {
-        return [...await inFlightLoad];
+        return [...(await inFlightLoad)];
     }
 
     const loadToken = Symbol(userId);
@@ -70,7 +73,7 @@ const getFollowingArtistIds = async (userId: string): Promise<string[]> => {
     followingMembershipLoads.set(userId, loadPromise);
 
     try {
-        return [...await loadPromise];
+        return [...(await loadPromise)];
     } finally {
         if (followingMembershipLoadTokens.get(userId) === loadToken) {
             followingMembershipLoadTokens.delete(userId);

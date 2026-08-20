@@ -1,11 +1,12 @@
-import {
-    getNewReleasesSnapshotFromDb,
-} from '../../../services/firebase/newReleasesStore.js';
+import { getNewReleasesSnapshotFromDb } from '../../../services/firebase/newReleasesStore.js';
 import { removeReleaseFromAllUserDocuments } from '../../../services/firebase/missingReleaseCleanupStore.js';
 import { sendDataOnlyNotification } from '../../../services/notifications/dataNotificationPublisher.js';
 import { notificationEvents } from '../../../services/notifications/notificationEvents.js';
 import { deleteNewReleases } from '../../../utils/helpers/cacheManagementHelpers.js';
-import { getArtistTtl, invalidateFollowingArtistIdsCache } from '../../../utils/helpers/followingHelper.js';
+import {
+    getArtistTtl,
+    invalidateFollowingArtistIdsCache,
+} from '../../../utils/helpers/followingHelper.js';
 import type {
     ArtistReleaseContextGateway,
     MissingReleaseCleanupRepository,

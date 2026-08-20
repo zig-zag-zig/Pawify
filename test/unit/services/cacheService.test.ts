@@ -15,7 +15,10 @@ describe('cacheService', () => {
             assert.ok(parsed.pathname.startsWith(statePrefix));
 
             if (init.method === 'POST') {
-                const items = JSON.parse(String(init.body)) as Array<{ key: string; value: string }>;
+                const items = JSON.parse(String(init.body)) as Array<{
+                    key: string;
+                    value: string;
+                }>;
                 savedItems.push(...items);
                 items.forEach((item) => state.set(item.key, item.value));
                 return new Response(null, { status: 204 });
@@ -43,7 +46,8 @@ describe('cacheService', () => {
     });
 
     it('stores and retrieves a simple object', async () => {
-        const { getCachedData, replaceCachedData } = await import('../../../src/services/cacheService.js');
+        const { getCachedData, replaceCachedData } =
+            await import('../../../src/services/cacheService.js');
 
         await replaceCachedData('simple', { name: 'test', count: 42 }, 2);
         const result = await getCachedData<{ name: string; count: number }>('simple');
@@ -52,7 +56,8 @@ describe('cacheService', () => {
     });
 
     it('stores and retrieves undefined as a special marker', async () => {
-        const { getCachedData, replaceCachedData } = await import('../../../src/services/cacheService.js');
+        const { getCachedData, replaceCachedData } =
+            await import('../../../src/services/cacheService.js');
 
         await replaceCachedData('undef-key', undefined);
         const result = await getCachedData('undef-key');
@@ -79,7 +84,8 @@ describe('cacheService', () => {
     });
 
     it('chunks large values and retrieves them', async () => {
-        const { getCachedData, replaceCachedData } = await import('../../../src/services/cacheService.js');
+        const { getCachedData, replaceCachedData } =
+            await import('../../../src/services/cacheService.js');
         const largeValue = 'x'.repeat(1024 * 1024 + 128);
 
         await replaceCachedData('large', largeValue, 1);
@@ -99,7 +105,8 @@ describe('cacheService', () => {
     });
 
     it('deletes a simple key and its data', async () => {
-        const { deleteCachedData, getCachedData, replaceCachedData } = await import('../../../src/services/cacheService.js');
+        const { deleteCachedData, getCachedData, replaceCachedData } =
+            await import('../../../src/services/cacheService.js');
 
         await replaceCachedData('to-delete', { x: 1 });
         assert.ok(await getCachedData('to-delete'));
@@ -110,7 +117,8 @@ describe('cacheService', () => {
     });
 
     it('deletes chunked keys including all chunks and metadata', async () => {
-        const { deleteCachedData, getCachedData, replaceCachedData } = await import('../../../src/services/cacheService.js');
+        const { deleteCachedData, getCachedData, replaceCachedData } =
+            await import('../../../src/services/cacheService.js');
         const largeValue = 'y'.repeat(1024 * 1024 + 200);
 
         await replaceCachedData('chunk-delete', largeValue, 1);
@@ -125,7 +133,8 @@ describe('cacheService', () => {
     });
 
     it('returns null and cleans up when chunks are missing', async () => {
-        const { getCachedData, replaceCachedData } = await import('../../../src/services/cacheService.js');
+        const { getCachedData, replaceCachedData } =
+            await import('../../../src/services/cacheService.js');
         const largeValue = 'z'.repeat(1024 * 1024 + 128);
 
         await replaceCachedData('partial', largeValue, 1);
@@ -147,10 +156,7 @@ describe('cacheService', () => {
         });
         const { getCachedData } = await import('../../../src/services/cacheService.js');
 
-        await assert.rejects(
-            () => getCachedData('any-key'),
-            /state store connection failed/,
-        );
+        await assert.rejects(() => getCachedData('any-key'), /state store connection failed/);
     });
 
     it('propagates state store errors on set', async () => {

@@ -1,7 +1,4 @@
-import type {
-    Artist,
-    ExternalLink,
-} from '../../../modules/models/models.js';
+import type { Artist, ExternalLink } from '../../../modules/models/models.js';
 import { dedupeStrings } from '../../../common/utils/array.js';
 import type { ArtistProfileImageLookup } from '../../../utils/types/taskTypes.js';
 import { getExternalLinkUrlsByService } from '../../../utils/helpers/externalLinks.js';

@@ -27,6 +27,6 @@ export const runWorkerWithTimeout = async <T>(
         }
 
         // Prevent unhandled rejections if timeout won the race and worker settles later.
-        void workerPromise.catch(() => { });
+        void workerPromise.catch(() => {});
     }
 };

@@ -12,10 +12,7 @@ export type TaskQueueStats = {
     pendingQueueSize: number;
 };
 
-export type TaskJobProcessor = (
-    job: PendingJob,
-    getStats: () => TaskQueueStats,
-) => Promise<void>;
+export type TaskJobProcessor = (job: PendingJob, getStats: () => TaskQueueStats) => Promise<void>;
 
 export class BackgroundTaskQueue {
     private readonly pendingJobs: PendingJob[] = [];
@@ -24,7 +21,7 @@ export class BackgroundTaskQueue {
     constructor(
         private readonly maxConcurrency: number,
         private readonly processJob: TaskJobProcessor,
-    ) { }
+    ) {}
 
     get activeTaskCount(): number {
         return this.activeJobs;

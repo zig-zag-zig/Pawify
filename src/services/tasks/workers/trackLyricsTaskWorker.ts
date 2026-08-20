@@ -6,15 +6,8 @@ import { getCacheKey } from '../../../utils/helpers/cacheHelpers.js';
 import { getReleaseLyricsTtl } from '../../../utils/helpers/followingHelper.js';
 import { mapWithConcurrency } from '../../../utils/helpers/promisePool.js';
 import type { CachedReleaseLyricsByRelease } from '../../../utils/types/cacheTypes.js';
-import type {
-    TrackLyricsRequest,
-    TrackLyricsTaskResult,
-} from '../../../utils/types/taskTypes.js';
-import {
-    dedupeTracks,
-    mapLyricsToState,
-    shouldRefetchState,
-} from '../backgroundTaskMappers.js';
+import type { TrackLyricsRequest, TrackLyricsTaskResult } from '../../../utils/types/taskTypes.js';
+import { dedupeTracks, mapLyricsToState, shouldRefetchState } from '../backgroundTaskMappers.js';
 
 const logger = createLogger('services.backgroundTasks.lyrics');
 
@@ -26,7 +19,7 @@ export const fetchAndUpsertTrackLyrics = async (
     ttl: number | undefined,
     signal?: AbortSignal,
 ): Promise<TrackLyricsTaskResult> => {
-    const uniqueTracks = dedupeTracks(tracks).filter(track => track.releaseId === releaseId);
+    const uniqueTracks = dedupeTracks(tracks).filter((track) => track.releaseId === releaseId);
     if (uniqueTracks.length === 0) {
         return {
             releaseId,
@@ -36,7 +29,7 @@ export const fetchAndUpsertTrackLyrics = async (
 
     const lyricsTtl = getReleaseLyricsTtl(ttl);
     const cacheKey = getCacheKey(releaseId, 'releaseLyrics');
-    const cached = await getCachedData<CachedReleaseLyricsByRelease>(cacheKey) ?? {};
+    const cached = (await getCachedData<CachedReleaseLyricsByRelease>(cacheKey)) ?? {};
     const startedAt = Date.now();
     const resultMap: { [trackId: string]: string | null | undefined } = {};
     let cacheHitCount = 0;

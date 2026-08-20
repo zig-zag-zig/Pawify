@@ -54,7 +54,8 @@ describe('runtimeConfig', () => {
         });
 
         it('backgroundTaskWorkerConfig defaults', async () => {
-            const { backgroundTaskWorkerConfig } = await import('../../../src/config/runtimeConfig.js');
+            const { backgroundTaskWorkerConfig } =
+                await import('../../../src/config/runtimeConfig.js');
             assert.ok(backgroundTaskWorkerConfig.coverArtRequestConcurrency >= 1);
             assert.ok(backgroundTaskWorkerConfig.trackLyricsRequestConcurrency >= 1);
             assert.ok(backgroundTaskWorkerConfig.artistProfileImageRequestConcurrency >= 1);

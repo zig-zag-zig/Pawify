@@ -3,6 +3,8 @@ import { createGetReleaseNotificationSettingsUseCase } from './usecases/getRelea
 import { createUpdateReleaseNotificationSettingsUseCase } from './usecases/updateReleaseNotificationSettings.js';
 
 export const userSettingsUseCases = {
-  getReleaseNotificationSettings: createGetReleaseNotificationSettingsUseCase(userSettingsDependencies),
-  updateReleaseNotificationSettings: createUpdateReleaseNotificationSettingsUseCase(userSettingsDependencies),
+    getReleaseNotificationSettings:
+        createGetReleaseNotificationSettingsUseCase(userSettingsDependencies),
+    updateReleaseNotificationSettings:
+        createUpdateReleaseNotificationSettingsUseCase(userSettingsDependencies),
 };

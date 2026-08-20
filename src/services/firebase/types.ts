@@ -3,47 +3,47 @@ import type { FollowedArtistSummary } from '../../utils/types/followedArtistType
 import type { ReleaseGroupReleasesPageEntry } from '../../utils/types/taskTypes.js';
 
 export type ArtistsAndReleasesMap = {
-  [artistId: string]: string[];
+    [artistId: string]: string[];
 };
 
 export type NewReleasesMap = {
-  [releaseId: string]: NewRelease;
+    [releaseId: string]: NewRelease;
 };
 
 export type StoredNewRelease = NewRelease & {
-  releaseGroupId: string | null;
+    releaseGroupId: string | null;
 };
 
 export type StoredNewReleasesMap = {
-  [releaseId: string]: StoredNewRelease;
+    [releaseId: string]: StoredNewRelease;
 };
 
 export type FollowedArtistsMap = {
-  [artistId: string]: FollowedArtistSummary;
+    [artistId: string]: FollowedArtistSummary;
 };
 
 export type NewReleasesSnapshot = {
-  newReleasesMap: NewReleasesMap;
-  coverPageEntries: ReleaseGroupReleasesPageEntry[];
+    newReleasesMap: NewReleasesMap;
+    coverPageEntries: ReleaseGroupReleasesPageEntry[];
 };
 
 export type FollowingArtistDocument = FollowedArtistSummary & {
-  updatedAt: number;
+    updatedAt: number;
 };
 
 export type FollowingArtistsMap = {
-  [artistId: string]: FollowingArtistDocument;
+    [artistId: string]: FollowingArtistDocument;
 };
 
 export type MissingReleaseCleanupResult = {
-  affectedUserIds: string[];
-  removedFromNewReleasesUserIds: string[];
+    affectedUserIds: string[];
+    removedFromNewReleasesUserIds: string[];
 };
 
 export type RequestWithAuthHeader = {
-  headers: {
-    authorization?: string;
-  };
+    headers: {
+        authorization?: string;
+    };
 };
 
 export const UNAUTH_MESSAGE = 'Invalid or expired token';

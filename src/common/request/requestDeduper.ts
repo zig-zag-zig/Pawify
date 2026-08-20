@@ -4,14 +4,7 @@ const DEFAULT_DEDUP_TTL_MS = 60_000;
 const DEFAULT_CLEANUP_INTERVAL_MS = 20_000;
 const DEFAULT_IN_FLIGHT_DEDUPE_BUFFER_MS = 5_000;
 const MIN_IN_FLIGHT_DEDUPE_AGE_MS = 1_000;
-const READ_ONLY_OPERATION_VERBS = [
-    'fetch',
-    'get',
-    'list',
-    'read',
-    'search',
-    'verify',
-];
+const READ_ONLY_OPERATION_VERBS = ['fetch', 'get', 'list', 'read', 'search', 'verify'];
 
 const logger = createLogger('common.requestDeduper');
 
@@ -25,12 +18,16 @@ export const getDefaultInFlightDedupeAgeMs = (ttlMs: number): number => {
     return Math.max(Math.floor(ttlMs * 0.9), 0);
 };
 
-export const classifyOperationKey = (key: string): { operationName: string; isReadOnly: boolean } => {
+export const classifyOperationKey = (
+    key: string,
+): { operationName: string; isReadOnly: boolean } => {
     const operationName = key.split(':', 1)[0]?.trim().toLowerCase() ?? '';
 
     return {
         operationName,
-        isReadOnly: READ_ONLY_OPERATION_VERBS.some((verb) => operationName === verb || operationName.startsWith(verb)),
+        isReadOnly: READ_ONLY_OPERATION_VERBS.some(
+            (verb) => operationName === verb || operationName.startsWith(verb),
+        ),
     };
 };
 
@@ -85,7 +82,7 @@ class RequestDeduper implements RequestDeduperPort {
         if (inFlight) {
             const inFlightAgeMs = now - inFlight.startedAt;
             if (inFlightAgeMs <= this.inFlightDedupeAgeMs) {
-                return await inFlight.promise as T;
+                return (await inFlight.promise) as T;
             }
         }
 
@@ -124,7 +121,4 @@ class RequestDeduper implements RequestDeduperPort {
 
 export const requestDeduper = new RequestDeduper();
 
-setInterval(
-    () => requestDeduper.cleanupExpiredResults(),
-    DEFAULT_CLEANUP_INTERVAL_MS,
-).unref?.();
+setInterval(() => requestDeduper.cleanupExpiredResults(), DEFAULT_CLEANUP_INTERVAL_MS).unref?.();

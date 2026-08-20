@@ -1,9 +1,6 @@
 import type { RemoteValueState } from '../../modules/models/models.js';
 import { cacheConfig } from '../../config/runtimeConfig.js';
-import type {
-    CoverState,
-    LyricsState,
-} from '../types/cacheTypes.js';
+import type { CoverState, LyricsState } from '../types/cacheTypes.js';
 
 export const TRANSIENT_REMOTE_VALUE_RETRY_WINDOW_MS = cacheConfig.transientRemoteValueRetryWindowMs;
 
@@ -28,9 +25,7 @@ export const shouldRefetchRemoteState = (
     return now >= state.nextRefetchAt;
 };
 
-export const mapCoverState = (
-    url: RemoteValueState,
-): CoverState => {
+export const mapCoverState = (url: RemoteValueState): CoverState => {
     if (url === undefined) {
         return {
             url,

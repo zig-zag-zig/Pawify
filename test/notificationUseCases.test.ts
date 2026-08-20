@@ -9,7 +9,9 @@ describe('notification use cases', () => {
         let called = false;
         const deps: NotificationUseCaseDependencies = {
             newReleaseNotificationGateway: {
-                async notifyNewReleases() { called = true; },
+                async notifyNewReleases() {
+                    called = true;
+                },
             },
         };
         const useCase = createNotifyNewReleasesUseCase(deps);
@@ -23,7 +25,9 @@ describe('notification use cases', () => {
         let callCount = 0;
         const deps: NotificationUseCaseDependencies = {
             newReleaseNotificationGateway: {
-                async notifyNewReleases() { callCount += 1; },
+                async notifyNewReleases() {
+                    callCount += 1;
+                },
             },
         };
         const useCase = createNotifyNewReleasesUseCase(deps);
@@ -38,7 +42,9 @@ describe('notification use cases', () => {
     it('propagates gateway errors without wrapping', async () => {
         const deps: NotificationUseCaseDependencies = {
             newReleaseNotificationGateway: {
-                async notifyNewReleases() { throw new Error('lock failed'); },
+                async notifyNewReleases() {
+                    throw new Error('lock failed');
+                },
             },
         };
         const useCase = createNotifyNewReleasesUseCase(deps);

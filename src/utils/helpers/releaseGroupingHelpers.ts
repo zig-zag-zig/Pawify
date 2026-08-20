@@ -20,8 +20,8 @@ export const groupByReleaseGroup = (releases: Release[]): Map<string, Release[]>
         }
 
         const existingReleasesForGroup = releaseGroups.get(id)!;
-        const isDuplicate = existingReleasesForGroup.some(existingRelease =>
-            isDuplicateRelease(existingRelease, release)
+        const isDuplicate = existingReleasesForGroup.some((existingRelease) =>
+            isDuplicateRelease(existingRelease, release),
         );
 
         if (!isDuplicate) {
@@ -37,13 +37,16 @@ export const dedupeReleaseGroupReleases = (
     releases: Release[],
 ): DedupeReleaseGroupReleasesResult => {
     const releaseGroupsMap = groupByReleaseGroup(releases);
-    const dedupedReleases = releaseGroupsMap.get(releaseGroupId) ?? Array.from(releaseGroupsMap.values())[0] ?? [];
-    const dedupedReleaseIds = new Set(dedupedReleases.map(release => release.id));
-    const prunedReleaseIds = Array.from(new Set(
-        releases
-            .filter(release => !dedupedReleaseIds.has(release.id))
-            .map(release => release.id),
-    ));
+    const dedupedReleases =
+        releaseGroupsMap.get(releaseGroupId) ?? Array.from(releaseGroupsMap.values())[0] ?? [];
+    const dedupedReleaseIds = new Set(dedupedReleases.map((release) => release.id));
+    const prunedReleaseIds = Array.from(
+        new Set(
+            releases
+                .filter((release) => !dedupedReleaseIds.has(release.id))
+                .map((release) => release.id),
+        ),
+    );
 
     return {
         releases: dedupedReleases,
@@ -55,7 +58,7 @@ export const normalizeReleaseGroups = (releaseGroupsMap: Map<string, Release[]>)
     releaseGroupsMap.forEach((releasesInGroup) => {
         const oldestReleaseDate = getOldestNonNullReleaseDate(releasesInGroup);
 
-        releasesInGroup.forEach(release => {
+        releasesInGroup.forEach((release) => {
             if (!release['release-group']) {
                 return;
             }
@@ -83,17 +86,19 @@ const getOldestNonNullReleaseDate = (releases: Release[]): string | null => {
     return oldestDate;
 };
 
-export const mapReleaseGroupsToArtistReleases = (releaseGroupsMap: Map<string, Release[]>): ArtistReleaseGroup[] => {
+export const mapReleaseGroupsToArtistReleases = (
+    releaseGroupsMap: Map<string, Release[]>,
+): ArtistReleaseGroup[] => {
     return Array.from(releaseGroupsMap.values())
-        .map(releases => {
+        .map((releases) => {
             const sortedReleases = [...releases];
             sortReleasesByDate(sortedReleases);
             return sortedReleases;
         })
-        .filter(releases => releases.length > 0 && releases[0]['release-group'])
-        .map(releases => ({
+        .filter((releases) => releases.length > 0 && releases[0]['release-group'])
+        .map((releases) => ({
             ...releases[0]['release-group']!,
-            releaseIds: releases.map(release => release.id),
+            releaseIds: releases.map((release) => release.id),
         }))
         .sort((left, right) => dateToTimestamp(right.date) - dateToTimestamp(left.date));
 };
@@ -113,11 +118,16 @@ const isDuplicateRelease = (release1: Release, release2: Release): boolean => {
         return false;
     }
 
-    return tracks1.length === tracks2.length && tracks1.every((track, index) => track === tracks2[index]);
+    return (
+        tracks1.length === tracks2.length &&
+        tracks1.every((track, index) => track === tracks2[index])
+    );
 };
 
 const getAllTrackTitlesOfRelease = (release: Release): string[] => {
-    return release.media.flatMap(media => media.tracks?.map(track => normalizeReleaseComparableText(track.title)) ?? []);
+    return release.media.flatMap(
+        (media) => media.tracks?.map((track) => normalizeReleaseComparableText(track.title)) ?? [],
+    );
 };
 
 const normalizeReleaseComparableText = (value: string): string => value.trim().toLowerCase();

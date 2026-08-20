@@ -22,9 +22,14 @@ const resetDocs = new Map<string, Record<string, unknown>>();
 const toFirestoreLike = (data: Record<string, unknown>): Record<string, unknown> => {
     const out: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(data)) {
-        out[key] = value instanceof Date
-            ? { toDate: () => value, seconds: Math.floor(value.getTime() / 1000), nanoseconds: 0 }
-            : value;
+        out[key] =
+            value instanceof Date
+                ? {
+                      toDate: () => value,
+                      seconds: Math.floor(value.getTime() / 1000),
+                      nanoseconds: 0,
+                  }
+                : value;
     }
     return out;
 };
@@ -48,7 +53,9 @@ before(() => {
                 if (email === KNOWN_EMAIL) {
                     return { uid: KNOWN_UID, email };
                 }
-                const err = Object.assign(new Error('user not found'), { code: 'auth/user-not-found' });
+                const err = Object.assign(new Error('user not found'), {
+                    code: 'auth/user-not-found',
+                });
                 throw err;
             },
             createCustomToken: async (uid: string) => `custom-token-for-${uid}`,
@@ -64,7 +71,7 @@ before(() => {
                             const data = resetDocs.get(uid);
                             return {
                                 exists: data !== undefined,
-                                data: () => data ? toFirestoreLike(data) : undefined,
+                                data: () => (data ? toFirestoreLike(data) : undefined),
                             };
                         },
                         set: async (value: Record<string, unknown>) => {
@@ -77,9 +84,16 @@ before(() => {
                                 // Resolve Firestore FieldValue.increment(n) sentinels (the
                                 // modular firestore increment() returns an object with an
                                 // `operand` number; detect it generically by shape).
-                                if (value && typeof value === 'object' && 'operand' in value
-                                    && typeof (value as { operand?: unknown }).operand === 'number') {
-                                    const prev = typeof merged[key] === 'number' ? merged[key] as number : 0;
+                                if (
+                                    value &&
+                                    typeof value === 'object' &&
+                                    'operand' in value &&
+                                    typeof (value as { operand?: unknown }).operand === 'number'
+                                ) {
+                                    const prev =
+                                        typeof merged[key] === 'number'
+                                            ? (merged[key] as number)
+                                            : 0;
                                     merged[key] = prev + (value as { operand: number }).operand;
                                 } else {
                                     merged[key] = value;
@@ -100,7 +114,8 @@ before(() => {
 
 describe('passwordResetOtpService (real service, faked firebase/email)', () => {
     it('sendOtp stores a 64-char HMAC otpHash with no plaintext otp, attempts 0', async () => {
-        const { sendOtp } = await import('../../../src/services/account/passwordResetOtpService.js');
+        const { sendOtp } =
+            await import('../../../src/services/account/passwordResetOtpService.js');
         resetDocs.clear();
         capturedOtp = '';
 
@@ -116,7 +131,8 @@ describe('passwordResetOtpService (real service, faked firebase/email)', () => {
     });
 
     it('verifyOtp with a wrong code throws "Invalid OTP" and increments attempts to 1', async () => {
-        const { sendOtp, verifyOtp } = await import('../../../src/services/account/passwordResetOtpService.js');
+        const { sendOtp, verifyOtp } =
+            await import('../../../src/services/account/passwordResetOtpService.js');
         resetDocs.clear();
         capturedOtp = '';
 
@@ -131,11 +147,16 @@ describe('passwordResetOtpService (real service, faked firebase/email)', () => {
         const storedAfter = resetDocs.get(KNOWN_UID)!;
         assert.equal(storedAfter.attempts, 1, 'attempts incremented to 1');
         // otpHash unchanged by the failed attempt.
-        assert.equal(storedAfter.otpHash, storedBefore.otpHash, 'otpHash unchanged on failed attempt');
+        assert.equal(
+            storedAfter.otpHash,
+            storedBefore.otpHash,
+            'otpHash unchanged on failed attempt',
+        );
     });
 
     it('verifyOtp with the correct code returns a custom token and deletes the reset doc', async () => {
-        const { sendOtp, verifyOtp } = await import('../../../src/services/account/passwordResetOtpService.js');
+        const { sendOtp, verifyOtp } =
+            await import('../../../src/services/account/passwordResetOtpService.js');
         resetDocs.clear();
         capturedOtp = '';
 
@@ -150,21 +171,25 @@ describe('passwordResetOtpService (real service, faked firebase/email)', () => {
     });
 
     it('sendOtp for an unknown email throws the preserved delivery-failed message', async () => {
-        const { sendOtp } = await import('../../../src/services/account/passwordResetOtpService.js');
+        const { sendOtp } =
+            await import('../../../src/services/account/passwordResetOtpService.js');
         await assert.rejects(
             () => sendOtp(`no-such-user-${Date.now()}@example.com`),
-            (e: unknown) => (e instanceof Error ? e.message : String(e))
-                === 'Could not send OTP. Please check the email address and try again.',
+            (e: unknown) =>
+                (e instanceof Error ? e.message : String(e)) ===
+                'Could not send OTP. Please check the email address and try again.',
         );
     });
 
     it('verifyOtp with no reset doc throws the preserved not-found message', async () => {
-        const { verifyOtp } = await import('../../../src/services/account/passwordResetOtpService.js');
+        const { verifyOtp } =
+            await import('../../../src/services/account/passwordResetOtpService.js');
         resetDocs.clear();
         await assert.rejects(
             () => verifyOtp(KNOWN_EMAIL, '123456'),
-            (e: unknown) => (e instanceof Error ? e.message : String(e))
-                === 'Password reset request was not found or has expired.',
+            (e: unknown) =>
+                (e instanceof Error ? e.message : String(e)) ===
+                'Password reset request was not found or has expired.',
         );
     });
 });

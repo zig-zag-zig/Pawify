@@ -30,10 +30,7 @@ describe('request validation helpers', () => {
     });
 
     it('throws clear 400 errors for malformed object and string inputs', () => {
-        assertBadRequest(
-            () => requireString(null, 'artistId'),
-            'Request body must be an object',
-        );
+        assertBadRequest(() => requireString(null, 'artistId'), 'Request body must be an object');
         assertBadRequest(
             () => requireString({ artistId: '   ' }, 'artistId'),
             'The artistId property in the body is required',
@@ -46,7 +43,10 @@ describe('request validation helpers', () => {
 
     it('validates booleans, string arrays, and integer ranges without coercing invalid values', () => {
         assert.equal(requireBoolean({ enabled: false }, 'enabled'), false);
-        assert.deepEqual(requireStringArray({ artistIds: [' a ', 'b', 'a'] }, 'artistIds'), ['a', 'b']);
+        assert.deepEqual(requireStringArray({ artistIds: [' a ', 'b', 'a'] }, 'artistIds'), [
+            'a',
+            'b',
+        ]);
         assert.equal(requireNullablePositiveInteger({ months: null }, 'months', 24), null);
         assert.equal(requireNullablePositiveInteger({ months: '12' }, 'months', 24), 12);
         assert.equal(optionalPositiveInteger({ page: '' }, 'page', 0), 0);

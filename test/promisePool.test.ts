@@ -32,14 +32,15 @@ describe('mapWithConcurrency', () => {
     it('propagates mapper errors immediately', async () => {
         let callCount = 0;
         await assert.rejects(
-            () => mapWithConcurrency([10, 0, 20], 2, async (waitMs, index) => {
-                callCount += 1;
-                await delay(waitMs);
-                if (index === 1) {
-                    throw new Error(`mapper failed at index ${index}`);
-                }
-                return `result-${index}`;
-            }),
+            () =>
+                mapWithConcurrency([10, 0, 20], 2, async (waitMs, index) => {
+                    callCount += 1;
+                    await delay(waitMs);
+                    if (index === 1) {
+                        throw new Error(`mapper failed at index ${index}`);
+                    }
+                    return `result-${index}`;
+                }),
             /mapper failed at index 1/,
         );
         // Note: some concurrent tasks may still run before the rejection propagates

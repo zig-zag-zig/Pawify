@@ -63,7 +63,10 @@ export const artistDependencies: Omit<ArtistUseCaseDependencies, 'assetPlanner'>
             try {
                 await syncFollowingArtistIds(userId, await getFollowingFromDb(userId));
             } catch (error) {
-                logger.warn('failed to refresh followed artist cache membership', { artistId, error });
+                logger.warn('failed to refresh followed artist cache membership', {
+                    artistId,
+                    error,
+                });
             }
         },
         saveFollowingArtistSummaries: async (userId, artistSummaries) => {
@@ -78,7 +81,8 @@ export const artistDependencies: Omit<ArtistUseCaseDependencies, 'assetPlanner'>
     },
     artistProfileImageQueue: artistProfileImageTaskQueue,
     artistSearchGateway: {
-        searchArtists: async (userId, query, offset, limit) => await searchForArtist(userId, query, offset, limit),
+        searchArtists: async (userId, query, offset, limit) =>
+            await searchForArtist(userId, query, offset, limit),
     },
     cacheTtlGateway: {
         getArtistTtl: async (userId, artistId) => await getArtistTtl(userId, artistId),

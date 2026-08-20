@@ -1,9 +1,6 @@
 import type { RequestDeduperPort } from '../../common/request/requestDeduper.js';
 import type { ArtistProfileImagesPlanner } from '../../services/backgroundAssets/plannerTypes.js';
-import type {
-    Artist,
-    ArtistSearchResult,
-} from '../../modules/models/models.js';
+import type { Artist, ArtistSearchResult } from '../../modules/models/models.js';
 import type { FollowedArtistSummary } from '../../utils/types/followedArtistTypes.js';
 import type { ArtistProfileImageQueueOptions } from '../../utils/types/taskTypes.js';
 
@@ -39,7 +36,10 @@ interface ArtistFollowingRepository {
         releaseIds: string[],
         artistSummary?: FollowedArtistSummary,
     ): Promise<void>;
-    saveFollowingArtistSummaries(userId: string, artistSummaries: FollowedArtistSummary[]): Promise<void>;
+    saveFollowingArtistSummaries(
+        userId: string,
+        artistSummaries: FollowedArtistSummary[],
+    ): Promise<void>;
     deleteFollowedArtist(userId: string, artistId: string): Promise<void>;
 }
 

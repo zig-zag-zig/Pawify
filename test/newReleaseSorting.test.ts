@@ -14,7 +14,10 @@ describe('sortNewReleasesNewestFirst', () => {
 
         const sorted = sortNewReleasesNewestFirst(releases);
 
-        assert.deepEqual(sorted.map((r) => r.id), ['new', 'mid', 'old']);
+        assert.deepEqual(
+            sorted.map((r) => r.id),
+            ['new', 'mid', 'old'],
+        );
     });
 
     it('sorts year-only dates correctly', () => {
@@ -24,7 +27,10 @@ describe('sortNewReleasesNewestFirst', () => {
         ];
 
         const sorted = sortNewReleasesNewestFirst(releases);
-        assert.deepEqual(sorted.map((r) => r.id), ['b', 'a']);
+        assert.deepEqual(
+            sorted.map((r) => r.id),
+            ['b', 'a'],
+        );
     });
 
     it('sorts null dates last', () => {
@@ -72,6 +78,9 @@ describe('sortNewReleasesNewestFirst', () => {
 
         sortNewReleasesNewestFirst(releases);
 
-        assert.deepEqual(releases.map((r) => r.id), originalOrder);
+        assert.deepEqual(
+            releases.map((r) => r.id),
+            originalOrder,
+        );
     });
 });

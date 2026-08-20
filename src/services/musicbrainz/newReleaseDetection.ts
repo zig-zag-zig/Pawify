@@ -1,14 +1,14 @@
-import type { NewRelease, Release, ReleaseNotificationSettings } from '../../modules/models/models.js';
-import {
-    getFollowingFromDb,
-} from '../firebase/followingStore.js';
+import type {
+    NewRelease,
+    Release,
+    ReleaseNotificationSettings,
+} from '../../modules/models/models.js';
+import { getFollowingFromDb } from '../firebase/followingStore.js';
 import {
     getKnownReleasesFromDb,
     mergeKnownArtistReleaseIdsInDb,
 } from '../firebase/knownReleasesStore.js';
-import {
-    getReleaseNotificationSettingsFromDb,
-} from '../firebase/userSettingsStore.js';
+import { getReleaseNotificationSettingsFromDb } from '../firebase/userSettingsStore.js';
 import { processArtistReleases } from '../../utils/helpers/newReleaseHelpers.js';
 import { mapWithConcurrency } from '../../utils/helpers/promisePool.js';
 import { fetchAllReleasesForArtist } from './releaseQueries.js';
@@ -83,12 +83,13 @@ export const getNewReleases = async (userId: string): Promise<NewRelease[]> => {
         const artistResults = await mapWithConcurrency(
             followingArtists,
             4,
-            async (artistId) => await processSingleArtist(
-                userId,
-                artistId,
-                currentReleasesByArtist,
-                releaseNotificationSettings,
-            ),
+            async (artistId) =>
+                await processSingleArtist(
+                    userId,
+                    artistId,
+                    currentReleasesByArtist,
+                    releaseNotificationSettings,
+                ),
         );
 
         for (const { newReleases } of artistResults) {

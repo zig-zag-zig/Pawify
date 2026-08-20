@@ -10,12 +10,17 @@ type MusicBrainzArtistSearchResponse = {
     count: number;
 };
 
-const isRecord = (value: unknown): value is Record<string, unknown> => (
-    value !== null && typeof value === 'object' && !Array.isArray(value)
-);
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+    value !== null && typeof value === 'object' && !Array.isArray(value);
 
-const parseMusicBrainzArtistSearchResponse = (response: unknown): MusicBrainzArtistSearchResponse => {
-    if (!isRecord(response) || !Array.isArray(response.artists) || typeof response.count !== 'number') {
+const parseMusicBrainzArtistSearchResponse = (
+    response: unknown,
+): MusicBrainzArtistSearchResponse => {
+    if (
+        !isRecord(response) ||
+        !Array.isArray(response.artists) ||
+        typeof response.count !== 'number'
+    ) {
         throw new Error('MusicBrainz returned an invalid artist search response');
     }
 
@@ -34,7 +39,9 @@ const fetchArtistSearchResponse = async (
 
     for (let attempt = 1; attempt <= SEARCH_ATTEMPT_COUNT; attempt += 1) {
         try {
-            const response = await fetchMusicBrainz(`/artist?query=${encodeURIComponent(query)}&fmt=json&limit=${limit}&offset=${offset}`);
+            const response = await fetchMusicBrainz(
+                `/artist?query=${encodeURIComponent(query)}&fmt=json&limit=${limit}&offset=${offset}`,
+            );
             return parseMusicBrainzArtistSearchResponse(response);
         } catch (error) {
             lastError = error;
@@ -50,12 +57,11 @@ const search = async (
     offset: number,
     limit: number,
 ): Promise<ArtistSearchResult> => {
-
     try {
         const response = await fetchArtistSearchResponse(query, offset, limit);
 
         const artists = response.artists
-            .filter((artist: unknown): artist is { id: string; name: string; } => {
+            .filter((artist: unknown): artist is { id: string; name: string } => {
                 if (!isRecord(artist)) {
                     return false;
                 }

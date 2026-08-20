@@ -18,18 +18,12 @@ describe('shouldRefetchRemoteState', () => {
 
     it('returns false when nextRefetchAt is in the future', () => {
         const now = 1000;
-        assert.equal(
-            shouldRefetchRemoteState({ url: undefined, nextRefetchAt: 2000 }, now),
-            false,
-        );
+        assert.equal(shouldRefetchRemoteState({ url: undefined, nextRefetchAt: 2000 }, now), false);
     });
 
     it('returns true when nextRefetchAt is in the past', () => {
         const now = 2000;
-        assert.equal(
-            shouldRefetchRemoteState({ url: undefined, nextRefetchAt: 1000 }, now),
-            true,
-        );
+        assert.equal(shouldRefetchRemoteState({ url: undefined, nextRefetchAt: 1000 }, now), true);
     });
 
     it('returns true when both url and nextRefetchAt are undefined', () => {
@@ -38,10 +32,7 @@ describe('shouldRefetchRemoteState', () => {
 
     it('returns true when nextRefetchAt equals now', () => {
         const now = 1000;
-        assert.equal(
-            shouldRefetchRemoteState({ url: undefined, nextRefetchAt: 1000 }, now),
-            true,
-        );
+        assert.equal(shouldRefetchRemoteState({ url: undefined, nextRefetchAt: 1000 }, now), true);
     });
 });
 
