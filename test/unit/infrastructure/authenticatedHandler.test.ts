@@ -40,6 +40,7 @@ describe('authenticatedHandler', () => {
 
         const res = {
             statusCode: 200,
+            locals: {},
             setHeader: () => {},
             status: function () {
                 return this;

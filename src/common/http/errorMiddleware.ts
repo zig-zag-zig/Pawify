@@ -11,7 +11,9 @@ export const errorMiddleware: ErrorRequestHandler = (error, req, res, next) => {
     }
 
     const httpError = toHttpError(error);
+    const requestId = typeof res.locals?.requestId === 'string' ? res.locals.requestId : undefined;
     const metadata = {
+        ...(requestId ? { requestId } : {}),
         method: req.method,
         path: req.originalUrl,
         statusCode: httpError.statusCode,

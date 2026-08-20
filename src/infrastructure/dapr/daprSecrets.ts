@@ -16,6 +16,7 @@ export const getDaprSecret = async (
     const response = await daprFetch(`/v1.0/secrets/${storeName}/${encodeURIComponent(key)}`);
 
     if (response.status === 404) {
+        await response.body?.cancel();
         secretCache.set(cacheKey, undefined);
         return undefined;
     }

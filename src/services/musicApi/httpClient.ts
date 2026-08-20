@@ -53,6 +53,7 @@ export const fetchDaprProvider = async (
     let release: (() => void) | null = null;
     let isForegroundActive = false;
     let isForegroundPending = false;
+    let response: Response | null = null;
 
     try {
         if (waitForForegroundDrain) {
@@ -82,7 +83,7 @@ export const fetchDaprProvider = async (
             isForegroundActive = true;
         }
 
-        const response = await invokeHttpEndpoint(endpoint, methodPathAndQuery, {
+        response = await invokeHttpEndpoint(endpoint, methodPathAndQuery, {
             ...options,
             headers,
             signal,
@@ -91,6 +92,10 @@ export const fetchDaprProvider = async (
         applyRateLimitHeaders(response, rateLimiter, service);
 
         if (!response.ok) {
+            // Drop the unconsumed body so the undici socket is released instead of
+            // being pinned until GC (connection-pool exhaustion under sustained
+            // upstream errors). HEAD responses have no body and skip this branch.
+            await response.body?.cancel();
             if (failureMode === 'status') {
                 return createFetchFailureResult(
                     nonRetriableStatusCodes.has(response.status) || noRetry
@@ -110,6 +115,18 @@ export const fetchDaprProvider = async (
     } catch (error) {
         if (isAbortError(error)) {
             throw error;
+        }
+
+        // The response was obtained but its body was not (fully) consumed — e.g.
+        // response.json() failed on a non-JSON body. Cancel the stream best-effort:
+        // some implementations already consumed/locked it (undici reads the body
+        // before parsing), in which case cancel is a no-op and must not fail.
+        if (response?.body) {
+            try {
+                await response.body.cancel();
+            } catch {
+                // Nothing left to drain; keep the failure result behavior.
+            }
         }
 
         return failureMode === 'status' ? createFetchFailureResult(null) : null;

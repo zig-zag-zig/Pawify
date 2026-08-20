@@ -96,6 +96,8 @@ export type ArtistReadUseCaseDependencies = ArtistSharedUseCaseDependencies & {
     requestDeduper: RequestDeduperPort;
 };
 
-export type ArtistWriteUseCaseDependencies = ArtistSharedUseCaseDependencies;
+export type ArtistWriteUseCaseDependencies = ArtistSharedUseCaseDependencies & {
+    requestDeduper: RequestDeduperPort;
+};
 
 export type ArtistUseCaseDependencies = ArtistReadUseCaseDependencies;

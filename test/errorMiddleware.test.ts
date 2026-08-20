@@ -85,4 +85,43 @@ describe('errorMiddleware', () => {
         assert.deepEqual(next.mock.calls[0]!.arguments, [error]);
         assert.equal(res._status, undefined);
     });
+
+    it('includes requestId from res.locals in error-level logs', () => {
+        const error = new Error('something broke');
+        const req = createMockReq();
+        const res = createMockRes() as any;
+        res.locals = { requestId: 'req-123' };
+        const next = mock.fn();
+        const lines: string[] = [];
+        mock.method(console, 'error', (line: string) => {
+            lines.push(line);
+        });
+
+        errorMiddleware(error, req as Request, res as Response, next as NextFunction);
+
+        assert.equal(res._status, 500);
+        assert.equal(lines.length, 1);
+        const log = JSON.parse(lines[0]!) as Record<string, unknown>;
+        assert.equal(log.requestId, 'req-123');
+        assert.equal(log.statusCode, 500);
+        assert.equal(log.method, 'GET');
+    });
+
+    it('omits requestId from logs when res.locals has none', () => {
+        const error = new Error('something broke');
+        const req = createMockReq();
+        const res = createMockRes() as any;
+        res.locals = {};
+        const next = mock.fn();
+        const lines: string[] = [];
+        mock.method(console, 'error', (line: string) => {
+            lines.push(line);
+        });
+
+        errorMiddleware(error, req as Request, res as Response, next as NextFunction);
+
+        assert.equal(lines.length, 1);
+        const log = JSON.parse(lines[0]!) as Record<string, unknown>;
+        assert.equal(log.requestId, undefined);
+    });
 });

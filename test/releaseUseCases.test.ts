@@ -123,6 +123,7 @@ describe('release use cases', () => {
             async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
                 return worker();
             },
+            invalidate(): void {},
         };
         let addedTaskUser: { taskId: string; userId: string } | undefined;
         const deps: Pick<
@@ -204,6 +205,7 @@ describe('release use cases', () => {
             async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
                 return worker();
             },
+            invalidate(): void {},
         };
         let addedTaskUser: { taskId: string; userId: string } | undefined;
         let queueCalled = false;
@@ -341,6 +343,7 @@ describe('release use cases', () => {
                 async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
                     return worker();
                 },
+                invalidate(): void {},
             };
             const release = releaseWithTracks;
 
@@ -408,6 +411,7 @@ describe('release use cases', () => {
                 async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
                     return worker();
                 },
+                invalidate(): void {},
             };
             const release = releaseWithTracks;
             let queueCalled = false;
@@ -481,6 +485,7 @@ describe('release use cases', () => {
                 async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
                     return worker();
                 },
+                invalidate(): void {},
             };
 
             const deps: Pick<
@@ -538,6 +543,7 @@ describe('release use cases', () => {
                 async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
                     return worker();
                 },
+                invalidate(): void {},
             };
             let plannedEntries: Array<{ releaseGroupId: string; releaseIds: string[] }> = [];
             let addedTaskUser: { taskId: string; userId: string } | undefined;
@@ -630,6 +636,7 @@ describe('release use cases', () => {
                 async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
                     return worker();
                 },
+                invalidate(): void {},
             };
             let addedTaskUser: { taskId: string; userId: string } | undefined;
             let queueCalled = false;

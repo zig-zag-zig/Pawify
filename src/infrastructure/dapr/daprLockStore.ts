@@ -25,6 +25,7 @@ export const tryAcquireDaprLock = async (
     });
 
     if (response.status === 409) {
+        await response.body?.cancel();
         return false;
     }
 
@@ -51,6 +52,7 @@ export const releaseDaprLock = async (
     });
 
     if (response.status === 404 || response.status === 409) {
+        await response.body?.cancel();
         return;
     }
 

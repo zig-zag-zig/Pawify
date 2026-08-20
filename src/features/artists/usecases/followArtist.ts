@@ -10,6 +10,7 @@ export const createFollowArtistUseCase =
         artistProfileImageQueue,
         cacheTtlGateway,
         followingNotifier,
+        requestDeduper,
     }: Pick<
         ArtistWriteUseCaseDependencies,
         | 'artistDetailsGateway'
@@ -18,6 +19,7 @@ export const createFollowArtistUseCase =
         | 'artistProfileImageQueue'
         | 'cacheTtlGateway'
         | 'followingNotifier'
+        | 'requestDeduper'
     >) =>
     async (userId: string, artistId: string, sourcePushToken?: string): Promise<void> => {
         const artistSummary = await artistDetailsGateway.getFollowedArtistSummary(
@@ -36,6 +38,14 @@ export const createFollowArtistUseCase =
             releaseIds,
             artistSummary ?? undefined,
         );
+
+        // The write is committed; drop the cached reads that this change affects so
+        // the client sees the new following state (and the newly followed artist's
+        // details/releases) on the next request instead of up to the dedupe TTL later.
+        requestDeduper.invalidate(`getFollowing:${userId}`);
+        requestDeduper.invalidate(`getArtistDetails:${userId}:${artistId}`);
+        requestDeduper.invalidate(`getArtistReleases:${userId}:${artistId}`);
+
         artistProfileImageQueue.queueArtistProfileImagesWithLookups(
             userId,
             'follow_artist',

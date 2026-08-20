@@ -60,8 +60,17 @@ export const createChangeEmailUseCase =
     };
 
 export const createDeleteUserAccountUseCase =
-    ({ accountGateway, userAccountCache }: AuthUseCaseDependencies) =>
+    ({ accountGateway, userAccountCache, requestDeduper }: AuthUseCaseDependencies) =>
     async (userId: string): Promise<void> => {
         await accountGateway.deleteUserAccount(userId);
         await userAccountCache.deleteFollowingCache(userId);
+
+        // The account is gone; drop every per-user dedupe read key that exists so no
+        // stale following/artist/release/search state can be served for this user.
+        // Global (non-user-scoped) keys such as getRelease are left untouched.
+        requestDeduper.invalidate(`getFollowing:${userId}`);
+        requestDeduper.invalidate(`getArtistDetails:${userId}:`);
+        requestDeduper.invalidate(`getArtistReleases:${userId}:`);
+        requestDeduper.invalidate(`getReleaseGroupReleases:${userId}:`);
+        requestDeduper.invalidate(`searchArtists:${userId}:`);
     };

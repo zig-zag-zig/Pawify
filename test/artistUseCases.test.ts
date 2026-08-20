@@ -28,6 +28,7 @@ describe('artist use cases', () => {
             ttl: number | undefined;
         }> = [];
         const notificationCalls: string[] = [];
+        const invalidateCalls: string[] = [];
         const summary = {
             id: 'artist-1',
             name: 'Artist One',
@@ -43,6 +44,7 @@ describe('artist use cases', () => {
             | 'artistProfileImageQueue'
             | 'cacheTtlGateway'
             | 'followingNotifier'
+            | 'requestDeduper'
         > = {
             artistDetailsGateway: {
                 async getArtistDetails() {
@@ -94,6 +96,14 @@ describe('artist use cases', () => {
                     notificationCalls.push(sourcePushToken ?? '');
                 },
             },
+            requestDeduper: {
+                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
+                    return worker();
+                },
+                invalidate(keyPrefix) {
+                    invalidateCalls.push(keyPrefix);
+                },
+            },
         };
 
         const useCase = createFollowArtistUseCase(dependencies);
@@ -118,17 +128,23 @@ describe('artist use cases', () => {
         ]);
         assert.ok(queueCalls[0]?.ttl && queueCalls[0].ttl > 0);
         assert.deepEqual(notificationCalls, ['source-token']);
+        assert.deepEqual(invalidateCalls, [
+            'getFollowing:user-1',
+            'getArtistDetails:user-1:artist-1',
+            'getArtistReleases:user-1:artist-1',
+        ]);
     });
 
     it('unfollows multiple artists and notifies clients', async () => {
         const { createUnfollowArtistsUseCase } =
             await import('../src/features/artists/usecases/unfollowArtists.js');
         const deleteCalls: string[] = [];
+        const invalidateCalls: string[] = [];
         let notifyCalled = false;
 
         const deps: Pick<
             ArtistWriteUseCaseDependencies,
-            'artistFollowingRepository' | 'followingNotifier'
+            'artistFollowingRepository' | 'followingNotifier' | 'requestDeduper'
         > = {
             artistFollowingRepository: {
                 async getFollowingArtistIds() {
@@ -153,6 +169,14 @@ describe('artist use cases', () => {
                     assert.equal(sourcePushToken, 'push-token-1');
                 },
             },
+            requestDeduper: {
+                async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
+                    return worker();
+                },
+                invalidate(keyPrefix) {
+                    invalidateCalls.push(keyPrefix);
+                },
+            },
         };
 
         const useCase = createUnfollowArtistsUseCase(deps);
@@ -160,6 +184,15 @@ describe('artist use cases', () => {
 
         assert.deepEqual(deleteCalls, ['artist-1', 'artist-2', 'artist-3']);
         assert.equal(notifyCalled, true);
+        assert.deepEqual(invalidateCalls, [
+            'getArtistDetails:user-1:artist-1',
+            'getArtistReleases:user-1:artist-1',
+            'getArtistDetails:user-1:artist-2',
+            'getArtistReleases:user-1:artist-2',
+            'getArtistDetails:user-1:artist-3',
+            'getArtistReleases:user-1:artist-3',
+            'getFollowing:user-1',
+        ]);
     });
 
     it('returns artist details and queues profile image task', async () => {
@@ -169,6 +202,7 @@ describe('artist use cases', () => {
             async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
                 return worker();
             },
+            invalidate(): void {},
         };
         const artist = {
             id: 'artist-1',
@@ -232,6 +266,7 @@ describe('artist use cases', () => {
             async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
                 return worker();
             },
+            invalidate(): void {},
         };
         const deps: Pick<
             ArtistReadUseCaseDependencies,
@@ -280,6 +315,7 @@ describe('artist use cases', () => {
                 async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
                     return worker();
                 },
+                invalidate(): void {},
             };
             const summaries: Record<
                 string,
@@ -361,6 +397,7 @@ describe('artist use cases', () => {
                 async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
                     return worker();
                 },
+                invalidate(): void {},
             };
             const summaries: Record<
                 string,
@@ -445,6 +482,7 @@ describe('artist use cases', () => {
                 async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
                     return worker();
                 },
+                invalidate(): void {},
             };
             let queueCalled = false;
 
@@ -508,6 +546,7 @@ describe('artist use cases', () => {
                 async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
                     return worker();
                 },
+                invalidate(): void {},
             };
             const staleSummary: import('../src/utils/types/followedArtistTypes.js').FollowedArtistSummary =
                 {
@@ -592,6 +631,7 @@ describe('artist use cases', () => {
                 async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
                     return worker();
                 },
+                invalidate(): void {},
             };
             let plannedScope = '';
             let plannedLookups: Array<{ artistId: string; artistName?: string }> = [];
@@ -672,6 +712,7 @@ describe('artist use cases', () => {
                 async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
                     return worker();
                 },
+                invalidate(): void {},
             };
             let queueCalled = false;
 
@@ -754,6 +795,7 @@ describe('artist use cases', () => {
                 async run<T>(_key: string, worker: () => Promise<T>): Promise<T> {
                     return worker();
                 },
+                invalidate(): void {},
             };
             let plannedLookups: Array<{ artistId: string }> = [];
 

@@ -32,6 +32,7 @@ export const getStateValue = async (
     const response = await daprFetch(`/v1.0/state/${storeName}/${encodeURIComponent(key)}`);
 
     if (response.status === 204 || response.status === 404) {
+        await response.body?.cancel();
         return null;
     }
 
@@ -67,6 +68,7 @@ const deleteStateValue = async (
     });
 
     if (response.status === 404) {
+        await response.body?.cancel();
         return;
     }
 

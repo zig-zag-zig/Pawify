@@ -65,6 +65,7 @@ describe('publicHandler', () => {
 
         const res = {
             statusCode: 200,
+            locals: {},
             setHeader: (name: string, value: string) => {
                 setHeaderCalls.push([name, value]);
             },

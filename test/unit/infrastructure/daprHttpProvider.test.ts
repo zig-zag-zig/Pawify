@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { describe, it } from 'node:test';
+import { describe, it, mock } from 'node:test';
 
 import { installFetch } from '../../helpers/daprTestHelpers.js';
 
@@ -47,6 +47,50 @@ describe('Dapr provider HTTP migration', () => {
 
         assert.equal(callCount, 1);
         assert.deepEqual(result, { __fetchFailure: true, status: null });
+    });
+
+    it('cancels the response body on non-OK responses so sockets are released', async () => {
+        let cancelMock: ReturnType<typeof mock.method> | undefined;
+        installFetch(() => {
+            const response = new Response('temporary upstream failure', { status: 503 });
+            cancelMock = mock.method(response.body!, 'cancel');
+            return response;
+        });
+
+        const { fetchDaprProvider } = await import('../../../src/services/musicApi/httpClient.js');
+        const result = await fetchDaprProvider(
+            'discogs',
+            '/artists/1',
+            { method: 'GET', headers: {} },
+            false,
+            false,
+            'null',
+        );
+
+        assert.equal(result, null);
+        assert.equal(cancelMock!.mock.callCount(), 1);
+    });
+
+    it('cancels the response body when an OK body is not valid JSON', async () => {
+        let cancelMock: ReturnType<typeof mock.method> | undefined;
+        installFetch(() => {
+            const response = new Response('<html>not json</html>', { status: 200 });
+            cancelMock = mock.method(response.body!, 'cancel');
+            return response;
+        });
+
+        const { fetchDaprProvider } = await import('../../../src/services/musicApi/httpClient.js');
+        const result = await fetchDaprProvider(
+            'discogs',
+            '/artists/1',
+            { method: 'GET', headers: {} },
+            false,
+            false,
+            'null',
+        );
+
+        assert.equal(result, null);
+        assert.equal(cancelMock!.mock.callCount(), 1);
     });
 
     it('preserves HEAD success and abort behavior', async () => {

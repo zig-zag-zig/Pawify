@@ -34,7 +34,16 @@ export const fetchAllReleasesForArtist = async (
 
         allReleases.push(...pageReleases);
         const nextOffset = offset + releasesData.releases.length;
-        const isLastPage = nextOffset >= releasesData['release-count'];
+        const releaseCount = getMusicBrainzReleaseCount(releasesPage);
+        // Defensive pagination guards: an empty page, a missing/non-finite
+        // release-count (fall back to "short page means last page"), or reaching
+        // the declared count all stop the loop so a malformed upstream response
+        // can never cause unbounded requests against the rate-limited API.
+        const isLastPage =
+            releasesData.releases.length === 0 ||
+            (releaseCount === null
+                ? releasesData.releases.length < limit
+                : nextOffset >= releaseCount);
         await onReleasesPage?.(pageReleases, isLastPage);
         offset = nextOffset;
 
@@ -116,9 +125,17 @@ export const fetchAllReleasesForReleaseGroup = async (
 
         allReleases.push(...pageReleases);
         const nextOffset = offset + releasesData.releases.length;
+        const releaseCount = getMusicBrainzReleaseCount(releasesPage);
         offset = nextOffset;
 
-        if (nextOffset >= releasesData['release-count']) {
+        // Same defensive guards as fetchAllReleasesForArtist: stop on an empty
+        // page or when release-count is missing/non-finite (short page = last).
+        if (
+            releasesData.releases.length === 0 ||
+            (releaseCount === null
+                ? releasesData.releases.length < limit
+                : nextOffset >= releaseCount)
+        ) {
             break;
         }
     }
