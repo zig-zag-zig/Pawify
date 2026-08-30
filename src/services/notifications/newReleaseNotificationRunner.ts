@@ -54,10 +54,16 @@ const buildReleaseNotifications = (
         }
     }
 
-    return Array.from(releaseMap.values()).map(
-        ({ title, disambiguation, artistNames, date_for_display }) => ({
+    return Array.from(releaseMap.entries()).map(
+        ([releaseId, { title, disambiguation, artistNames, date_for_display }]) => ({
             body: `By ${Array.from(artistNames).join(', ')}\nReleased ${date_for_display}`,
             title: nameWithDisambiguation(disambiguation, title),
+            // Lets the app deep-link to this release's page when the
+            // notification is tapped.
+            data: {
+                eventName: notificationEvents.releases,
+                payload: { releaseId },
+            },
         }),
     );
 };

@@ -11,6 +11,11 @@ export const validateNotificationOptions = (options: PushNotificationOptions): N
     const hasTitleOrBody = !!options.title?.trim() || !!options.body?.trim();
     const hasEventName = !!options.eventName?.trim();
     const hasPayload = options.payload !== undefined;
+    const hasData = options.data !== undefined;
+
+    if (hasData && typeof options.data !== 'object') {
+        throw new Error('data must be an object when provided');
+    }
 
     if (hasTitleOrBody) {
         if (hasEventName || hasPayload) {
@@ -19,6 +24,10 @@ export const validateNotificationOptions = (options: PushNotificationOptions): N
             );
         }
         return 'visible';
+    }
+
+    if (hasData) {
+        throw new Error('Data notifications build data from eventName/payload. Remove data.');
     }
 
     if (!hasEventName) {
@@ -43,7 +52,9 @@ export const buildExpoPushMessages = (
         to: token,
         title: options.title,
         body: options.body,
-        data: isDataOnly ? { eventName: options.eventName, payload: options.payload } : undefined,
+        data: isDataOnly
+            ? { eventName: options.eventName, payload: options.payload }
+            : options.data,
         sound: isDataOnly ? undefined : 'default',
         priority: isDataOnly ? ('high' as const) : undefined,
         _contentAvailable: isDataOnly ? true : undefined,

@@ -5,6 +5,12 @@ export type PushNotificationOptions = {
     body?: string;
     eventName?: NotificationEventName;
     payload?: Record<string, unknown>;
+    /**
+     * Arbitrary data attached to a VISIBLE notification (e.g. the release id
+     * for new-release notifications so taps can deep-link to the release).
+     * Data notifications build their data from eventName/payload instead.
+     */
+    data?: Record<string, unknown>;
 };
 
 export type PushDeliveryOptions = {
