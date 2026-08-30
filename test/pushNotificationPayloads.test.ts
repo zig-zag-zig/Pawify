@@ -63,6 +63,20 @@ describe('validateNotificationOptions', () => {
         );
     });
 
+    it('throws when data is not an object', () => {
+        assert.throws(
+            () => validateNotificationOptions({ title: 'Hello', data: 'bad' as any }),
+            /data must be an object/,
+        );
+    });
+
+    it('throws when data is provided for a data notification', () => {
+        assert.throws(
+            () => validateNotificationOptions({ eventName: 'releases', data: { key: 'value' } }),
+            /Data notifications build data from eventName\/payload/,
+        );
+    });
+
     it('throws when payload is not an object', () => {
         assert.throws(
             () => validateNotificationOptions({ eventName: 'releases', payload: 'bad' as any }),
@@ -93,6 +107,24 @@ describe('buildExpoPushMessages', () => {
         assert.equal(messages[0]!.sound, 'default');
         assert.equal(messages[0]!.data, undefined);
         assert.equal(messages[0]!._contentAvailable, undefined);
+    });
+
+    it('builds visible mode messages with attached data', () => {
+        const messages = buildExpoPushMessages(
+            ['ExpoPushToken[abc]'],
+            {
+                title: 'New release',
+                body: 'By Artist',
+                data: { eventName: 'releases', payload: { releaseId: 'release-1' } },
+            },
+            'visible',
+        );
+
+        assert.equal(messages[0]!.sound, 'default');
+        assert.deepEqual(messages[0]!.data, {
+            eventName: 'releases',
+            payload: { releaseId: 'release-1' },
+        });
     });
 
     it('builds data mode messages with _contentAvailable and priority', () => {
